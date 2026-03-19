@@ -337,7 +337,10 @@ export default function DashboardPage() {
         {/* 현장 현황 + 최근 알람 */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-3">
-            <div className="section-title">현장별 현황</div>
+            <div className="flex items-center justify-between">
+              <div className="section-title">현장별 현황</div>
+              <Link href="/sensors" className="text-xs text-brand hover:underline">전체 보기 →</Link>
+            </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {siteStats.map(({ site, ...stats }) => (
                 <SiteCard key={site.id} site={site} {...stats} />

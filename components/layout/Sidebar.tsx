@@ -135,12 +135,12 @@ export function Sidebar() {
 
       {/* ── 모바일 상단 헤더 바 (md 미만) ── */}
       <header className="fixed top-0 left-0 right-0 z-30 flex h-14 items-center justify-between border-b border-line bg-surface-card/95 px-4 backdrop-blur-md md:hidden">
-        <div className="flex items-center gap-2">
+        <Link href="/dashboard" className="flex items-center gap-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-md bg-brand font-mono text-[13px] font-medium text-white">
             GM
           </div>
           <p className="text-[13px] font-semibold tracking-wide text-ink">GEOMONITOR</p>
-        </div>
+        </Link>
         <div className="flex items-center gap-2">
           {/* 미처리 알람 수 빠른 링크 */}
           {unreadCount > 0 && (
