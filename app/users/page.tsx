@@ -503,7 +503,7 @@ export default function UsersPage() {
         </div>
       </div>
 
-      {/* 토스트 */
+      {/* 토스트 */}
       {toast && (
         <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-fade-in-up rounded-xl border border-line bg-ink px-5 py-3 font-mono text-sm text-white shadow-cardhover">
           {toast}
