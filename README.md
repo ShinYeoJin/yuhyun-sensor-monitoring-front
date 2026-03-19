@@ -105,7 +105,7 @@ vercel --prod
 `.env.local` 파일을 생성하고 아래 값을 입력하세요.
 ```bash
 # QR 코드에 인코딩될 베이스 URL
-NEXT_PUBLIC_BASE_URL=https://your-domain.vercel.app
+NEXT_PUBLIC_BASE_URL=https://yuhyun-sensor-monitoring-front.vercel.app/dashboard
 ```
 
 > **모바일 QR 스캔을 위해 반드시 설정 필요**
