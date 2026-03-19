@@ -320,7 +320,7 @@ export default function SitesPage() {
     <div className="flex-1 overflow-y-auto bg-surface-page">
 
       {/* 헤더 */}
-      <div className="sticky top-14 md:top-0 z-10 border-b border-line bg-surface-card/90 px-4 md:px-6 py-3 backdrop-blur-md">
+      <div className="border-b border-line bg-surface-card/90 px-4 md:px-6 py-3 md:sticky md:top-0 md:z-10 backdrop-blur-md">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <h1 className="text-[15px] font-semibold text-ink">현장 관리</h1>
@@ -391,7 +391,7 @@ export default function SitesPage() {
                       <h2 className="font-semibold text-ink">{site.name}</h2>
                       <p className="font-mono text-xs text-ink-muted">{site.location}</p>
                     </div>
-                    <span className={`shrink-0 rounded-full border px-2.5 py-0.5 font-mono text-[11px] font-medium ${st.badge}`}>
+                    <span className={`shrink-0 whitespace-nowrap rounded-full border px-2.5 py-0.5 font-mono text-[11px] font-medium ${st.badge}`}>
                       {site.liveStatus === 'danger' && <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-sensor-danger" />}
                       {st.label}
                     </span>

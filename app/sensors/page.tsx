@@ -559,7 +559,7 @@ export default function SensorsPage() {
     <div className="flex-1 overflow-y-auto bg-surface-page">
 
       {/* 헤더 */}
-      <div className="sticky top-14 md:top-0 z-10 border-b border-line bg-surface-card/90 px-4 md:px-6 py-3 backdrop-blur-md">
+      <div className="border-b border-line bg-surface-card/90 px-4 md:px-6 py-3 md:sticky md:top-0 md:z-10 backdrop-blur-md">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h1 className="text-[15px] font-semibold text-ink">센서 관리</h1>
@@ -639,7 +639,7 @@ export default function SensorsPage() {
                       </td>
                       <td className="px-4 py-3 text-sm text-ink-sub">{sensor.siteName}</td>
                       <td className="px-4 py-3">
-                        <span className="rounded-full border border-brand/30 bg-brand/10 px-2 py-0.5 font-mono text-[11px] text-brand">{sensor.field}</span>
+                        <span className="inline-block whitespace-nowrap rounded-full border border-brand/30 bg-brand/10 px-2 py-0.5 font-mono text-[11px] text-brand">{sensor.field}</span>
                       </td>
                       <td className="px-4 py-3 text-right font-mono text-sm font-medium text-ink">
                         {sensor.status === 'offline' ? <span className="text-ink-muted">—</span> : `${sensor.currentValue} ${sensor.unit}`}
@@ -677,7 +677,8 @@ export default function SensorsPage() {
             </div>
           ) : (
             <div className="geo-card overflow-hidden">
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto">
+              <table className="w-full min-w-[580px] text-sm">
                 <thead>
                   <tr className="border-b border-line bg-surface-subtle">
                     {[['관리번호 / 센서명','text-left'],['현장 / 설치위치','text-left'],['관련분야','text-left'],['단위','text-left'],['임계값','text-left'],['설치일','text-left'],['','text-right']].map(([th,a]) => (
@@ -706,7 +707,7 @@ export default function SensorsPage() {
                         <p className="font-mono text-[10px] text-ink-muted">{s.location.description || '—'}</p>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="rounded-full border border-brand/30 bg-brand/10 px-2 py-0.5 font-mono text-[11px] text-brand">{s.field}</span>
+                        <span className="inline-block whitespace-nowrap rounded-full border border-brand/30 bg-brand/10 px-2 py-0.5 font-mono text-[11px] text-brand">{s.field}</span>
                       </td>
                       <td className="px-4 py-3 font-mono text-xs text-ink-sub">{s.unit || '—'}</td>
                       <td className="px-4 py-3">
@@ -726,6 +727,7 @@ export default function SensorsPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
         </div>

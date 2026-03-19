@@ -291,7 +291,7 @@ export default function FilesPage() {
     <div className="flex-1 overflow-y-auto bg-surface-page">
 
       {/* 헤더 */}
-      <div className="sticky top-14 md:top-0 z-10 border-b border-line bg-surface-card/90 px-4 md:px-6 py-3 backdrop-blur-md">
+      <div className="border-b border-line bg-surface-card/90 px-4 md:px-6 py-3 md:sticky md:top-0 md:z-10 backdrop-blur-md">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h1 className="text-[15px] font-semibold text-ink">파일 관리</h1>

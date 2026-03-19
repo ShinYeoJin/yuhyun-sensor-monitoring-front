@@ -299,7 +299,7 @@ function StatusBadge({ status }: { status: UserStatus }) {
     deleted:  { label: '삭제',    cls: 'border-sensor-dangerborder  bg-sensor-dangerbg  text-sensor-dangertext',  dot: 'bg-sensor-danger'  },
   }[status]
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 font-mono text-[11px] font-medium ${cfg.cls}`}>
+    <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2.5 py-0.5 font-mono text-[11px] font-medium ${cfg.cls}`}>
       <span className={`inline-block h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
       {cfg.label}
     </span>
@@ -381,7 +381,7 @@ export default function UsersPage() {
     <div className="flex-1 overflow-y-auto bg-surface-page">
 
       {/* 헤더 */}
-      <div className="sticky top-14 md:top-0 z-10 border-b border-line bg-surface-card/90 px-4 md:px-6 py-3 backdrop-blur-md">
+      <div className="border-b border-line bg-surface-card/90 px-4 md:px-6 py-3 md:sticky md:top-0 md:z-10 backdrop-blur-md">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <h1 className="text-[15px] font-semibold text-ink">사용자 관리</h1>
@@ -455,7 +455,7 @@ export default function UsersPage() {
                     <td className="px-4 py-3 font-mono text-xs text-ink-sub">{user.userId || '—'}</td>
                     {/* 권한 */}
                     <td className="px-4 py-3">
-                      <span className={`inline-block rounded-full border px-2.5 py-0.5 font-mono text-[11px] font-medium ${role.bg} ${role.text} ${role.border}`}>
+                      <span className={`inline-block whitespace-nowrap rounded-full border px-2.5 py-0.5 font-mono text-[11px] font-medium ${role.bg} ${role.text} ${role.border}`}>
                         {role.label}
                       </span>
                     </td>
