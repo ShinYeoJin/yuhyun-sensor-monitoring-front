@@ -130,7 +130,7 @@ export const sensorStore = {
 
   subscribe(fn: () => void) {
     _listeners.add(fn)
-    return () => _listeners.delete(fn)
+    return () => { _listeners.delete(fn) }
   },
 }
 
