@@ -32,7 +32,7 @@ export function QRCode({
     if (!value) return
     setError(false)
 
-    const opts: QRCodeLib.QRCodeToCanvasOptions = {
+    const opts: QRCodeLib.QRCodeRenderersOptions = {
       width: size,
       margin: 2,
       color: { dark: '#1a2233', light: '#ffffff' },
