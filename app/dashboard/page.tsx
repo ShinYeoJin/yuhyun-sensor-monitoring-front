@@ -122,13 +122,13 @@ export default function DashboardPage() {
     <div className="flex-1 overflow-y-auto bg-surface-page">
 
       {/* 헤더 */}
-      <div className="sticky top-0 z-10 border-b border-line bg-surface-card/90 px-6 py-3 backdrop-blur-md">
-        <div className="flex items-center justify-between">
+      <div className="sticky top-14 md:top-0 z-10 border-b border-line bg-surface-card/90 px-4 md:px-6 py-3 backdrop-blur-md">
+        <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <h1 className="text-[15px] font-semibold text-ink">대시보드</h1>
             <p className="font-mono text-xs text-ink-muted">실시간 계측 모니터링 현황</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
             {dangerCount > 0 && (
               <span className="flex items-center gap-1.5 rounded-full border border-sensor-dangerborder bg-sensor-dangerbg px-3 py-1.5 font-mono text-xs font-medium text-sensor-dangertext danger-flash">
                 <span className="pulse-danger" />

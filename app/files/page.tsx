@@ -291,8 +291,8 @@ export default function FilesPage() {
     <div className="flex-1 overflow-y-auto bg-surface-page">
 
       {/* 헤더 */}
-      <div className="sticky top-0 z-10 border-b border-line bg-surface-card/90 px-6 py-3 backdrop-blur-md">
-        <div className="flex items-center justify-between gap-4">
+      <div className="sticky top-14 md:top-0 z-10 border-b border-line bg-surface-card/90 px-4 md:px-6 py-3 backdrop-blur-md">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h1 className="text-[15px] font-semibold text-ink">파일 관리</h1>
             <p className="font-mono text-xs text-ink-muted">총 {files.length}개 파일</p>
@@ -302,7 +302,7 @@ export default function FilesPage() {
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-ink-muted">⌕</span>
               <input type="search" placeholder="제목 또는 작성자 검색..." value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="w-52 rounded-lg border border-line bg-surface-card py-1.5 pl-7 pr-3 font-mono text-xs text-ink outline-none transition-colors placeholder:text-ink-muted focus:border-brand/50 focus:ring-1 focus:ring-brand/20" />
+                className="w-full max-w-[180px] rounded-lg border border-line bg-surface-card py-1.5 pl-7 pr-3 font-mono text-xs text-ink outline-none transition-colors placeholder:text-ink-muted focus:border-brand/50 focus:ring-1 focus:ring-brand/20" />
             </div>
             <button onClick={() => setUploadOpen(true)}
               className="flex items-center gap-1.5 rounded-lg bg-brand px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-hover">
@@ -312,7 +312,7 @@ export default function FilesPage() {
         </div>
 
         {/* 카테고리 탭 */}
-        <div className="mt-3 flex gap-1">
+        <div className="mt-3 flex gap-1 overflow-x-auto pb-1 scrollbar-none">
           {categories.map(cat => {
             const count = cat.value === 'all'
               ? files.length
@@ -352,7 +352,8 @@ export default function FilesPage() {
           </div>
         ) : (
           <div className="geo-card overflow-hidden">
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[560px] text-sm">
               <thead>
                 <tr className="border-b border-line bg-surface-subtle">
                   {['파일명 / 내용','종류','작성자','크기','등록일',''].map(h => (
@@ -460,6 +461,7 @@ export default function FilesPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         )}
       </div>

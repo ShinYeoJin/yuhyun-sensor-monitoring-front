@@ -559,8 +559,8 @@ export default function SensorsPage() {
     <div className="flex-1 overflow-y-auto bg-surface-page">
 
       {/* 헤더 */}
-      <div className="sticky top-0 z-10 border-b border-line bg-surface-card/90 px-6 py-3 backdrop-blur-md">
-        <div className="flex items-center justify-between gap-4">
+      <div className="sticky top-14 md:top-0 z-10 border-b border-line bg-surface-card/90 px-4 md:px-6 py-3 backdrop-blur-md">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h1 className="text-[15px] font-semibold text-ink">센서 관리</h1>
             <p className="font-mono text-xs text-ink-muted">등록된 센서 {sensors.length}개</p>
@@ -584,7 +584,7 @@ export default function SensorsPage() {
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-ink-muted">⌕</span>
                 <input type="search" placeholder="센서 ID, 이름 검색..." value={search} onChange={e => setSearch(e.target.value)}
-                  className="w-48 rounded-lg border border-line bg-surface-card py-1.5 pl-7 pr-3 font-mono text-xs text-ink outline-none placeholder:text-ink-muted focus:border-brand/50 focus:ring-1 focus:ring-brand/20" />
+                  className="w-full max-w-[180px] rounded-lg border border-line bg-surface-card py-1.5 pl-7 pr-3 font-mono text-xs text-ink outline-none placeholder:text-ink-muted focus:border-brand/50 focus:ring-1 focus:ring-brand/20" />
               </div>
               <select value={siteFilter} onChange={e => setSite(e.target.value)}
                 className="rounded-lg border border-line bg-surface-card px-3 py-1.5 font-mono text-xs text-ink outline-none focus:border-brand/50">
@@ -596,7 +596,7 @@ export default function SensorsPage() {
         </div>
 
         {activeTab === 'monitor' && (
-          <div className="mt-3 flex gap-1">
+          <div className="mt-3 flex gap-1 overflow-x-auto pb-1 scrollbar-none">
             {statusOptions.map(opt => (
               <button key={opt.value} onClick={() => setStatus(opt.value)}
                 className={['rounded-full border px-3 py-1 font-mono text-[11px] font-medium transition-colors',
@@ -613,7 +613,8 @@ export default function SensorsPage() {
       {activeTab === 'monitor' && (
         <div className="p-6">
           <div className="geo-card overflow-hidden">
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-sm">
               <thead>
                 <tr className="border-b border-line bg-surface-subtle">
                   {[['관리번호','text-left'],['현장','text-left'],['관련분야','text-left'],['현재값','text-right'],['임계 W/D','text-right'],['상태','text-center'],['업데이트','text-left'],['QR','text-center']].map(([th,a]) => (
@@ -661,6 +662,7 @@ export default function SensorsPage() {
                 })}
               </tbody>
             </table>
+            </div>
           </div>
         </div>
       )}

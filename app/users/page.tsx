@@ -381,8 +381,8 @@ export default function UsersPage() {
     <div className="flex-1 overflow-y-auto bg-surface-page">
 
       {/* 헤더 */}
-      <div className="sticky top-0 z-10 border-b border-line bg-surface-card/90 px-6 py-3 backdrop-blur-md">
-        <div className="flex items-center justify-between">
+      <div className="sticky top-14 md:top-0 z-10 border-b border-line bg-surface-card/90 px-4 md:px-6 py-3 backdrop-blur-md">
+        <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <h1 className="text-[15px] font-semibold text-ink">사용자 관리</h1>
             {/* 통계 요약 */}
@@ -400,7 +400,7 @@ export default function UsersPage() {
         </div>
 
         {/* 뷰 필터 탭 */}
-        <div className="mt-3 flex gap-1">
+        <div className="mt-3 flex gap-1 overflow-x-auto pb-1 scrollbar-none">
           {viewFilters.map(f => (
             <button key={f.value} onClick={() => setViewFilter(f.value)} className={tabCls(f.value)}>
               {f.label}
@@ -418,7 +418,8 @@ export default function UsersPage() {
       {/* 테이블 */}
       <div className="p-6">
         <div className="geo-card overflow-hidden">
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[600px] text-sm">
             <thead>
               <tr className="border-b border-line bg-surface-subtle">
                 {['사용자명', '사용자 ID', '권한', '핸드폰번호', '담당 현장', '등록자 / 등록일', '마지막 로그인', '상태', ''].map(h => (
@@ -498,10 +499,11 @@ export default function UsersPage() {
               })}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
 
-      {/* 토스트 */}
+      {/* 토스트 */
       {toast && (
         <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-fade-in-up rounded-xl border border-line bg-ink px-5 py-3 font-mono text-sm text-white shadow-cardhover">
           {toast}

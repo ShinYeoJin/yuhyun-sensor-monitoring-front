@@ -320,8 +320,8 @@ export default function SitesPage() {
     <div className="flex-1 overflow-y-auto bg-surface-page">
 
       {/* 헤더 */}
-      <div className="sticky top-0 z-10 border-b border-line bg-surface-card/90 px-6 py-3 backdrop-blur-md">
-        <div className="flex items-center justify-between">
+      <div className="sticky top-14 md:top-0 z-10 border-b border-line bg-surface-card/90 px-4 md:px-6 py-3 backdrop-blur-md">
+        <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <h1 className="text-[15px] font-semibold text-ink">현장 관리</h1>
             {/* 통계 요약 */}
@@ -346,7 +346,7 @@ export default function SitesPage() {
         </div>
 
         {/* 뷰 필터 탭 */}
-        <div className="mt-3 flex gap-1">
+        <div className="mt-3 flex gap-1 overflow-x-auto pb-1 scrollbar-none">
           {([
             { value: 'all'     as ViewFilter, label: '전체',   count: totalCount   },
             { value: 'danger'  as ViewFilter, label: '위험',   count: dangerCount  },
