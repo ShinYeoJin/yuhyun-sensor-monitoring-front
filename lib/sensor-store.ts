@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { UnifiedSensor, Alarm, SensorStatus, ThresholdRange } from '@/types'
-import { mockSensors, mockAlarms, getThresholds } from '@/lib/mock-data'
+import { getThresholds } from '@/lib/mock-data'
 
 // ─── 임계값으로 상태 평가 ─────────────────────────────────────────────────────
 export function evaluateStatus(value: number, threshold: ThresholdRange): SensorStatus {
@@ -11,11 +11,8 @@ export function evaluateStatus(value: number, threshold: ThresholdRange): Sensor
 }
 
 // ─── 싱글톤 초기 상태 ────────────────────────────────────────────────────────
-let _sensors: UnifiedSensor[] = mockSensors.map(s => ({
-  ...s,
-  status: s.status === 'offline' ? 'offline' : evaluateStatus(s.currentValue, s.threshold),
-}))
-let _alarms: Alarm[] = [...mockAlarms]
+let _sensors: UnifiedSensor[] = []
+let _alarms: Alarm[] = []
 
 const _listeners = new Set<() => void>()
 const notify = () => _listeners.forEach(fn => fn())

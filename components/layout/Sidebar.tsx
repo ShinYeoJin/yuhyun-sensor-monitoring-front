@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useSensorStore } from '@/lib/sensor-store'
 import { useAuth, DEFAULT_USER } from '@/lib/auth-context'
+import { alarmApi } from '@/lib/api'
 
 const navGroups = [
   {
@@ -123,8 +123,19 @@ function SidebarContent({
 // 데스크탑: 좌측 고정 / 모바일: 햄버거 버튼 + 슬라이드 드로어
 export function Sidebar() {
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const { alarms } = useSensorStore()
-  const unreadCount = alarms.filter(a => !a.isAcknowledged && a.severity !== 'resolved').length
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  useEffect(() => {
+    const fetchCount = async () => {
+      try {
+        const data = await alarmApi.getAll()
+        setUnreadCount(data.filter((a: any) => !a.is_acknowledged).length)
+      } catch {}
+    }
+    fetchCount()
+    const interval = setInterval(fetchCount, 60000)
+    return () => clearInterval(interval)
+  }, [])
 
   return (
     <>
