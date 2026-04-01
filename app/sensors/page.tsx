@@ -2,9 +2,11 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { mockSites, getRelativeTime, getThresholds } from '@/lib/mock-data'
+import { getRelativeTime, getThresholds } from '@/lib/mock-data'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { sensorStore, useSensorStore, evaluateStatus } from '@/lib/sensor-store'
+import { sensorApi } from '@/lib/api'
+import { useEffect } from 'react'
 import type {
   SensorStatus, UnifiedSensor, SensorField, MeasureMethod, Formula,
   ThresholdRange, SensorGroup, ActionAfterMeasure, ActionBeforeMeasure,
@@ -389,12 +391,11 @@ function SensorModal({ mode, form, onChange, onSubmit, onClose }: {
                 <label className={labelCls}>현장 *</label>
                 <select value={form.siteId}
                   onChange={e => {
-                    const site = mockSites.find(s => s.id === e.target.value)
-                    onChange({ ...form, siteId: e.target.value, siteName: site?.name ?? '' })
+                    onChange({ ...form, siteId: e.target.value, siteName: e.target.value === 'site-main' ? '계측 현장' : '' })
                   }}
                   className={selectCls}>
                   <option value="">현장 선택</option>
-                  {mockSites.map(s => <option key={s.id} value={s.id}>{s.name} — {s.location}</option>)}
+                  <option value="site-main">계측 현장</option>
                 </select>
               </div>
               <div>
@@ -484,6 +485,52 @@ function DeleteModal({ sensorName, onConfirm, onClose }: { sensorName: string; o
 // ─── 메인 페이지 ──────────────────────────────────────────────────────────────
 export default function SensorsPage() {
   const { sensors } = useSensorStore()
+  useEffect(() => {
+    sensorApi.getAll().then((data: any[]) => {
+      data.forEach((s: any) => {
+        const sensor: UnifiedSensor = {
+          id: String(s.id),
+          manageNo: s.manage_no || '',
+          field: s.field || '공통',
+          measureMethod: '해당없음',
+          formula: '(A*X+B)',
+          group: '',
+          name: s.name,
+          nameEn: '',
+          nameAbbr: s.sensor_code,
+          unit: s.unit || '',
+          unitName: '',
+          description: s.location_desc || '',
+          combination: '',
+          decimalPoint: '2',
+          pointerInfo: '',
+          remark: '',
+          threshold: {
+            normalMax: s.threshold_normal_max ?? '',
+            warningMax: s.threshold_warning_max ?? '',
+            dangerMin: s.threshold_danger_min ?? '',
+          },
+          operation: { measureCycle: '01:00', actionAfterMeasure: '저장송신', actionBeforeMeasure: '자동' },
+          formulaParams: { coeffA: '', coeffB: '', coeffC: '', coeffD: '', coeffE: '', initVal: '', currentTemp: '', tempCoeff: '', initTemp: '', extRef: '' },
+          criteria: { level1Upper: '', level1Lower: '', level2Upper: '', level2Lower: '', criteriaUnit: '', criteriaUnitName: '', noAlarm: false, noSms: false },
+          siteId: s.site_code || '',
+          siteName: s.site_name || '',
+          installDate: s.install_date || '',
+          location: { lat: 0, lng: 0, description: s.location_desc || '' },
+          status: (s.status as SensorStatus) || 'offline',
+          currentValue: s.current_value ? parseFloat(s.current_value) : 0,
+          batteryLevel: 100,
+          lastUpdated: s.last_measured || new Date().toISOString(),
+          readings: [],
+        }
+        if (!sensorStore.getSensors().find((existing: UnifiedSensor) => existing.id === sensor.id)) {
+          sensorStore.addSensor(sensor)
+        } else {
+          sensorStore.updateSensor(sensor)
+        }
+      })
+    }).catch(console.error)
+  }, [])
   const [search,       setSearch]      = useState('')
   const [statusFilter, setStatus]      = useState<SensorStatus | 'all'>('all')
   const [siteFilter,   setSite]        = useState('all')
@@ -589,7 +636,7 @@ export default function SensorsPage() {
               <select value={siteFilter} onChange={e => setSite(e.target.value)}
                 className="rounded-lg border border-line bg-surface-card px-3 py-1.5 font-mono text-xs text-ink outline-none focus:border-brand/50">
                 <option value="all">모든 현장</option>
-                {mockSites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                <option value="site-main">계측 현장</option>
               </select>
             </div>
           )}
