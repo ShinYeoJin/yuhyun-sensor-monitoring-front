@@ -293,9 +293,9 @@ export default function SensorDetailPage() {
   const maxScale      = thresholdDanger * 1.5 || 100
 
   const valueColorClass =
-    sensor.status === 'danger'  ? 'text-sensor-danger'  :
-    sensor.status === 'warning' ? 'text-sensor-warning' :
-    sensor.status === 'offline' ? 'text-ink-muted'      :
+    sensor?.status === 'danger'  ? 'text-sensor-danger'  :
+    sensor?.status === 'warning' ? 'text-sensor-warning' :
+    sensor?.status === 'offline' ? 'text-ink-muted'      :
     'text-sensor-normal'
 
   const handlePrint = () => { setPrintOpen(false); setTimeout(() => window.print(), 300) }
@@ -309,11 +309,15 @@ export default function SensorDetailPage() {
     setTablePage(1)
   }
 
-  if (loading || !sensor) return (
+  if (loading) return (
     <div className="flex h-full items-center justify-center bg-surface-page">
-      <p className="font-mono text-sm text-ink-muted">
-        {loading ? '센서 정보 불러오는 중...' : '센서를 찾을 수 없습니다.'}
-      </p>
+      <p className="font-mono text-sm text-ink-muted">센서 정보 불러오는 중...</p>
+    </div>
+  )
+  
+  if (!sensor) return (
+    <div className="flex h-full items-center justify-center bg-surface-page">
+      <p className="font-mono text-sm text-ink-muted">센서를 찾을 수 없습니다.</p>
     </div>
   )
 
