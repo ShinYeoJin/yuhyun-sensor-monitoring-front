@@ -281,11 +281,7 @@ export default function SensorDetailPage() {
   const dayCount = isValidRange ? dateDiffDays(dateFrom, dateTo) + 1 : 0
   const isToday  = dateFrom === today && dateTo === today
 
-  const readings = useMemo(
-    () => (isValidRange && sensor) ? getReadingsByRange(sensor, dateFrom, dateTo) : [],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sensor?.id, dateFrom, dateTo]
-  )
+  const readings = measurements
 
   const { thresholdWarning, thresholdDanger } = sensor ? getThresholds(sensor) : { thresholdWarning: 0, thresholdDanger: 0 }
   const overThreshold = sensor ? sensor.currentValue > thresholdDanger : false
@@ -499,12 +495,12 @@ export default function SensorDetailPage() {
             )}
 
             {/* 기간 통계 */}
-            {isValidRange && readings.length > 0 && sensor.status !== 'offline' && (
+            {measurements.length > 0 && sensor.status !== 'offline' && (
               <div className="mt-4 grid grid-cols-3 gap-3 border-t border-line pt-4">
                 {[
-                  { label: '최솟값', value: Math.min(...readings.map(r => r.value)).toFixed(1), color: 'text-sensor-normal' },
-                  { label: '평균값', value: (readings.reduce((s,r) => s+r.value,0) / readings.length).toFixed(1), color: 'text-ink' },
-                  { label: '최댓값', value: Math.max(...readings.map(r => r.value)).toFixed(1),
+                  { label: '최솟값', value: Math.min(...measurements.map((r: any) => parseFloat(r.value))).toFixed(1), color: 'text-sensor-normal' },
+                  { label: '평균값', value: (measurements.reduce((s: number, r: any) => s + parseFloat(r.value), 0) / measurements.length).toFixed(1), color: 'text-ink' },
+                  { label: '최댓값', value: Math.max(...measurements.map((r: any) => parseFloat(r.value))).toFixed(1),
                     color: sensor.status === 'danger' ? 'text-sensor-danger' : sensor.status === 'warning' ? 'text-sensor-warning' : 'text-ink' },
                 ].map(stat => (
                   <div key={stat.label} className="rounded-lg bg-surface-subtle px-3 py-2.5 text-center">
