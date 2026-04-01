@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import type { Site, User, UserRole } from '@/types'
-import { mockSites } from '@/lib/mock-data'
+import { sensorApi } from '@/lib/api'
 
 // 사용자 목록 (실제 환경에서는 공유 스토어에서 가져옴)
 const registeredUsers: User[] = [
@@ -21,7 +21,7 @@ const roleLabel: Record<UserRole, string> = {
 import { useSensorStore } from '@/lib/sensor-store'
 
 // ─── 초기 현장 데이터 ─────────────────────────────────────────────────────────
-const initialSites: Site[] = mockSites
+const initialSites: Site[] = []
 
 // 담당자 선택용 사용자 목록
 const allUsers: Pick<User, 'id' | 'name' | 'role'>[] = [
@@ -223,6 +223,36 @@ export default function SitesPage() {
   const { sensors } = useSensorStore()   // 실시간 센서 상태 구독
 
   const [sites,        setSites]        = useState<Site[]>(initialSites)
+
+  useEffect(() => {
+    sensorApi.getAll().then((sensors: any[]) => {
+      const siteMap = new Map<string, Site>()
+      sensors.forEach((s: any) => {
+        if (!siteMap.has(s.site_code)) {
+          siteMap.set(s.site_code, {
+            id: s.site_code,
+            name: s.site_name,
+            location: s.site_name,
+            description: '',
+            totalSensors: 0,
+            normalCount: 0,
+            warningCount: 0,
+            dangerCount: 0,
+            offlineCount: 0,
+            managers: [],
+            createdAt: '',
+          })
+        }
+        const site = siteMap.get(s.site_code)!
+        site.totalSensors++
+        if (s.status === 'normal')  site.normalCount++
+        if (s.status === 'warning') site.warningCount++
+        if (s.status === 'danger')  site.dangerCount++
+        if (s.status === 'offline') site.offlineCount++
+      })
+      setSites(Array.from(siteMap.values()))
+    }).catch(console.error)
+  }, [])
   const [viewFilter,   setViewFilter]   = useState<ViewFilter>('all')
   const [addOpen,      setAddOpen]      = useState(false)
   const [editTarget,   setEditTarget]   = useState<Site | null>(null)
