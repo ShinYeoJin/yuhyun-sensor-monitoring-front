@@ -577,9 +577,10 @@ export default function SensorDetailPage() {
 
         {/* 측정 데이터 테이블 (페이지네이션) */}
         {(() => {
-          const totalPages = Math.max(1, Math.ceil(readings.length / TABLE_PAGE_SIZE))
+          const tableData  = measurements.length > 0 ? measurements : readings
+          const totalPages = Math.max(1, Math.ceil(tableData.length / TABLE_PAGE_SIZE))
           const safePage   = Math.min(tablePage, totalPages)
-          const pageData   = readings.slice((safePage - 1) * TABLE_PAGE_SIZE, safePage * TABLE_PAGE_SIZE)
+          const pageData   = tableData.slice((safePage - 1) * TABLE_PAGE_SIZE, safePage * TABLE_PAGE_SIZE)
           return (
             <div className="geo-card overflow-hidden">
               {/* 헤더 */}
@@ -588,7 +589,7 @@ export default function SensorDetailPage() {
                   <h2 className="text-sm font-semibold text-ink">측정 데이터</h2>
                   <p className="font-mono text-[10px] text-ink-muted">
                     {isValidRange
-                      ? `${dateFrom} ~ ${dateTo} · 전체 ${readings.length}건 · ${TABLE_PAGE_SIZE}건씩 표시`
+                      ? `${dateFrom} ~ ${dateTo} · 전체 ${tableData.length}건 · ${TABLE_PAGE_SIZE}건씩 표시`
                       : '날짜 범위를 확인해 주세요.'}
                   </p>
                 </div>
