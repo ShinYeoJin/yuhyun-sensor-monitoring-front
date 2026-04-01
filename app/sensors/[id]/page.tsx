@@ -16,7 +16,7 @@ function getReadingsByRange(
   dateFrom: string,
   dateTo: string
 ): SensorReading[] {
-  const { thresholdWarning, thresholdDanger } = getThresholds(sensor)
+  const { thresholdWarning, thresholdDanger } = sensor ? getThresholds(sensor) : { thresholdWarning: 0, thresholdDanger: 0 }
   const from = new Date(dateFrom + 'T00:00:00')
   const to   = new Date(dateTo   + 'T23:59:59')
   if (from > to) return []
@@ -281,11 +281,10 @@ export default function SensorDetailPage() {
   const dayCount = isValidRange ? dateDiffDays(dateFrom, dateTo) + 1 : 0
   const isToday  = dateFrom === today && dateTo === today
 
-  // 범위 readings — dateFrom/dateTo 변경 시 재계산
   const readings = useMemo(
-    () => isValidRange ? getReadingsByRange(sensor, dateFrom, dateTo) : [],
+    () => (isValidRange && sensor) ? getReadingsByRange(sensor, dateFrom, dateTo) : [],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sensor.id, dateFrom, dateTo]
+    [sensor?.id, dateFrom, dateTo]
   )
 
   const { thresholdWarning, thresholdDanger } = getThresholds(sensor)
@@ -310,15 +309,11 @@ export default function SensorDetailPage() {
     setTablePage(1)
   }
 
-  if (loading) return (
-    <div className="flex h-full items-center justify-center">
-      <p className="font-mono text-sm text-ink-muted">센서 정보 불러오는 중...</p>
-    </div>
-  )
-
-  if (!sensor) return (
-    <div className="flex h-full items-center justify-center">
-      <p className="font-mono text-sm text-ink-muted">센서를 찾을 수 없습니다.</p>
+  if (loading || !sensor) return (
+    <div className="flex h-full items-center justify-center bg-surface-page">
+      <p className="font-mono text-sm text-ink-muted">
+        {loading ? '센서 정보 불러오는 중...' : '센서를 찾을 수 없습니다.'}
+      </p>
     </div>
   )
 
