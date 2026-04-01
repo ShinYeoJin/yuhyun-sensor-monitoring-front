@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import type { Site, User, UserRole } from '@/types'
-import { sensorApi } from '@/lib/api'
+import { sensorApi, userApi } from '@/lib/api'
 
 // 사용자 목록 (실제 환경에서는 공유 스토어에서 가져옴)
 const registeredUsers: User[] = [
@@ -90,9 +90,10 @@ function SiteStatusBar({ normal, warning, danger, total }: {
 }
 
 // ─── 현장 추가/편집 모달 ──────────────────────────────────────────────────────
-function SiteModal({ mode, form, onChange, onSubmit, onClose }: {
+function SiteModal({ mode, form, onChange, onSubmit, onClose, users }: {
   mode: 'add' | 'edit'; form: SiteForm
   onChange: (f: SiteForm) => void; onSubmit: () => void; onClose: () => void
+  users: any[]
 }) {
   const isValid = form.name.trim() !== '' && form.location.trim() !== ''
 
@@ -144,10 +145,10 @@ function SiteModal({ mode, form, onChange, onSubmit, onClose }: {
               )}
             </div>
             <div className="rounded-lg border border-line overflow-hidden">
-              {allUsers.map((user, idx) => {
-                const isSelected = form.managers.includes(user.name)
+              {allUsers.map((user: any, idx: number) => {
+                const isSelected = form.managers.includes(user.username)
                 return (
-                  <button key={user.id} type="button" onClick={() => toggleManager(user.name)}
+                  <button key={user.id} type="button" onClick={() => toggleManager(user.username)}
                     className={[
                       'flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors',
                       idx !== 0 ? 'border-t border-line' : '',
@@ -166,7 +167,8 @@ function SiteModal({ mode, form, onChange, onSubmit, onClose }: {
                     <span className={[
                       'flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-mono text-[11px] font-semibold',
                       isSelected ? 'bg-brand/20 text-brand' : 'bg-surface-muted text-ink-sub',
-                    ].join(' ')}>{user.name[0]}</span>
+                    ].join(' ')}>{user.username[0].toUpperCase()}</span>
+                    {user.username}
                     <span className={`flex-1 text-sm font-medium ${isSelected ? 'text-brand' : 'text-ink'}`}>{user.name}</span>
                     <span className="font-mono text-[10px] text-ink-muted">{user.role}</span>
                   </button>
@@ -223,6 +225,12 @@ export default function SitesPage() {
   const { sensors } = useSensorStore()   // 실시간 센서 상태 구독
 
   const [sites,        setSites]        = useState<Site[]>(initialSites)
+  const [dbUsers,      setDbUsers]      = useState<any[]>([])
+  useEffect(() => {
+    userApi.getAll().then((data: any[]) => {
+      setDbUsers(data.filter((u: any) => u.is_active && !u.is_deleted))
+    }).catch(console.error)
+  }, [])
 
   useEffect(() => {
     sensorApi.getAll().then((sensors: any[]) => {
@@ -556,8 +564,8 @@ export default function SitesPage() {
         </div>
       )}
 
-      {addOpen     && <SiteModal mode="add"  form={form} onChange={setForm} onSubmit={handleAdd}  onClose={() => setAddOpen(false)} />}
-      {editTarget  && <SiteModal mode="edit" form={form} onChange={setForm} onSubmit={handleEdit} onClose={() => setEditTarget(null)} />}
+      {addOpen     && <SiteModal mode="add"  form={form} onChange={setForm} onSubmit={handleAdd}  onClose={() => setAddOpen(false)} users={dbUsers} />}
+      {editTarget  && <SiteModal mode="edit" form={form} onChange={setForm} onSubmit={handleEdit} onClose={() => setEditTarget(null)} users={dbUsers} />}
       {deleteTarget && <DeleteModal site={deleteTarget} onConfirm={handleDelete} onClose={() => setDeleteTarget(null)} />}
     </div>
   )

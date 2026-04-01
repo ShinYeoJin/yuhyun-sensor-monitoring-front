@@ -558,9 +558,9 @@ export default function SensorDetailPage() {
             </div>
           </div>
 
-          {isValidRange && readings.length > 0 ? (
+          {measurements.length > 0 ? (
             <div key={`${dateFrom}-${dateTo}`} className="animate-fade-in-up">
-              <SensorTrendChart sensor={sensor} readings={measurements.length > 0 ? measurements : readings} />
+              <SensorTrendChart sensor={sensor} readings={measurements} />
             </div>
           ) : (
             <div className="flex h-[220px] items-center justify-center rounded-xl bg-surface-subtle">
@@ -573,7 +573,7 @@ export default function SensorDetailPage() {
 
         {/* 측정 데이터 테이블 (페이지네이션) */}
         {(() => {
-          const tableData  = measurements.length > 0 ? measurements : readings
+          const tableData  = measurements
           const totalPages = Math.max(1, Math.ceil(tableData.length / TABLE_PAGE_SIZE))
           const safePage   = Math.min(tablePage, totalPages)
           const pageData   = tableData.slice((safePage - 1) * TABLE_PAGE_SIZE, safePage * TABLE_PAGE_SIZE)
@@ -590,7 +590,7 @@ export default function SensorDetailPage() {
                   </p>
                 </div>
                 {/* 페이지 네비게이션 */}
-                {isValidRange && readings.length > TABLE_PAGE_SIZE && (
+                {measurements.length > TABLE_PAGE_SIZE && (
                   <div className="flex items-center gap-2">
                     <button
                       disabled={safePage <= 1}
@@ -613,7 +613,7 @@ export default function SensorDetailPage() {
 
               {/* 테이블 */}
               <div className="overflow-x-auto">
-                {isValidRange && readings.length > 0 ? (
+                {measurements.length > 0 ? (
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-line bg-surface-subtle">
