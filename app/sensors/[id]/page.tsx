@@ -277,7 +277,7 @@ export default function SensorDetailPage() {
   })
 
   // 날짜/범위 바뀌면 테이블 첫 페이지로
-  const isValidRange = dateFrom <= dateTo && dateTo <= today
+  const isValidRange = !!sensor && dateFrom <= dateTo && dateTo <= today
   const dayCount = isValidRange ? dateDiffDays(dateFrom, dateTo) + 1 : 0
   const isToday  = dateFrom === today && dateTo === today
 
@@ -287,10 +287,10 @@ export default function SensorDetailPage() {
     [sensor?.id, dateFrom, dateTo]
   )
 
-  const { thresholdWarning, thresholdDanger } = getThresholds(sensor)
-  const overThreshold = sensor.currentValue > thresholdDanger
-  const nearThreshold = sensor.currentValue > thresholdWarning
-  const maxScale      = thresholdDanger * 1.5
+  const { thresholdWarning, thresholdDanger } = sensor ? getThresholds(sensor) : { thresholdWarning: 0, thresholdDanger: 0 }
+  const overThreshold = sensor ? sensor.currentValue > thresholdDanger : false
+  const nearThreshold = sensor ? sensor.currentValue > thresholdWarning : false
+  const maxScale      = thresholdDanger * 1.5 || 100
 
   const valueColorClass =
     sensor.status === 'danger'  ? 'text-sensor-danger'  :
