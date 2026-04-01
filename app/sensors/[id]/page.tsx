@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import { getSensorById, formatTimestamp, getRelativeTime, getThresholds } from '@/lib/mock-data'
+import { formatTimestamp, getRelativeTime, getThresholds } from '@/lib/mock-data'
+import { sensorApi } from '@/lib/api'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { SensorTrendChart } from '@/components/charts/SensorTrendChart'
 import { QRModal } from '@/components/ui/QRModal'
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
 import type { SensorReading, UnifiedSensor } from '@/types'
 
 // ─── 날짜 범위별 readings 생성 (15분 단위) ──────────────────────────────────
@@ -198,10 +198,66 @@ function PrintModal({ sensor, config, onChange, onPrint, onClose }: {
 export default function SensorDetailPage() {
   const params = useParams()
   const id = Array.isArray(params.id) ? params.id[0] : params.id
-  const sensor = getSensorById(id ?? '')
-  if (!sensor) notFound()
+  const [sensor, setSensor] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [measurements, setMeasurements] = useState<any[]>([])
 
   const today = new Date().toISOString().slice(0, 10)
+
+  useEffect(() => {
+    if (!id) return
+    sensorApi.getById(Number(id)).then((data: any) => {
+      // UnifiedSensor 형태로 변환
+      setSensor({
+        id: String(data.id),
+        manageNo: data.manage_no || '',
+        name: data.name,
+        nameEn: '',
+        nameAbbr: data.sensor_code,
+        field: data.field || '공통',
+        measureMethod: '해당없음',
+        formula: '(A*X+B)',
+        group: '',
+        unit: data.unit || '',
+        unitName: '',
+        description: data.location_desc || '',
+        combination: '',
+        decimalPoint: '2',
+        pointerInfo: '',
+        remark: '',
+        threshold: {
+          normalMax: data.threshold_normal_max ?? '',
+          warningMax: data.threshold_warning_max ?? '',
+          dangerMin: data.threshold_danger_min ?? '',
+        },
+        operation: { measureCycle: '01:00', actionAfterMeasure: '저장송신', actionBeforeMeasure: '자동' },
+        formulaParams: { coeffA: '', coeffB: '', coeffC: '', coeffD: '', coeffE: '', initVal: '', currentTemp: '', tempCoeff: '', initTemp: '', extRef: '' },
+        criteria: { level1Upper: '', level1Lower: '', level2Upper: '', level2Lower: '', criteriaUnit: '', criteriaUnitName: '', noAlarm: false, noSms: false },
+        siteId: data.site_code || '',
+        siteName: data.site_name || '',
+        installDate: data.install_date || '',
+        location: { lat: 0, lng: 0, description: data.location_desc || '' },
+        status: data.status || 'offline',
+        currentValue: data.current_value ? parseFloat(data.current_value) : 0,
+        batteryLevel: 100,
+        lastUpdated: data.last_measured || new Date().toISOString(),
+        readings: [],
+      })
+    }).catch(() => setSensor(null))
+    .finally(() => setLoading(false))
+  }, [id])
+
+  useEffect(() => {
+    if (!id) return
+    sensorApi.getMeasurements(Number(id), { limit: 2000 }).then((data: any[]) => {
+      setMeasurements(data.map((m: any) => ({
+        timestamp: m.measured_at,
+        value: parseFloat(m.value),
+        unit: sensor?.unit || '',
+        status: 'normal',
+      })))
+    }).catch(() => {})
+  }, [id, sensor?.unit])
 
   // 조회 기간 (시작일 ~ 종료일)
   const [dateFrom, setDateFrom] = useState(today)
@@ -253,6 +309,18 @@ export default function SensorDetailPage() {
     setDateTo(today)
     setTablePage(1)
   }
+
+  if (loading) return (
+    <div className="flex h-full items-center justify-center">
+      <p className="font-mono text-sm text-ink-muted">센서 정보 불러오는 중...</p>
+    </div>
+  )
+
+  if (!sensor) return (
+    <div className="flex h-full items-center justify-center">
+      <p className="font-mono text-sm text-ink-muted">센서를 찾을 수 없습니다.</p>
+    </div>
+  )
 
   return (
     <div className="flex-1 overflow-y-auto bg-surface-page">
@@ -497,7 +565,7 @@ export default function SensorDetailPage() {
 
           {isValidRange && readings.length > 0 ? (
             <div key={`${dateFrom}-${dateTo}`} className="animate-fade-in-up">
-              <SensorTrendChart sensor={sensor} readings={readings} />
+              <SensorTrendChart sensor={sensor} readings={measurements.length > 0 ? measurements : readings} />
             </div>
           ) : (
             <div className="flex h-[220px] items-center justify-center rounded-xl bg-surface-subtle">

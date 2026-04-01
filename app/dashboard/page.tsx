@@ -206,8 +206,8 @@ export default function DashboardPage() {
                         onClick={() => window.location.href = `/sensors/${sensor.id}`}
                         className="cursor-pointer transition-colors hover:bg-brand/5">
                         <td className="px-4 py-3">
-                          <p className="font-mono text-sm font-semibold text-brand">{sensor.sensor_code}</p>
-                          <p className="font-mono text-[10px] text-ink-muted">{sensor.name}</p>
+                        <p className="font-mono text-sm font-semibold text-brand">{sensor.manage_no || sensor.sensor_code}</p>
+                        <p className="font-mono text-[10px] text-ink-muted">{sensor.name}</p>
                         </td>
                         <td className="px-4 py-3 text-xs text-ink-sub">{sensor.site_name}</td>
                         <td className="px-4 py-3 font-mono text-sm font-medium text-ink">
