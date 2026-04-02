@@ -329,8 +329,11 @@ export default function SitesPage() {
                             <button key={username} type="button"
                               onClick={() => user && setUserModal(user)}
                               className={['inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 font-mono text-[11px] transition-colors',
-                                user ? 'border-brand/30 bg-brand/10 text-brand hover:border-brand/50 hover:bg-brand/20' : 'border-line bg-surface-subtle text-ink-sub cursor-default'].join(' ')}>
-                              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-surface-muted font-mono text-[9px] font-semibold">
+                                !user ? 'border-line bg-surface-subtle text-ink-sub cursor-default' :
+                                user.is_active ? 'border-brand/30 bg-brand/10 text-brand hover:border-brand/50 hover:bg-brand/20' :
+                                'border-line-strong bg-surface-muted text-ink-muted hover:bg-surface-subtle'].join(' ')}>
+                              <span className={['flex h-4 w-4 items-center justify-center rounded-full font-mono text-[9px] font-semibold',
+                                user?.is_active ? 'bg-brand/20 text-brand' : 'bg-surface-muted text-ink-muted'].join(' ')}>
                                 {username?.[0]?.toUpperCase()}
                               </span>
                               {username}
