@@ -62,6 +62,7 @@ export const dashboardApi = {
 export const userApi = {
   getAll: () => request('/api/users'),
   getActive: () => request('/api/users/active'),
+  getList: () => request('/api/users/list'),
   deactivate: (id: number) => request(`/api/users/${id}/deactivate`, { method: 'PATCH' }),
   activate: (id: number) => request(`/api/users/${id}/activate`, { method: 'PATCH' }),
   delete: (id: number) => request(`/api/users/${id}`, { method: 'DELETE' }),

@@ -250,12 +250,13 @@ export default function SensorDetailPage() {
   useEffect(() => {
     if (!id) return
     sensorApi.getMeasurements(Number(id), { limit: 2000 }).then((data: any[]) => {
-      setMeasurements(data.map((m: any) => ({
+      const mapped = data.map((m: any) => ({
         timestamp: m.measured_at,
         value: parseFloat(m.value),
         unit: sensor?.unit || '',
         status: 'normal',
-      })))
+      }))
+      setMeasurements(mapped.reverse())
     }).catch(() => {})
   }, [id, sensor?.unit])
 

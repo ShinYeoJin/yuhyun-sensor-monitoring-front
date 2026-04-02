@@ -675,7 +675,8 @@ export default function SensorsPage() {
                 ) : filtered.map(sensor => {
                   const { thresholdWarning, thresholdDanger } = getThresholds(sensor)
                   return (
-                    <tr key={sensor.id} className={`transition-colors ${rowBgClass[sensor.status]}`}>
+                    <tr key={sensor.id} className={`cursor-pointer transition-colors ${rowBgClass[sensor.status]}`}
+                      onClick={() => window.location.href = `/sensors/${sensor.id}`}>
                       <td className="px-4 py-3">
                         {/* 관리번호 클릭 → 상세 페이지 */}
                         <Link href={`/sensors/${sensor.id}`}
