@@ -13,8 +13,6 @@ import type {
 } from '@/types'
 import { useRouter } from 'next/navigation'
 
-const router = useRouter()
-
 
 // ─── 상태 필터 ────────────────────────────────────────────────────────────────
 const statusOptions: { value: SensorStatus | 'all'; label: string }[] = [
@@ -488,6 +486,7 @@ function DeleteModal({ sensorName, onConfirm, onClose }: { sensorName: string; o
 
 // ─── 메인 페이지 ──────────────────────────────────────────────────────────────
 export default function SensorsPage() {
+  const router = useRouter()
   const { sensors } = useSensorStore()
   useEffect(() => {
     sensorApi.getAll().then((data: any[]) => {
