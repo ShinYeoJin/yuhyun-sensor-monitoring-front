@@ -145,10 +145,10 @@ function SiteModal({ mode, form, onChange, onSubmit, onClose, users }: {
               )}
             </div>
             <div className="rounded-lg border border-line overflow-hidden">
-              {allUsers.map((user: any, idx: number) => {
-                const isSelected = form.managers.includes(user.username)
-                return (
-                  <button key={user.id} type="button" onClick={() => toggleManager(user.username)}
+            {users.filter((user: any) => user && user.username).map((user: any, idx: number) => {
+              const isSelected = form.managers.includes(user.username)
+              return (
+                <button key={user.id} type="button" onClick={() => toggleManager(user.username)}
                     className={[
                       'flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors',
                       idx !== 0 ? 'border-t border-line' : '',
@@ -167,7 +167,7 @@ function SiteModal({ mode, form, onChange, onSubmit, onClose, users }: {
                     <span className={[
                       'flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-mono text-[11px] font-semibold',
                       isSelected ? 'bg-brand/20 text-brand' : 'bg-surface-muted text-ink-sub',
-                    ].join(' ')}>{user.username[0].toUpperCase()}</span>
+                    ].join(' ')}>{user.username?.[0]?.toUpperCase() || '?'}</span>
                     {user.username}
                     <span className={`flex-1 text-sm font-medium ${isSelected ? 'text-brand' : 'text-ink'}`}>{user.name}</span>
                     <span className="font-mono text-[10px] text-ink-muted">{user.role}</span>
