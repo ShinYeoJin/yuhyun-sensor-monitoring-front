@@ -114,6 +114,7 @@ function SidebarContent({
         >
           <span>⎋</span> 로그아웃
         </Link>
+        <p className="px-3 pt-1 pb-2 font-mono text-[10px] text-ink-muted">v1.0.0</p>
       </div>
     </div>
   )
