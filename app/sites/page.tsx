@@ -156,16 +156,22 @@ function UserInfoModal({ user, onClose }: { user: any; onClose: () => void }) {
           </div>
         </div>
         <dl className="space-y-2.5 text-sm">
-          {[
-            { label: '이메일',    value: user.email   || '—' },
-            { label: '핸드폰',    value: user.phone   || '—' },
-            { label: '계정 상태', value: user.is_active ? '활성' : '비활성화' },
-          ].map(item => (
-            <div key={item.label} className="flex gap-3">
-              <dt className="w-24 shrink-0 font-mono text-[10px] text-ink-muted">{item.label}</dt>
-              <dd className="font-medium text-ink">{item.value}</dd>
-            </div>
-          ))}
+          <div className="flex gap-3">
+            <dt className="w-24 shrink-0 font-mono text-[10px] text-ink-muted">이메일</dt>
+            <dd className="font-medium text-ink">{user.email || '—'}</dd>
+          </div>
+          <div className="flex gap-3">
+            <dt className="w-24 shrink-0 font-mono text-[10px] text-ink-muted">핸드폰</dt>
+            <dd className="font-medium text-ink">
+              {user.phone
+                ? <a href={`tel:${user.phone}`} className="text-brand hover:underline">{user.phone}</a>
+                : '—'}
+            </dd>
+          </div>
+          <div className="flex gap-3">
+            <dt className="w-24 shrink-0 font-mono text-[10px] text-ink-muted">계정 상태</dt>
+            <dd className="font-medium text-ink">{user.is_active ? '활성' : '비활성화'}</dd>
+          </div>
         </dl>
         <div className="mt-5 flex gap-2">
           <button onClick={onClose} className="flex-1 rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-sub hover:bg-surface-subtle">닫기</button>
