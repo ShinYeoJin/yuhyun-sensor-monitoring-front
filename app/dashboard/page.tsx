@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { getRelativeTime } from '@/lib/mock-data'
 import { StatusBadge, AlarmBadge } from '@/components/ui/StatusBadge'
 import { useMemo, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { dashboardApi, sensorApi, alarmApi } from '@/lib/api'
 
 // ─── KPI 카드 ─────────────────────────────────────────────────────────────────
@@ -59,6 +60,7 @@ export default function DashboardPage() {
   const [alarms,    setAlarms]    = useState<any[]>([])
   const [kpiFilter, setKpiFilter] = useState<KpiFilter | null>(null)
   const [loading,   setLoading]   = useState(true)
+  const router = useRouter()
 
   const fetchData = async () => {
     try {
@@ -203,7 +205,7 @@ export default function DashboardPage() {
                   <tbody className="divide-y divide-line">
                     {filteredSensors.map((sensor: any) => (
                       <tr key={sensor.id}
-                        onClick={() => window.location.href = `/sensors/${sensor.id}`}
+                        onClick={() => router.push(`/sensors/${sensor.id}`)}
                         className="cursor-pointer transition-colors hover:bg-brand/5">
                         <td className="px-4 py-3">
                         <p className="font-mono text-sm font-semibold text-brand">{sensor.manage_no || sensor.sensor_code}</p>

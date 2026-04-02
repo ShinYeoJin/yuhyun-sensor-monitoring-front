@@ -11,6 +11,10 @@ import type {
   SensorStatus, UnifiedSensor, SensorField, MeasureMethod, Formula,
   ThresholdRange, SensorGroup, ActionAfterMeasure, ActionBeforeMeasure,
 } from '@/types'
+import { useRouter } from 'next/navigation'
+
+const router = useRouter()
+
 
 // ─── 상태 필터 ────────────────────────────────────────────────────────────────
 const statusOptions: { value: SensorStatus | 'all'; label: string }[] = [
@@ -685,7 +689,7 @@ export default function SensorsPage() {
                   const { thresholdWarning, thresholdDanger } = getThresholds(sensor)
                   return (
                     <tr key={sensor.id} className={`cursor-pointer transition-colors ${rowBgClass[sensor.status]}`}
-                      onClick={() => window.location.href = `/sensors/${sensor.id}`}>
+                      onClick={() => router.push(`/sensors/${sensor.id}`)}>
                       <td className="px-4 py-3">
                         {/* 관리번호 클릭 → 상세 페이지 */}
                         <Link href={`/sensors/${sensor.id}`}
