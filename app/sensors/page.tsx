@@ -574,16 +574,25 @@ export default function SensorsPage() {
     showToast(`'${form.name}' 센서가 추가되었습니다.`)
   }
 
-  const handleEdit = () => {
+  const handleEdit = async () => {
     if (!editTarget) return
-    const updated: UnifiedSensor = {
-      ...editTarget, ...form,
-      status: editTarget.status === 'offline'
-        ? 'offline' : evaluateStatus(editTarget.currentValue, form.threshold),
+    try {
+      await sensorApi.updateThreshold(Number(editTarget.id), {
+        threshold_normal_max: form.threshold.normalMax !== '' ? form.threshold.normalMax : null,
+        threshold_warning_max: form.threshold.warningMax !== '' ? form.threshold.warningMax : null,
+        threshold_danger_min: form.threshold.dangerMin !== '' ? form.threshold.dangerMin : null,
+      })
+      const updated: UnifiedSensor = {
+        ...editTarget, ...form,
+        status: editTarget.status === 'offline'
+          ? 'offline' : evaluateStatus(editTarget.currentValue, form.threshold),
+      }
+      sensorStore.updateSensor(updated)
+      setEditTarget(null)
+      showToast(`'${form.name}' 임계값이 저장되었습니다.`)
+    } catch (err: any) {
+      showToast(err.message || '저장 실패')
     }
-    sensorStore.updateSensor(updated)
-    setEditTarget(null)
-    showToast(`'${form.name}' 정보가 수정되었습니다.`)
   }
 
   const handleDelete = () => {
