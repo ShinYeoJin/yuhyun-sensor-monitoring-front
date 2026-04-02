@@ -11,20 +11,30 @@ const viewFilters: { value: ViewFilter; label: string }[] = [
   { value: 'inactive', label: '비활성화' },
 ]
 
+const ROLES = ['admin', 'Administrator', 'Manager', 'Operator', 'Monitor', 'MultiMonitor']
+
 const inputCls = 'w-full rounded-lg border border-line bg-surface-subtle px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-ink-muted focus:border-brand/50 focus:ring-2 focus:ring-brand/10'
 const labelCls = 'mb-1.5 block font-mono text-[10px] font-semibold uppercase tracking-wider text-ink-muted'
 
-function UserModal({ mode, onSubmit, onClose }: {
-  mode: 'add'; onSubmit: (data: any) => void; onClose: () => void
+function UserModal({ mode, user, onSubmit, onClose }: {
+  mode: 'add' | 'edit'
+  user?: any
+  onSubmit: (data: any) => void
+  onClose: () => void
 }) {
-  const [form, setForm] = useState({ username: '', email: '', password: '', role: 'user' })
-  const isValid = form.username.trim() !== '' && form.email.trim() !== '' && form.password.trim() !== ''
+  const [form, setForm] = useState({
+    username: user?.username || '',
+    email: user?.email || '',
+    password: '',
+    role: user?.role || 'user'
+  })
+  const isValid = form.username.trim() !== '' && form.email.trim() !== '' && (mode === 'edit' || form.password.trim() !== '')
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 backdrop-blur-sm p-4" onClick={onClose}>
       <div className="geo-card flex w-full max-w-lg animate-fade-in-up flex-col" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-line px-6 py-4">
-          <h2 className="text-sm font-semibold text-ink">사용자 추가</h2>
+          <h2 className="text-sm font-semibold text-ink">{mode === 'add' ? '사용자 추가' : '사용자 수정'}</h2>
           <button onClick={onClose} className="rounded-md p-1 text-ink-muted hover:bg-surface-subtle hover:text-ink">✕</button>
         </div>
         <div className="px-6 py-5 space-y-4">
@@ -38,19 +48,21 @@ function UserModal({ mode, onSubmit, onClose }: {
             <input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})}
               placeholder="email@example.com" className={inputCls} />
           </div>
-          <div>
-            <label className={labelCls}>비밀번호 *</label>
-            <input type="password" value={form.password} onChange={e => setForm({...form, password: e.target.value})}
-              placeholder="비밀번호 입력" className={inputCls} />
-          </div>
+          {mode === 'add' && (
+            <div>
+              <label className={labelCls}>비밀번호 *</label>
+              <input type="password" value={form.password} onChange={e => setForm({...form, password: e.target.value})}
+                placeholder="비밀번호 입력" className={inputCls} />
+            </div>
+          )}
           <div>
             <label className={labelCls}>권한</label>
-            <div className="flex gap-2">
-              {['user', 'admin'].map(r => (
+            <div className="grid grid-cols-3 gap-2">
+              {ROLES.map(r => (
                 <button key={r} type="button" onClick={() => setForm({...form, role: r})}
-                  className={['flex-1 rounded-lg border py-2 font-mono text-xs font-medium transition-all',
+                  className={['rounded-lg border py-2 font-mono text-xs font-medium transition-all',
                     form.role === r ? 'border-brand/40 bg-brand/10 text-brand' : 'border-line text-ink-muted hover:border-line-strong'].join(' ')}>
-                  {r === 'admin' ? 'Administrator' : 'User'}
+                  {r === 'admin' ? 'Admin' : r}
                 </button>
               ))}
             </div>
@@ -60,7 +72,7 @@ function UserModal({ mode, onSubmit, onClose }: {
           <button onClick={onClose} className="flex-1 rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-sub hover:border-line-strong hover:text-ink">취소</button>
           <button onClick={() => onSubmit(form)} disabled={!isValid}
             className="flex-1 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-hover disabled:opacity-40">
-            추가
+            {mode === 'add' ? '추가' : '저장'}
           </button>
         </div>
       </div>
@@ -102,6 +114,7 @@ export default function UsersPage() {
   const [users,        setUsers]        = useState<any[]>([])
   const [viewFilter,   setViewFilter]   = useState<ViewFilter>('active')
   const [addOpen,      setAddOpen]      = useState(false)
+  const [editTarget,   setEditTarget]   = useState<any | null>(null)
   const [confirmState, setConfirmState] = useState<{ user: any; action: 'delete' | 'inactive' | 'activate' } | null>(null)
   const [loading,      setLoading]      = useState(true)
   const [toast,        setToast]        = useState<string | null>(null)
@@ -142,6 +155,18 @@ export default function UsersPage() {
       showToast(`'${form.username}' 사용자가 추가되었습니다.`)
     } catch (err: any) {
       showToast(err.message || '추가 실패')
+    }
+  }
+
+  const handleEdit = async (form: any) => {
+    if (!editTarget) return
+    try {
+      await userApi.edit(editTarget.id, { username: form.username, email: form.email, role: form.role })
+      await fetchUsers()
+      setEditTarget(null)
+      showToast(`'${form.username}' 정보가 수정되었습니다.`)
+    } catch (err: any) {
+      showToast(err.message || '수정 실패')
     }
   }
 
@@ -240,7 +265,7 @@ export default function UsersPage() {
                     <td className="px-4 py-3">
                       <span className={['inline-block whitespace-nowrap rounded-full border px-2.5 py-0.5 font-mono text-[11px] font-medium',
                         user.role === 'admin' ? 'border-alarm-infoborder bg-alarm-infobg text-alarm-infotext' : 'border-line bg-surface-muted text-ink-sub'].join(' ')}>
-                        {user.role === 'admin' ? 'Administrator' : 'User'}
+                        {user.role === 'admin' ? 'Administrator' : user.role}
                       </span>
                     </td>
                     <td className="px-4 py-3 font-mono text-xs text-ink-muted">
@@ -255,6 +280,7 @@ export default function UsersPage() {
                     <td className="px-4 py-3 text-right whitespace-nowrap">
                       {!user.is_deleted && (
                         <>
+                          <button onClick={() => setEditTarget(user)} className="mr-2 font-mono text-xs text-ink-muted hover:text-brand">수정</button>
                           {user.is_active
                             ? <button onClick={() => setConfirmState({ user, action: 'inactive' })} className="mr-2 font-mono text-xs text-ink-muted hover:text-sensor-warning">비활성화</button>
                             : <button onClick={() => setConfirmState({ user, action: 'activate' })} className="mr-2 font-mono text-xs text-ink-muted hover:text-sensor-normal">활성화</button>
@@ -279,6 +305,7 @@ export default function UsersPage() {
       )}
 
       {addOpen && <UserModal mode="add" onSubmit={handleAdd} onClose={() => setAddOpen(false)} />}
+      {editTarget && <UserModal mode="edit" user={editTarget} onSubmit={handleEdit} onClose={() => setEditTarget(null)} />}
       {confirmState && <ConfirmModal user={confirmState.user} action={confirmState.action} onConfirm={handleConfirm} onClose={() => setConfirmState(null)} />}
     </div>
   )
