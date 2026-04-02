@@ -228,7 +228,7 @@ export default function SitesPage() {
   const [dbUsers,      setDbUsers]      = useState<any[]>([])
   useEffect(() => {
     userApi.getList().then((data: any[]) => {
-      setDbUsers(data.filter((u: any) => u.is_active && !u.is_deleted))
+      setDbUsers(data)
     }).catch(console.error)
   }, [])
 
