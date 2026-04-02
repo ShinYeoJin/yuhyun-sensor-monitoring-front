@@ -26,7 +26,8 @@ function UserModal({ mode, user, onSubmit, onClose }: {
     username: user?.username || '',
     email: user?.email || '',
     password: '',
-    role: user?.role || 'user'
+    role: user?.role || 'user',
+    phone: user?.phone || ''
   })
   const isValid = form.username.trim() !== '' && form.email.trim() !== '' && (mode === 'edit' || form.password.trim() !== '')
 
@@ -55,6 +56,11 @@ function UserModal({ mode, user, onSubmit, onClose }: {
                 placeholder="비밀번호 입력" className={inputCls} />
             </div>
           )}
+          <div>
+            <label className={labelCls}>핸드폰번호</label>
+            <input type="tel" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})}
+              placeholder="010-0000-0000" className={inputCls} />
+          </div>
           <div>
             <label className={labelCls}>권한</label>
             <div className="grid grid-cols-3 gap-2">
@@ -149,7 +155,7 @@ export default function UsersPage() {
 
   const handleAdd = async (form: any) => {
     try {
-      await authApi.register({ username: form.username, email: form.email, password: form.password, role: form.role })
+      await authApi.register({ username: form.username, email: form.email, password: form.password, role: form.role, phone: form.phone })
       await fetchUsers()
       setAddOpen(false)
       showToast(`'${form.username}' 사용자가 추가되었습니다.`)
@@ -161,7 +167,7 @@ export default function UsersPage() {
   const handleEdit = async (form: any) => {
     if (!editTarget) return
     try {
-      await userApi.edit(editTarget.id, { username: form.username, email: form.email, role: form.role })
+      await userApi.edit(editTarget.id, { username: form.username, email: form.email, role: form.role, phone: form.phone })
       await fetchUsers()
       setEditTarget(null)
       showToast(`'${form.username}' 정보가 수정되었습니다.`)
@@ -243,7 +249,7 @@ export default function UsersPage() {
             <table className="w-full min-w-[600px] text-sm">
               <thead>
                 <tr className="border-b border-line bg-surface-subtle">
-                  {['사용자명', '이메일', '권한', '가입일', '마지막 로그인', '상태', ''].map(h => (
+                {['사용자명', '이메일', '핸드폰', '권한', '가입일', '마지막 로그인', '상태', ''].map(h => (
                     <th key={h} className="px-4 py-3 text-left font-mono text-[10px] font-semibold uppercase tracking-wide text-ink-muted">{h}</th>
                   ))}
                 </tr>
@@ -262,6 +268,7 @@ export default function UsersPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3 font-mono text-xs text-ink-sub">{user.email}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-ink-sub">{user.phone || '—'}</td>
                     <td className="px-4 py-3">
                       <span className={['inline-block whitespace-nowrap rounded-full border px-2.5 py-0.5 font-mono text-[11px] font-medium',
                         user.role === 'admin' ? 'border-alarm-infoborder bg-alarm-infobg text-alarm-infotext' : 'border-line bg-surface-muted text-ink-sub'].join(' ')}>

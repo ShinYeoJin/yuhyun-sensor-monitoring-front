@@ -15,7 +15,7 @@ async function request(path: string, options: RequestInit = {}) {
 }
 
 export const authApi = {
-  register: (body: { username: string; email: string; password: string; role?: string }) =>
+  register: (body: { username: string; email: string; password: string; role?: string; phone?: string }) =>
     request('/api/auth/register', { method: 'POST', body: JSON.stringify(body) }),
 
   login: (body: { email: string; password: string }) =>
@@ -64,7 +64,7 @@ export const userApi = {
   getAll: () => request('/api/users'),
   getActive: () => request('/api/users/active'),
   getList: () => request('/api/users/list'),
-  edit: (id: number, body: { username: string; email: string; role: string }) =>
+  edit: (id: number, body: { username: string; email: string; role: string; phone?: string }) =>
     request(`/api/users/${id}/edit`, { method: 'PATCH', body: JSON.stringify(body) }),
   deactivate: (id: number) => request(`/api/users/${id}/deactivate`, { method: 'PATCH' }),
   activate: (id: number) => request(`/api/users/${id}/activate`, { method: 'PATCH' }),
