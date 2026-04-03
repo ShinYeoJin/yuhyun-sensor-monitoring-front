@@ -150,6 +150,15 @@ export default function QRSensorPage() {
             </p>
 
             <a href={`/sensors/${sensor.id}`}
+              onClick={e => {
+                e.preventDefault()
+                const token = sessionStorage.getItem('gm_token')
+                if (token) {
+                  window.location.href = `/sensors/${sensor.id}`
+                } else {
+                  window.location.href = `/login`
+                }
+              }}
               className="block w-full rounded-xl bg-ink py-3 text-center font-mono text-sm font-semibold text-white transition-colors hover:bg-ink-sub">
               상세 정보 보기 →
             </a>
