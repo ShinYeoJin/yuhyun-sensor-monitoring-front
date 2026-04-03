@@ -20,9 +20,9 @@ interface SiteWithStatus extends Site {
 }
 
 type SiteForm = {
-  name: string; location: string; description: string; managers: string[]
+  name: string; location: string; description: string; managers: string[]; selectedSensors: number[]
 }
-const emptyForm: SiteForm = { name: '', location: '', description: '', managers: [] }
+const emptyForm: SiteForm = { name: '', location: '', description: '', managers: [], selectedSensors: [] }
 
 const inputCls = 'w-full rounded-lg border border-line bg-surface-subtle px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-ink-muted focus:border-brand/50 focus:ring-2 focus:ring-brand/10'
 const labelCls = 'mb-1.5 block font-mono text-[10px] font-semibold uppercase tracking-wider text-ink-muted'
@@ -44,10 +44,10 @@ function SiteStatusBar({ normal, warning, danger, total }: { normal: number; war
   )
 }
 
-function SiteModal({ mode, form, onChange, onSubmit, onClose, users }: {
+function SiteModal({ mode, form, onChange, onSubmit, onClose, users, sensors, siteCode }: {
   mode: 'add' | 'edit'; form: SiteForm
   onChange: (f: SiteForm) => void; onSubmit: () => void; onClose: () => void
-  users: any[]
+  users: any[]; sensors: any[]; siteCode: string
 }) {
   const isValid = form.name.trim() !== '' && form.location.trim() !== ''
   const toggleManager = (username: string) => {
@@ -124,6 +124,49 @@ function SiteModal({ mode, form, onChange, onSubmit, onClose, users }: {
               </div>
             )}
             {form.managers.length === 0 && <p className="mt-1.5 font-mono text-[10px] text-ink-muted">담당자를 선택하지 않으면 미배정으로 등록됩니다.</p>}
+          </div>
+          {/* 센서 선택 */}
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <label className={labelCls + ' mb-0'}>센서 <span className="ml-1 font-normal normal-case tracking-normal text-ink-muted">(복수 선택 가능)</span></label>
+              {form.selectedSensors.length > 0 && (
+                <button type="button" onClick={() => onChange({ ...form, selectedSensors: [] })}
+                  className="font-mono text-[10px] text-ink-muted hover:text-sensor-dangertext transition-colors">전체 해제</button>
+              )}
+            </div>
+            {sensors.length === 0 ? (
+              <p className="font-mono text-[11px] text-ink-muted">등록된 센서가 없습니다.</p>
+            ) : (
+              <div className="rounded-lg border border-line overflow-hidden max-h-48 overflow-y-auto">
+                {sensors.map((sensor: any, idx: number) => {
+                  const isSelected = form.selectedSensors.includes(sensor.id)
+                  const isCurrent = sensor.site_code === siteCode
+                  return (
+                    <button key={sensor.id} type="button"
+                      onClick={() => {
+                        const next = isSelected
+                          ? form.selectedSensors.filter(id => id !== sensor.id)
+                          : [...form.selectedSensors, sensor.id]
+                        onChange({ ...form, selectedSensors: next })
+                      }}
+                      className={['flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors',
+                        idx !== 0 ? 'border-t border-line' : '',
+                        isSelected ? 'bg-brand/10' : 'bg-surface-card hover:bg-surface-subtle'].join(' ')}>
+                      <span className={['flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-all',
+                        isSelected ? 'border-brand bg-brand text-white' : 'border-line-strong bg-surface-card'].join(' ')}>
+                        {isSelected && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                      </span>
+                      <span className={`flex-1 text-sm font-medium ${isSelected ? 'text-brand' : 'text-ink'}`}>
+                        {sensor.manage_no} — {sensor.name}
+                      </span>
+                      {isCurrent && (
+                        <span className="font-mono text-[10px] text-sensor-normaltext border border-sensor-normalborder bg-sensor-normalbg px-1.5 py-0.5 rounded-full">현재</span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </div>
         <div className="flex gap-2 border-t border-line px-6 py-4">
@@ -229,7 +272,8 @@ export default function SitesPage() {
 
   const openAdd  = () => { setForm(emptyForm); setAddOpen(true) }
   const openEdit = (site: any) => {
-    setForm({ name: site.name, location: site.location || '', description: site.description || '', managers: site.managers || [] })
+    const currentSensors = sensors.filter((s: any) => s.site_code === site.site_code).map((s: any) => s.id)
+    setForm({ name: site.name, location: site.location || '', description: site.description || '', managers: site.managers || [], selectedSensors: currentSensors })
     setEditTarget(site)
   }
 
@@ -237,8 +281,14 @@ export default function SitesPage() {
     if (!editTarget) return
     try {
       await siteApi.update(editTarget.id, { name: form.name, location: form.location, description: form.description, managers: form.managers })
+      // 센서 소속 현장 변경
+      await Promise.all(form.selectedSensors.map((sensorId: number) =>
+        sensorApi.updateSite(sensorId, editTarget.site_code)
+      ))
+      // 이전 현장 센서 중 선택 해제된 것들 처리 (다른 현장 없으면 그대로)
       const updated = sites.map((s: any) => s.id === editTarget.id ? { ...s, ...form } : s)
       setSites(updated)
+      await sensorApi.getAll().then((data: any[]) => setSensors(data))
       setEditTarget(null)
       showToast(`${form.name} 현장 정보가 수정되었습니다.`)
     } catch (err: any) {
@@ -373,8 +423,8 @@ export default function SitesPage() {
       )}
 
       {userModal && <UserInfoModal user={userModal} onClose={() => setUserModal(null)} />}
-      {addOpen     && <SiteModal mode="add"  form={form} onChange={setForm} onSubmit={async () => { showToast('현장 추가는 준비 중입니다.'); setAddOpen(false) }} onClose={() => setAddOpen(false)} users={dbUsers} />}
-      {editTarget  && <SiteModal mode="edit" form={form} onChange={setForm} onSubmit={handleEdit} onClose={() => setEditTarget(null)} users={dbUsers} />}
+      {addOpen     && <SiteModal mode="add"  form={form} onChange={setForm} onSubmit={async () => { showToast('현장 추가는 준비 중입니다.'); setAddOpen(false) }} onClose={() => setAddOpen(false)} users={dbUsers} sensors={sensors} siteCode="" />}
+      {editTarget  && <SiteModal mode="edit" form={form} onChange={setForm} onSubmit={handleEdit} onClose={() => setEditTarget(null)} users={dbUsers} sensors={sensors} siteCode={editTarget.site_code} />}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 backdrop-blur-sm" onClick={() => setDeleteTarget(null)}>
           <div className="geo-card w-full max-w-sm animate-fade-in-up p-6 text-center" onClick={e => e.stopPropagation()}>

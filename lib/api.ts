@@ -32,8 +32,6 @@ export const sensorApi = {
     request(`/api/sensors${status ? `?status=${status}` : ''}`),
   getById: (id: number) =>
     request(`/api/sensors/${id}`),
-  updateThreshold: (id: number, body: { threshold_normal_max: any; threshold_warning_max: any; threshold_danger_min: any }) =>
-    request(`/api/sensors/${id}/threshold`, { method: 'PATCH', body: JSON.stringify(body) }),
 
   getMeasurements: (id: number, params?: { from?: string; to?: string; depthLabel?: string; limit?: number }) => {
     const q = new URLSearchParams()
@@ -46,7 +44,12 @@ export const sensorApi = {
 
   getDepths: (id: number) =>
     request(`/api/sensors/${id}/depths`),
+  updateThreshold: (id: number, body: { threshold_normal_max: any; threshold_warning_max: any; threshold_danger_min: any }) =>
+    request(`/api/sensors/${id}/threshold`, { method: 'PATCH', body: JSON.stringify(body) }),
+  updateSite: (id: number, site_code: string) =>
+    request(`/api/sensors/${id}/site`, { method: 'PATCH', body: JSON.stringify({ site_code }) }),
 }
+
 
 export const alarmApi = {
   getAll: (acknowledged?: boolean) =>
