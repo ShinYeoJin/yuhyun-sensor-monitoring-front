@@ -149,10 +149,10 @@ export default function QRSensorPage() {
               조회 시각: {new Date().toLocaleString('ko-KR')}
             </p>
 
-            <Link href={`/sensors/${sensor.id}`}
+            <a href={`/sensors/${sensor.id}`}
               className="block w-full rounded-xl bg-ink py-3 text-center font-mono text-sm font-semibold text-white transition-colors hover:bg-ink-sub">
               상세 정보 보기 →
-            </Link>
+            </a>
           </div>
         </div>
 

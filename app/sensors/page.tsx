@@ -712,7 +712,7 @@ export default function SensorsPage() {
                       </td>
                       <td className="px-4 py-3 text-center"><StatusBadge status={sensor.status} size="sm" /></td>
                       <td className="px-4 py-3 font-mono text-[11px] text-ink-muted">{getRelativeTime(sensor.lastUpdated)}</td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
                         <Link href={`/qr/${sensor.id}`}
                           className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-line text-xs text-ink-muted transition-colors hover:border-brand/40 hover:bg-brand/10 hover:text-brand"
                           title="QR 코드 보기">⊞</Link>
