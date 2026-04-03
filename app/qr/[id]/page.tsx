@@ -152,7 +152,7 @@ export default function QRSensorPage() {
             <a href={`/sensors/${sensor.id}`}
               onClick={e => {
                 e.preventDefault()
-                const token = sessionStorage.getItem('gm_token')
+                const token = localStorage.getItem('gm_token')
                 if (token) {
                   window.location.href = `/sensors/${sensor.id}`
                 } else {
