@@ -100,6 +100,8 @@ export const fileApi = {
 
 export const siteApi = {
   getAll: () => request('/api/sites'),
+  create: (body: { name: string; location: string; description: string; managers: string[] }) =>
+    request('/api/sites', { method: 'POST', body: JSON.stringify(body) }),
   update: (id: number, body: { name: string; location: string; description: string; managers: string[] }) =>
     request(`/api/sites/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
 }

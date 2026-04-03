@@ -277,6 +277,24 @@ export default function SitesPage() {
     setEditTarget(site)
   }
 
+  const handleAdd = async () => {
+    try {
+      const result = await siteApi.create({ name: form.name, location: form.location, description: form.description, managers: form.managers })
+      // 선택된 센서들을 새 현장으로 변경
+      if (form.selectedSensors.length > 0) {
+        await Promise.all(form.selectedSensors.map((sensorId: number) =>
+          sensorApi.updateSite(sensorId, result.site.site_code)
+        ))
+        await sensorApi.getAll().then((data: any[]) => setSensors(data))
+      }
+      await siteApi.getAll().then((data: any[]) => setSites(data))
+      setAddOpen(false)
+      showToast(`${form.name} 현장이 추가되었습니다.`)
+    } catch (err: any) {
+      showToast(err.message || '추가 실패')
+    }
+  }
+
   const handleEdit = async () => {
     if (!editTarget) return
     try {
@@ -423,7 +441,7 @@ export default function SitesPage() {
       )}
 
       {userModal && <UserInfoModal user={userModal} onClose={() => setUserModal(null)} />}
-      {addOpen     && <SiteModal mode="add"  form={form} onChange={setForm} onSubmit={async () => { showToast('현장 추가는 준비 중입니다.'); setAddOpen(false) }} onClose={() => setAddOpen(false)} users={dbUsers} sensors={sensors} siteCode="" />}
+      {addOpen && <SiteModal mode="add" form={form} onChange={setForm} onSubmit={handleAdd} onClose={() => setAddOpen(false)} users={dbUsers} sensors={sensors} siteCode="" />}
       {editTarget  && <SiteModal mode="edit" form={form} onChange={setForm} onSubmit={handleEdit} onClose={() => setEditTarget(null)} users={dbUsers} sensors={sensors} siteCode={editTarget.site_code} />}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 backdrop-blur-sm" onClick={() => setDeleteTarget(null)}>
