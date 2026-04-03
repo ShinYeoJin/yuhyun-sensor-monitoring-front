@@ -300,8 +300,18 @@ export default function SitesPage() {
     try {
       await siteApi.update(editTarget.id, { name: form.name, location: form.location, description: form.description, managers: form.managers })
       // 센서 소속 현장 변경
+      // 선택된 센서 → 현재 현장으로 변경
       await Promise.all(form.selectedSensors.map((sensorId: number) =>
         sensorApi.updateSite(sensorId, editTarget.site_code)
+      ))
+      // 선택 해제된 센서 → 미배정 처리
+      const allSensorIds = sensors.map((s: any) => s.id)
+      const deselectedSensors = allSensorIds.filter((id: number) => 
+        !form.selectedSensors.includes(id) && 
+        sensors.find((s: any) => s.id === id)?.site_code === editTarget.site_code
+      )
+      await Promise.all(deselectedSensors.map((sensorId: number) =>
+        sensorApi.updateSite(sensorId, '')
       ))
       // 이전 현장 센서 중 선택 해제된 것들 처리 (다른 현장 없으면 그대로)
       const updated = sites.map((s: any) => s.id === editTarget.id ? { ...s, ...form } : s)
