@@ -33,8 +33,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     try {
-      const storedUser  = sessionStorage.getItem('gm_user')
-      const storedToken = sessionStorage.getItem('gm_token')
+      const storedUser  = localStorage.getItem('gm_user')
+      const storedToken = localStorage.getItem('gm_token')
       if (storedUser && storedToken) {
         setUser(JSON.parse(storedUser))
         setToken(storedToken)
@@ -53,8 +53,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(u)
     setToken(data.token)
     try {
-      sessionStorage.setItem('gm_user',  JSON.stringify(u))
-      sessionStorage.setItem('gm_token', data.token)
+      localStorage.setItem('gm_user',  JSON.stringify(u))
+      localStorage.setItem('gm_token', data.token)
     } catch {}
   }
 
@@ -62,8 +62,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
     setToken(null)
     try {
-      sessionStorage.removeItem('gm_user')
-      sessionStorage.removeItem('gm_token')
+      localStorage.removeItem('gm_user')
+      localStorage.removeItem('gm_token')
     } catch {}
   }
 

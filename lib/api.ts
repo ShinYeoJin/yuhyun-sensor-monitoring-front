@@ -1,7 +1,7 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://yuhyun-sensor-monitoring-back.onrender.com'
 
 async function request(path: string, options: RequestInit = {}) {
-  const token = typeof window !== 'undefined' ? sessionStorage.getItem('gm_token') : null
+  const token = typeof window !== 'undefined' ? localStorage.getItem('gm_token') : null
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
@@ -75,7 +75,7 @@ export const fileApi = {
   getAll: () => request('/api/files'),
 
   upload: (file: File) => {
-    const token = typeof window !== 'undefined' ? sessionStorage.getItem('gm_token') : null
+    const token = typeof window !== 'undefined' ? localStorage.getItem('gm_token') : null
     const formData = new FormData()
     formData.append('file', file)
     return fetch(`${API_BASE}/api/files/upload`, {
@@ -86,7 +86,7 @@ export const fileApi = {
   },
 
   download: (id: number) => {
-    const token = typeof window !== 'undefined' ? sessionStorage.getItem('gm_token') : null
+    const token = typeof window !== 'undefined' ? localStorage.getItem('gm_token') : null
     return fetch(`${API_BASE}/api/files/${id}/download`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
