@@ -141,9 +141,14 @@ function SiteModal({ mode, form, onChange, onSubmit, onClose, users, sensors, si
                 {sensors.map((sensor: any, idx: number) => {
                   const isSelected = form.selectedSensors.includes(sensor.id)
                   const isCurrent = sensor.site_code === siteCode
+                  const isOtherSite = sensor.site_code && sensor.site_code !== siteCode
+                  const otherSiteName = isOtherSite ? sensor.site_name : null
+                  const isDisabled = isOtherSite && !isSelected
                   return (
                     <button key={sensor.id} type="button"
+                      disabled={isDisabled}
                       onClick={() => {
+                        if (isDisabled) return
                         const next = isSelected
                           ? form.selectedSensors.filter(id => id !== sensor.id)
                           : [...form.selectedSensors, sensor.id]
@@ -151,16 +156,21 @@ function SiteModal({ mode, form, onChange, onSubmit, onClose, users, sensors, si
                       }}
                       className={['flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors',
                         idx !== 0 ? 'border-t border-line' : '',
+                        isDisabled ? 'bg-surface-muted opacity-50 cursor-not-allowed' :
                         isSelected ? 'bg-brand/10' : 'bg-surface-card hover:bg-surface-subtle'].join(' ')}>
                       <span className={['flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-all',
+                        isDisabled ? 'border-line bg-surface-muted' :
                         isSelected ? 'border-brand bg-brand text-white' : 'border-line-strong bg-surface-card'].join(' ')}>
-                        {isSelected && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                        {isSelected && !isDisabled && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                       </span>
-                      <span className={`flex-1 text-sm font-medium ${isSelected ? 'text-brand' : 'text-ink'}`}>
+                      <span className={`flex-1 text-sm font-medium ${isDisabled ? 'text-ink-muted' : isSelected ? 'text-brand' : 'text-ink'}`}>
                         {sensor.manage_no} — {sensor.name}
                       </span>
                       {isCurrent && (
                         <span className="font-mono text-[10px] text-sensor-normaltext border border-sensor-normalborder bg-sensor-normalbg px-1.5 py-0.5 rounded-full">현재</span>
+                      )}
+                      {isOtherSite && (
+                        <span className="font-mono text-[10px] text-ink-muted border border-line bg-surface-muted px-1.5 py-0.5 rounded-full">{otherSiteName}</span>
                       )}
                     </button>
                   )
