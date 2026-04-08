@@ -12,6 +12,7 @@ import type {
   ThresholdRange, SensorGroup, ActionAfterMeasure, ActionBeforeMeasure,
 } from '@/types'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@/lib/auth-context'
 
 
 // ─── 상태 필터 ────────────────────────────────────────────────────────────────
@@ -487,6 +488,8 @@ function DeleteModal({ sensorName, onConfirm, onClose }: { sensorName: string; o
 // ─── 메인 페이지 ──────────────────────────────────────────────────────────────
 export default function SensorsPage() {
   const router = useRouter()
+  const { user:me } = useAuth()
+  const canManage = me?.role !== 'MultiMonitor'
   const { sensors } = useSensorStore()
   useEffect(() => {
     sensorApi.getAll().then((data: any[]) => {
@@ -634,7 +637,7 @@ export default function SensorsPage() {
             ))}
           </div>
           {activeTab === 'manage' ? (
-            <button onClick={openAdd}
+            canManage && <button onClick={openAdd}
               className="flex items-center gap-1.5 rounded-lg bg-brand px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-hover">
               + 센서 추가
             </button>
@@ -780,8 +783,12 @@ export default function SensorsPage() {
                       </td>
                       <td className="px-4 py-3 font-mono text-xs text-ink-muted">{s.installDate || '—'}</td>
                       <td className="px-4 py-3 text-right">
-                        <button onClick={() => openEdit(s)} className="mr-3 font-mono text-xs text-ink-muted transition-colors hover:text-brand">편집</button>
-                        <button onClick={() => setDeleteTarget(s)} className="font-mono text-xs text-ink-muted transition-colors hover:text-sensor-danger">삭제</button>
+                      {canManage && (
+                        <>
+                          <button onClick={() => openEdit(s)} className="mr-3 font-mono text-xs text-ink-muted transition-colors hover:text-brand">편집</button>
+                          <button onClick={() => setDeleteTarget(s)} className="font-mono text-xs text-ink-muted transition-colors hover:text-sensor-danger">삭제</button>
+                        </>
+                      )}
                       </td>
                     </tr>
                   ))}

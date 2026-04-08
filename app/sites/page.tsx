@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import type { Site } from '@/types'
 import { sensorApi, userApi, siteApi } from '@/lib/api'
+import { useAuth } from '@/lib/auth-context'
 
 type SiteStatus = 'danger' | 'warning' | 'normal'
 type ViewFilter = 'all' | 'danger' | 'warning' | 'normal'
@@ -236,6 +237,8 @@ function UserInfoModal({ user, onClose }: { user: any; onClose: () => void }) {
 }
 
 export default function SitesPage() {
+  const { user:me } = useAuth()
+  const canManage = me?.role !== 'MultiMonitor'
   const [sites,        setSites]        = useState<any[]>([])
   const [sensors,      setSensors]      = useState<any[]>([])
   const [dbUsers,      setDbUsers]      = useState<any[]>([])
@@ -361,10 +364,12 @@ export default function SitesPage() {
               <span className="text-sensor-normaltext">정상 <strong>{normalCount}</strong>개</span>
             </div>
           </div>
-          <button onClick={openAdd}
-            className="flex items-center gap-1.5 rounded-lg bg-brand px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-hover">
-            + 현장 추가
-          </button>
+          {canManage && (
+            <button onClick={openAdd}
+              className="flex items-center gap-1.5 rounded-lg bg-brand px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-hover">
+              + 현장 추가
+            </button>
+          )}
         </div>
         <div className="mt-3 flex gap-1 overflow-x-auto pb-1 scrollbar-none">
           {([
@@ -441,10 +446,14 @@ export default function SitesPage() {
                   <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
                     <Link href={`/sensors?site=${site.site_code}`} className="font-mono text-xs text-brand hover:underline">센서 보기 →</Link>
                     <div className="flex gap-2">
-                      <button onClick={() => openEdit(site)}
-                        className="rounded-lg border border-line px-3 py-1.5 font-mono text-xs text-ink-sub transition-colors hover:border-brand/40 hover:bg-brand/10 hover:text-brand">편집</button>
-                      <button onClick={() => setDeleteTarget(site)}
-                        className="rounded-lg border border-line px-3 py-1.5 font-mono text-xs text-ink-sub transition-colors hover:border-sensor-dangerborder hover:bg-sensor-dangerbg hover:text-sensor-dangertext">삭제</button>
+                      {canManage && (
+                        <>
+                          <button onClick={() => openEdit(site)}
+                          className="rounded-lg border border-line px-3 py-1.5 font-mono text-xs text-ink-sub transition-colors hover:border-brand/40 hover:bg-brand/10 hover:text-brand">편집</button>
+                          <button onClick={() => setDeleteTarget(site)}
+                          className="rounded-lg border border-line px-3 py-1.5 font-mono text-xs text-ink-sub transition-colors hover:border-sensor-dangerborder hover:bg-sensor-dangerbg hover:text-sensor-dangertext">삭제</button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>

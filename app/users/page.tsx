@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { userApi, authApi } from '@/lib/api'
+import { useAuth } from '@/lib/auth-context'
 
 type ViewFilter = 'all' | 'active' | 'deleted' | 'inactive'
 const viewFilters: { value: ViewFilter; label: string }[] = [
@@ -117,6 +118,8 @@ function StatusBadge({ isActive, isDeleted }: { isActive: boolean; isDeleted: bo
 }
 
 export default function UsersPage() {
+  const { user: me } = useAuth()
+  const canManage = me?.role === 'admin'
   const [users,        setUsers]        = useState<any[]>([])
   const [viewFilter,   setViewFilter]   = useState<ViewFilter>('active')
   const [addOpen,      setAddOpen]      = useState(false)
@@ -225,10 +228,12 @@ export default function UsersPage() {
               {deletedCount  > 0 && <span className="text-sensor-dangertext">삭제 <strong>{deletedCount}</strong>명</span>}
             </div>
           </div>
-          <button onClick={() => setAddOpen(true)}
-            className="flex items-center gap-1.5 rounded-lg bg-brand px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-hover">
-            + 사용자 추가
-          </button>
+          {canManage && (
+            <button onClick={() => setAddOpen(true)}
+              className="flex items-center gap-1.5 rounded-lg bg-brand px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-hover">
+              + 사용자 추가
+            </button>
+          )}
         </div>
 
         <div className="mt-3 flex gap-1 overflow-x-auto pb-1 scrollbar-none">
@@ -285,7 +290,7 @@ export default function UsersPage() {
                       <StatusBadge isActive={user.is_active} isDeleted={user.is_deleted} />
                     </td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
-                      {!user.is_deleted && (
+                      {!user.is_deleted && canManage && (
                         <>
                           <button onClick={() => setEditTarget(user)} className="mr-2 font-mono text-xs text-ink-muted hover:text-brand">수정</button>
                           {user.is_active

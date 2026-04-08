@@ -65,6 +65,7 @@ function AckedBadge({ by }: { by?: string }) {
 export default function AlarmsPage() {
   const { user } = useAuth()
   const currentUserName = user?.name ?? DEFAULT_USER.name
+  const canManage = user?.role !== 'MultiMonitor'
   const [alarms,  setAlarms]  = useState<any[]>([])
   const [filter,  setFilter]  = useState('all')
   const [loading, setLoading] = useState(true)
@@ -145,7 +146,7 @@ export default function AlarmsPage() {
               <span className="text-ink-muted"> · 전체 {alarms.length}건</span>
             </p>
           </div>
-          {unackedCount > 0 && (
+          {unackedCount > 0 && canManage && (
             <button
               onClick={handleAckAll}
               className="flex items-center gap-1.5 rounded-lg border border-brand/30 bg-brand/10 px-3 py-1.5 font-mono text-xs font-medium text-brand transition-colors hover:border-brand/50 hover:bg-brand/20">
@@ -215,7 +216,9 @@ export default function AlarmsPage() {
                 <div className="flex shrink-0 flex-col items-end gap-2">
                   {alarm.is_acknowledged
                     ? <AckedBadge by={alarm.acknowledged_by} />
-                    : <AckButton alarmId={alarm.id} onAck={handleAck} />
+                    : canManage
+                      ? <AckButton alarmId={alarm.id} onAck={handleAck} />
+                      : null
                   }
                   <Link href={`/sensors/${alarm.sensor_id}`}
                     className="rounded-lg border border-line bg-surface-card px-3 py-1.5 font-mono text-xs text-ink-sub transition-colors hover:border-line-strong hover:text-ink">

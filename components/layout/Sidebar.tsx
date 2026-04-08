@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth, DEFAULT_USER } from '@/lib/auth-context'
-import { alarmApi } from '@/lib/api'
+import { alarmApi, userApi } from '@/lib/api'
 
 const navGroups = [
   {
@@ -36,6 +36,37 @@ function SidebarContent({
   const pathname = usePathname()
   const { user } = useAuth()
   const currentUser = user ?? DEFAULT_USER
+
+  const [pwOpen,   setPwOpen]   = useState(false)
+  const [pwForm,   setPwForm]   = useState({ current: '', next: '', confirm: '' })
+  const [pwError,  setPwError]  = useState('')
+  const [pwSaving, setPwSaving] = useState(false)
+
+  const handlePwChange = async () => {
+    setPwError('')
+    if (pwForm.next !== pwForm.confirm) {
+      setPwError('새 비밀번호가 일치하지 않습니다.')
+      return
+    }
+    if (pwForm.next.length < 6) {
+      setPwError('새 비밀번호는 6자 이상이어야 합니다.')
+      return
+    }
+    setPwSaving(true)
+    try {
+      await userApi.changePassword(Number(user?.userId), {
+        currentPassword: pwForm.current,
+        newPassword: pwForm.next,
+      })
+      setPwOpen(false)
+      setPwForm({ current: '', next: '', confirm: '' })
+    } catch (e: any) {
+      setPwError(e.message || '변경 실패')
+    } finally {
+      setPwSaving(false)
+    }
+  }
+
 
   return (
     <div className="flex h-full flex-col">
@@ -107,6 +138,12 @@ function SidebarContent({
             <p className="truncate font-mono text-[10px] text-ink-muted">{currentUser.email}</p>
           </div>
         </div>
+        <button
+          onClick={() => { setPwOpen(true); setPwError(''); setPwForm({ current: '', next: '', confirm: '' }) }}
+          className="mt-0.5 flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs text-ink-muted transition-colors hover:bg-surface-subtle hover:text-ink-sub"
+        >
+          <span>🔑</span> 비밀번호 변경
+        </button>
         <Link
           href="/logout"
           onClick={onClose}
@@ -116,6 +153,58 @@ function SidebarContent({
         </Link>
         <p className="px-3 pt-1 pb-2 font-mono text-[10px] text-ink-muted">v1.0.0</p>
       </div>
+
+      {pwOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 backdrop-blur-sm p-4"
+          onClick={() => setPwOpen(false)}>
+          <div className="geo-card flex w-full max-w-sm animate-fade-in-up flex-col"
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-line px-6 py-4">
+              <h2 className="text-sm font-semibold text-ink">비밀번호 변경</h2>
+              <button onClick={() => setPwOpen(false)}
+                className="rounded-md p-1 text-ink-muted hover:bg-surface-subtle hover:text-ink">✕</button>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <div>
+                <label className="mb-1.5 block font-mono text-[10px] font-semibold uppercase tracking-wider text-ink-muted">현재 비밀번호</label>
+                <input type="password" value={pwForm.current}
+                  onChange={e => setPwForm(f => ({ ...f, current: e.target.value }))}
+                  placeholder="현재 비밀번호 입력"
+                  className="w-full rounded-lg border border-line bg-surface-subtle px-3 py-2 text-sm text-ink outline-none focus:border-brand/50 focus:ring-2 focus:ring-brand/10" />
+              </div>
+              <div>
+                <label className="mb-1.5 block font-mono text-[10px] font-semibold uppercase tracking-wider text-ink-muted">새 비밀번호</label>
+                <input type="password" value={pwForm.next}
+                  onChange={e => setPwForm(f => ({ ...f, next: e.target.value }))}
+                  placeholder="새 비밀번호 입력 (6자 이상)"
+                  className="w-full rounded-lg border border-line bg-surface-subtle px-3 py-2 text-sm text-ink outline-none focus:border-brand/50 focus:ring-2 focus:ring-brand/10" />
+              </div>
+              <div>
+                <label className="mb-1.5 block font-mono text-[10px] font-semibold uppercase tracking-wider text-ink-muted">새 비밀번호 확인</label>
+                <input type="password" value={pwForm.confirm}
+                  onChange={e => setPwForm(f => ({ ...f, confirm: e.target.value }))}
+                  placeholder="새 비밀번호 재입력"
+                  className="w-full rounded-lg border border-line bg-surface-subtle px-3 py-2 text-sm text-ink outline-none focus:border-brand/50 focus:ring-2 focus:ring-brand/10" />
+              </div>
+              {pwError && (
+                <div className="rounded-lg border border-sensor-dangerborder bg-sensor-dangerbg px-4 py-2.5">
+                  <p className="font-mono text-xs text-sensor-dangertext">{pwError}</p>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2 border-t border-line px-6 py-4">
+              <button onClick={() => setPwOpen(false)}
+                className="flex-1 rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-sub hover:border-line-strong hover:text-ink">
+                취소
+              </button>
+              <button onClick={handlePwChange} disabled={pwSaving || !pwForm.current || !pwForm.next || !pwForm.confirm}
+                className="flex-1 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-hover disabled:opacity-50">
+                {pwSaving ? '변경 중...' : '변경'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
