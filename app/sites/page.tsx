@@ -337,11 +337,18 @@ export default function SitesPage() {
     }
   }
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleteTarget) return
-    setSites(prev => prev.filter((s: any) => s.id !== deleteTarget.id))
-    showToast(`${deleteTarget.name} 현장이 삭제되었습니다.`)
-    setDeleteTarget(null)
+    try {
+      await siteApi.delete(deleteTarget.id)
+      setSites(prev => prev.filter((s: any) => s.id !== deleteTarget.id))
+      await sensorApi.getAll().then((data: any[]) => setSensors(data))
+      showToast(`${deleteTarget.name} 현장이 삭제되었습니다.`)
+    } catch (err: any) {
+      showToast(err.message || '삭제 실패')
+    } finally {
+      setDeleteTarget(null)
+    }
   }
 
   const tabCls = (val: ViewFilter) => [

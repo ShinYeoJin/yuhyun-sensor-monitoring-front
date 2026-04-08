@@ -106,4 +106,6 @@ export const siteApi = {
     request('/api/sites', { method: 'POST', body: JSON.stringify(body) }),
   update: (id: number, body: { name: string; location: string; description: string; managers: string[] }) =>
     request(`/api/sites/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  delete: (id: number) =>
+    request(`/api/sites/${id}`, { method: 'DELETE' }),
 }
