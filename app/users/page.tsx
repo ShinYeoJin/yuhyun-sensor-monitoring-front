@@ -124,7 +124,7 @@ function StatusBadge({ isActive, isDeleted }: { isActive: boolean; isDeleted: bo
 
 export default function UsersPage() {
   const { user: me } = useAuth()
-  const canManage = me?.role === 'admin'
+  const canManage = me?.role !== 'MultiMonitor'
   const [users,        setUsers]        = useState<any[]>([])
   const [viewFilter,   setViewFilter]   = useState<ViewFilter>('active')
   const [addOpen,      setAddOpen]      = useState(false)
