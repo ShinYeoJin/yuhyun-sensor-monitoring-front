@@ -583,6 +583,12 @@ export default function SensorsPage() {
   const handleEdit = async () => {
     if (!editTarget) return
     try {
+      await sensorApi.updateInfo(Number(editTarget.id), {
+        name: form.name,
+        manage_no: form.manageNo,
+        unit: form.unit,
+        field: form.field,
+      })
       await sensorApi.updateThreshold(Number(editTarget.id), {
         threshold_normal_max: form.threshold.normalMax !== '' ? form.threshold.normalMax : null,
         threshold_warning_max: form.threshold.warningMax !== '' ? form.threshold.warningMax : null,
@@ -595,7 +601,7 @@ export default function SensorsPage() {
       }
       sensorStore.updateSensor(updated)
       setEditTarget(null)
-      showToast(`'${form.name}' 임계값이 저장되었습니다.`)
+      showToast(`'${form.name}' 정보가 저장되었습니다.`)
     } catch (err: any) {
       showToast(err.message || '저장 실패')
     }
