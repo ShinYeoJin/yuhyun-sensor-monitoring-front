@@ -247,9 +247,16 @@ export default function SensorDetailPage() {
     .finally(() => setLoading(false))
   }, [id])
 
+  const [dateFrom, setDateFrom] = useState(today)
+  const [dateTo,   setDateTo]   = useState(today)
+
   useEffect(() => {
     if (!id) return
-    sensorApi.getMeasurements(Number(id), { limit: 2000 }).then((data: any[]) => {
+    sensorApi.getMeasurements(Number(id), {
+      from: dateFrom,
+      to: dateTo,
+      limit: 2000
+    }).then((data: any[]) => {
       const mapped = data.map((m: any) => ({
         timestamp: m.measured_at,
         value: parseFloat(m.value),
@@ -258,11 +265,9 @@ export default function SensorDetailPage() {
       }))
       setMeasurements(mapped.reverse())
     }).catch(() => {})
-  }, [id, sensor?.unit])
+  }, [id, sensor?.unit, dateFrom, dateTo])
 
   // 조회 기간 (시작일 ~ 종료일)
-  const [dateFrom, setDateFrom] = useState(today)
-  const [dateTo,   setDateTo]   = useState(today)
   const [qrOpen,   setQrOpen]   = useState(false)
   const [tablePage, setTablePage] = useState(1)
   const TABLE_PAGE_SIZE = 15
