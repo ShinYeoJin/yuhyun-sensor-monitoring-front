@@ -290,7 +290,7 @@ export default function UsersPage() {
                       <StatusBadge isActive={user.is_active} isDeleted={user.is_deleted} />
                     </td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
-                      {!user.is_deleted && canManage && (
+                      {!user.is_deleted && canManage && me?.email !== user.email && (
                         <>
                           <button onClick={() => setEditTarget(user)} className="mr-2 font-mono text-xs text-ink-muted hover:text-brand">수정</button>
                           {user.is_active
