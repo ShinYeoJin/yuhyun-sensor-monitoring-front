@@ -17,11 +17,12 @@ const ROLES = ['admin', 'Administrator', 'Manager', 'Operator', 'Monitor', 'Mult
 const inputCls = 'w-full rounded-lg border border-line bg-surface-subtle px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-ink-muted focus:border-brand/50 focus:ring-2 focus:ring-brand/10'
 const labelCls = 'mb-1.5 block font-mono text-[10px] font-semibold uppercase tracking-wider text-ink-muted'
 
-function UserModal({ mode, user, onSubmit, onClose }: {
+function UserModal({ mode, user, onSubmit, onClose, isSelf = false }: {
   mode: 'add' | 'edit'
   user?: any
   onSubmit: (data: any) => void
   onClose: () => void
+  isSelf?: boolean
 }) {
   const [form, setForm] = useState({
     username: user?.username || '',
@@ -65,13 +66,17 @@ function UserModal({ mode, user, onSubmit, onClose }: {
           <div>
             <label className={labelCls}>권한</label>
             <div className="grid grid-cols-3 gap-2">
-              {ROLES.map(r => (
-                <button key={r} type="button" onClick={() => setForm({...form, role: r})}
-                  className={['rounded-lg border py-2 font-mono text-xs font-medium transition-all',
-                    form.role === r ? 'border-brand/40 bg-brand/10 text-brand' : 'border-line text-ink-muted hover:border-line-strong'].join(' ')}>
-                  {r === 'admin' ? 'Admin' : r}
-                </button>
-              ))}
+            {ROLES.map(r => (
+              <button key={r} type="button"
+                onClick={() => !isSelf && setForm({...form, role: r})}
+                disabled={isSelf}
+                className={['rounded-lg border py-2 font-mono text-xs font-medium transition-all',
+                  form.role === r ? 'border-brand/40 bg-brand/10 text-brand' :
+                  isSelf ? 'border-line text-ink-muted opacity-40 cursor-not-allowed' :
+                  'border-line text-ink-muted hover:border-line-strong'].join(' ')}>
+                {r === 'admin' ? 'Admin' : r}
+              </button>
+            ))}
             </div>
           </div>
         </div>
@@ -317,7 +322,7 @@ export default function UsersPage() {
       )}
 
       {addOpen && <UserModal mode="add" onSubmit={handleAdd} onClose={() => setAddOpen(false)} />}
-      {editTarget && <UserModal mode="edit" user={editTarget} onSubmit={handleEdit} onClose={() => setEditTarget(null)} />}
+      {editTarget && <UserModal mode="edit" user={editTarget} onSubmit={handleEdit} onClose={() => setEditTarget(null)} isSelf={me?.email === editTarget.email} />}
       {confirmState && <ConfirmModal user={confirmState.user} action={confirmState.action} onConfirm={handleConfirm} onClose={() => setConfirmState(null)} />}
     </div>
   )
