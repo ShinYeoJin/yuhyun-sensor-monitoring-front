@@ -561,22 +561,45 @@ export default function SensorsPage() {
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 2500) }
 
   const openAdd = () => { setForm(emptyForm); setAddOpen(true) }
-  const openEdit = (s: UnifiedSensor) => {
-    setForm({
-      manageNo: s.manageNo ?? '', field: s.field, measureMethod: s.measureMethod,
-      formula: s.formula, group: s.group ?? '',
-      name: s.name, nameEn: s.nameEn, nameAbbr: s.nameAbbr,
-      unit: s.unit, unitName: s.unitName, description: s.description,
-      combination: s.combination, decimalPoint: s.decimalPoint,
-      pointerInfo: s.pointerInfo, remark: s.remark,
-      threshold: { ...s.threshold },
-      operation: { ...s.operation },
-      formulaParams: { ...s.formulaParams },
-      criteria: { ...s.criteria },
-      siteId: s.siteId, siteName: s.siteName,
-      installDate: s.installDate, location: { ...s.location },
-    })
-    setEditTarget(s)
+  const openEdit = async (s: UnifiedSensor) => {
+    try {
+      const fresh = await sensorApi.getById(Number(s.id))
+      const freshSensor: UnifiedSensor = {
+        ...s,
+        criteria: {
+          level1Upper: fresh.level1_upper ?? '',
+          level1Lower: fresh.level1_lower ?? '',
+          level2Upper: fresh.level2_upper ?? '',
+          level2Lower: fresh.level2_lower ?? '',
+          criteriaUnit: fresh.criteria_unit ?? '',
+          criteriaUnitName: fresh.criteria_unit_name ?? '',
+          noAlarm: false,
+          noSms: false,
+        },
+        threshold: {
+          normalMax: fresh.threshold_normal_max ?? '',
+          warningMax: fresh.threshold_warning_max ?? '',
+          dangerMin: fresh.threshold_danger_min ?? '',
+        },
+      }
+      setForm({
+        manageNo: freshSensor.manageNo ?? '', field: freshSensor.field, measureMethod: freshSensor.measureMethod,
+        formula: freshSensor.formula, group: freshSensor.group ?? '',
+        name: freshSensor.name, nameEn: freshSensor.nameEn, nameAbbr: freshSensor.nameAbbr,
+        unit: freshSensor.unit, unitName: freshSensor.unitName, description: freshSensor.description,
+        combination: freshSensor.combination, decimalPoint: freshSensor.decimalPoint,
+        pointerInfo: freshSensor.pointerInfo, remark: freshSensor.remark,
+        threshold: { ...freshSensor.threshold },
+        operation: { ...freshSensor.operation },
+        formulaParams: { ...freshSensor.formulaParams },
+        criteria: { ...freshSensor.criteria },
+        siteId: freshSensor.siteId, siteName: freshSensor.siteName,
+        installDate: freshSensor.installDate, location: { ...freshSensor.location },
+      })
+      setEditTarget(freshSensor)
+    } catch (err) {
+      showToast('센서 정보 로드 실패')
+    }
   }
 
   const handleAdd = () => {
