@@ -271,6 +271,7 @@ export default function SensorDetailPage() {
   // 조회 기간 (시작일 ~ 종료일)
   const [qrOpen,   setQrOpen]   = useState(false)
   const [tablePage, setTablePage] = useState(1)
+  const [remarks, setRemarks] = useState<Record<string, string>>({})
   const TABLE_PAGE_SIZE = 15
   const [printOpen, setPrintOpen] = useState(false)
   const printRef = useRef<HTMLDivElement>(null)
@@ -297,10 +298,30 @@ export default function SensorDetailPage() {
       const date = new Date(m.timestamp).toLocaleDateString('ko-KR', {
         year: 'numeric', month: '2-digit', day: '2-digit'
       })
-      map.set(date, m)
+      if (!map.has(date)) map.set(date, m)
     })
     return Array.from(map.values())
   }, [measurements])
+
+  // 일별 표 데이터 (경과일, 전측정대비, 초기치대비 계산)
+  const dailyTableData = useMemo(() => {
+    if (dailyReadings.length === 0) return []
+    const firstValue = dailyReadings[0].value
+    const firstDate = new Date(dailyReadings[0].timestamp)
+    return dailyReadings.map((r, i) => {
+      const currentDate = new Date(r.timestamp)
+      const elapsed = Math.round((currentDate.getTime() - firstDate.getTime()) / 86400000)
+      const prevValue = i > 0 ? dailyReadings[i - 1].value : r.value
+      const dateKey = currentDate.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
+      return {
+        ...r,
+        elapsed,
+        prevDiff: parseFloat((r.value - prevValue).toFixed(2)),
+        initDiff: parseFloat((r.value - firstValue).toFixed(2)),
+        dateKey,
+      }
+    })
+  }, [dailyReadings])
 
   const { thresholdWarning, thresholdDanger } = sensor ? getThresholds(sensor) : { thresholdWarning: 0, thresholdDanger: 0 }
   const overThreshold = sensor ? sensor.currentValue > thresholdDanger : false
@@ -640,24 +661,22 @@ export default function SensorDetailPage() {
 
         {/* 측정 데이터 테이블 (페이지네이션) */}
         {(() => {
-          const tableData  = measurements
+          const tableData = dailyTableData
           const totalPages = Math.max(1, Math.ceil(tableData.length / TABLE_PAGE_SIZE))
-          const safePage   = Math.min(tablePage, totalPages)
-          const pageData   = tableData.slice((safePage - 1) * TABLE_PAGE_SIZE, safePage * TABLE_PAGE_SIZE)
+          const safePage = Math.min(tablePage, totalPages)
+          const pageData = tableData.slice((safePage - 1) * TABLE_PAGE_SIZE, safePage * TABLE_PAGE_SIZE)
           return (
             <div className="geo-card overflow-hidden">
-              {/* 헤더 */}
               <div className="flex items-center justify-between border-b border-line px-5 py-3">
                 <div>
-                  <h2 className="text-sm font-semibold text-ink">측정 데이터</h2>
+                  <h2 className="text-sm font-semibold text-ink">측정 데이터 (일별)</h2>
                   <p className="font-mono text-[10px] text-ink-muted">
                     {isValidRange
                       ? `${dateFrom} ~ ${dateTo} · 전체 ${tableData.length}건 · ${TABLE_PAGE_SIZE}건씩 표시`
                       : '날짜 범위를 확인해 주세요.'}
                   </p>
                 </div>
-                {/* 페이지 네비게이션 */}
-                {measurements.length > TABLE_PAGE_SIZE && (
+                {tableData.length > TABLE_PAGE_SIZE && (
                   <div className="flex items-center gap-2">
                     <button
                       disabled={safePage <= 1}
@@ -678,13 +697,12 @@ export default function SensorDetailPage() {
                 )}
               </div>
 
-              {/* 테이블 */}
               <div className="overflow-x-auto">
-                {measurements.length > 0 ? (
+                {tableData.length > 0 ? (
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-line bg-surface-subtle">
-                        {['날짜','시각','측정값','상태'].map(h => (
+                        {['측정일', '경과일', `지하수위 G.L(${sensor.unit})`, '전측정대비', '초기치대비', '비고'].map(h => (
                           <th key={h} className="px-4 py-2.5 text-left font-mono text-[10px] font-semibold uppercase tracking-wide text-ink-muted">{h}</th>
                         ))}
                       </tr>
@@ -698,18 +716,30 @@ export default function SensorDetailPage() {
                         return (
                           <tr key={i} className={`transition-colors hover:bg-surface-subtle ${rowCls}`}>
                             <td className="px-4 py-2 font-mono text-xs text-ink-muted">
-                              {dt.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })}
+                              {dt.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })}
                             </td>
-                            <td className="px-4 py-2 font-mono text-xs text-ink-muted">
-                              {dt.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                            <td className="px-4 py-2 font-mono text-xs text-ink-muted text-center">
+                              {r.elapsed}
                             </td>
                             <td className={`px-4 py-2 font-mono text-sm font-medium ${
                               r.status === 'danger'  ? 'text-sensor-danger'  :
                               r.status === 'warning' ? 'text-sensor-warning' : 'text-ink'}`}>
-                              {r.value} {sensor.unit}
+                              {r.value}
+                            </td>
+                            <td className={`px-4 py-2 font-mono text-xs ${r.prevDiff > 0 ? 'text-sensor-danger' : r.prevDiff < 0 ? 'text-sensor-normal' : 'text-ink-muted'}`}>
+                              {r.prevDiff > 0 ? '+' : ''}{r.prevDiff}
+                            </td>
+                            <td className={`px-4 py-2 font-mono text-xs ${r.initDiff > 0 ? 'text-sensor-danger' : r.initDiff < 0 ? 'text-sensor-normal' : 'text-ink-muted'}`}>
+                              {r.initDiff > 0 ? '+' : ''}{r.initDiff}
                             </td>
                             <td className="px-4 py-2">
-                              <StatusBadge status={r.status} size="sm" />
+                              <input
+                                type="text"
+                                value={remarks[r.dateKey] || ''}
+                                onChange={e => setRemarks(prev => ({ ...prev, [r.dateKey]: e.target.value }))}
+                                placeholder="비고 입력"
+                                className="w-full rounded border border-line bg-transparent px-2 py-1 font-mono text-xs text-ink outline-none focus:border-brand/50"
+                              />
                             </td>
                           </tr>
                         )
@@ -723,7 +753,6 @@ export default function SensorDetailPage() {
                 )}
               </div>
 
-              {/* 하단 페이지 점 인디케이터 (총 페이지가 10 이하일 때) */}
               {isValidRange && totalPages > 1 && totalPages <= 10 && (
                 <div className="flex items-center justify-center gap-1.5 border-t border-line py-3">
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
@@ -738,7 +767,6 @@ export default function SensorDetailPage() {
             </div>
           )
         })()}
-
       </div>
 
       {printOpen && (
