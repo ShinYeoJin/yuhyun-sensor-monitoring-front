@@ -445,9 +445,10 @@ export default function SensorDetailPage() {
       doc.text(yMin.toFixed(1), chartX - 1, chartY + chartH + 1, { align: 'right' })
 
       // 1차 관리기준 빨간 점선 (임계값이 있을 때)
-      const dangerVal = sensor.threshold?.dangerMin ? parseFloat(sensor.threshold.dangerMin) : null
-      const warningVal = sensor.threshold?.warningMax ? parseFloat(sensor.threshold.warningMax) : null
-      const refVal = dangerVal || warningVal
+      const refVal = sensor.criteria?.level1Lower !== '' ? parseFloat(sensor.criteria.level1Lower)
+        : sensor.criteria?.level1Upper !== '' ? parseFloat(sensor.criteria.level1Upper)
+        : sensor.threshold?.dangerMin !== '' ? parseFloat(sensor.threshold.dangerMin)
+        : null
       if (refVal !== null && refVal >= yMin && refVal <= yMax) {
         const refY = chartY + chartH - ((refVal - yMin) / range) * chartH
         doc.setDrawColor(255, 0, 0)
