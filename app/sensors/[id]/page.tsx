@@ -81,7 +81,7 @@ const INTERVAL_OPTIONS = [
 ]
 
 // ─── 인쇄 모달 ────────────────────────────────────────────────────────────────
-function PrintModal({ sensor, config, onChange, onPrint, onClose }: {
+function PrintModal({ sensor, config, onChange, onPrint, onExcel, onPdf, onClose }: {
   sensor: UnifiedSensor; config: PrintConfig
   onChange: (c: PrintConfig) => void; onPrint: () => void
   onExcel: () => void; onPdf: () => void; onClose: () => void
