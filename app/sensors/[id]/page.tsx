@@ -249,6 +249,7 @@ export default function SensorDetailPage() {
 
   const [dateFrom, setDateFrom] = useState(today)
   const [dateTo,   setDateTo]   = useState(today)
+  const [chartMode, setChartMode] = useState<'hourly' | 'daily'>('hourly')
 
   useEffect(() => {
     if (!id) return
@@ -288,6 +289,18 @@ export default function SensorDetailPage() {
   const isToday  = dateFrom === today && dateTo === today
 
   const readings = measurements
+
+  // 일별 데이터 (하루 마지막 측정값)
+  const dailyReadings = useMemo(() => {
+    const map = new Map<string, any>()
+    measurements.forEach(m => {
+      const date = new Date(m.timestamp).toLocaleDateString('ko-KR', {
+        year: 'numeric', month: '2-digit', day: '2-digit'
+      })
+      map.set(date, m)
+    })
+    return Array.from(map.values())
+  }, [measurements])
 
   const { thresholdWarning, thresholdDanger } = sensor ? getThresholds(sensor) : { thresholdWarning: 0, thresholdDanger: 0 }
   const overThreshold = sensor ? sensor.currentValue > thresholdDanger : false
