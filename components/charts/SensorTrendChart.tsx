@@ -125,5 +125,23 @@ export function SensorTrendChart({ sensor, readings, hideXAxis = false }: Props)
         />
       </LineChart>
     </ResponsiveContainer>
+    {/* 범례 */}
+    <div className="mt-2 flex items-center justify-center gap-6 font-mono text-[11px] text-ink-muted">
+     <div className="flex items-center gap-1.5">
+       <svg width="24" height="10">
+         <line x1="0" y1="5" x2="16" y2="5" stroke="#1D9E75" strokeWidth="2" />
+         <polygon points="12,2 16,5 12,8 8,5" fill="#1D9E75" />
+       </svg>
+       <span>{sensor.manageNo || sensor.name}</span>
+     </div>
+     {refLine !== null && (
+       <div className="flex items-center gap-1.5">
+         <svg width="24" height="10">
+           <line x1="0" y1="5" x2="24" y2="5" stroke="#C0392B" strokeWidth="1.5" strokeDasharray="4 2" />
+         </svg>
+         <span className="text-sensor-dangertext">1차 관리기준</span>
+       </div>
+     )}
+   </div>
   )
 }
