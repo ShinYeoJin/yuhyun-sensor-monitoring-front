@@ -559,90 +559,52 @@ export default function SensorDetailPage() {
         <div className="geo-card p-5">
           <div className="mb-4 flex items-center justify-between">
             <div>
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="text-sm font-semibold text-ink">
-                  {chartMode === 'hourly' ? '시간별' : '일별'} 트렌드
-                  {isToday ? ' — 오늘' : ` — ${dateFrom} ~ ${dateTo}`}
-                </h2>
-                <p className="mt-0.5 font-mono text-[10px] text-ink-muted">
-                  {isValidRange
-                    ? `${dayCount}일 · ${chartMode === 'hourly' ? readings.length : dailyReadings.length}개 포인트`
-                    : '날짜 범위를 확인해 주세요.'}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                {/* 시간별/일별 전환 버튼 */}
-                <div className="flex gap-1 rounded-lg border border-line bg-surface-subtle p-1">
-                  {(['hourly', 'daily'] as const).map(mode => (
-                    <button key={mode} onClick={() => setChartMode(mode)}
-                      className={['rounded-md px-3 py-1 font-mono text-[11px] font-medium transition-all',
-                        chartMode === mode ? 'bg-surface-card text-brand shadow-card' : 'text-ink-muted hover:text-ink-sub'].join(' ')}>
-                      {mode === 'hourly' ? '시간별' : '일별'}
-                    </button>
-                  ))}
-                </div>
-                {/* 기간 이동 버튼 */}
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => {
-                      const diff = dateDiffDays(dateFrom, dateTo)
-                      const newTo   = new Date(dateFrom); newTo.setDate(newTo.getDate() - 1)
-                      const newFrom = new Date(newTo);    newFrom.setDate(newFrom.getDate() - diff)
-                      setDateFrom(newFrom.toISOString().slice(0, 10))
-                      setDateTo(newTo.toISOString().slice(0, 10))
-                    }}
-                    className="rounded-md px-2.5 py-1.5 font-mono text-xs text-ink-muted border border-line transition-colors hover:bg-surface-subtle hover:text-ink">
-                    ← 이전
-                  </button>
-                  <button
-                    disabled={dateTo >= today}
-                    onClick={() => {
-                      const diff = dateDiffDays(dateFrom, dateTo)
-                      const newFrom = new Date(dateTo); newFrom.setDate(newFrom.getDate() + 1)
-                      const newTo   = new Date(newFrom); newTo.setDate(newTo.getDate() + diff)
-                      const capTo = newTo.toISOString().slice(0, 10) > today ? today : newTo.toISOString().slice(0, 10)
-                      setDateFrom(newFrom.toISOString().slice(0, 10))
-                      setDateTo(capTo)
-                    }}
-                    className="rounded-md px-2.5 py-1.5 font-mono text-xs text-ink-muted border border-line transition-colors hover:bg-surface-subtle hover:text-ink disabled:opacity-30 disabled:cursor-not-allowed">
-                    다음 →
-                  </button>
-                </div>
-              </div>
-            </div>
+              <h2 className="text-sm font-semibold text-ink">
+                {chartMode === 'hourly' ? '시간별' : '일별'} 트렌드
+                {isToday ? ' — 오늘' : ` — ${dateFrom} ~ ${dateTo}`}
+              </h2>
               <p className="mt-0.5 font-mono text-[10px] text-ink-muted">
                 {isValidRange
-                  ? `${dayCount}일 · ${readings.length}개 포인트`
+                  ? `${dayCount}일 · ${chartMode === 'hourly' ? readings.length : dailyReadings.length}개 포인트`
                   : '날짜 범위를 확인해 주세요.'}
               </p>
             </div>
-            {/* 기간 이동 버튼 */}
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => {
-                  const diff = dateDiffDays(dateFrom, dateTo)
-                  const newTo   = new Date(dateFrom); newTo.setDate(newTo.getDate() - 1)
-                  const newFrom = new Date(newTo);    newFrom.setDate(newFrom.getDate() - diff)
-                  setDateFrom(newFrom.toISOString().slice(0, 10))
-                  setDateTo(newTo.toISOString().slice(0, 10))
-                }}
-                className="rounded-md px-2.5 py-1.5 font-mono text-xs text-ink-muted border border-line transition-colors hover:bg-surface-subtle hover:text-ink">
-                ← 이전
-              </button>
-              <button
-                disabled={dateTo >= today}
-                onClick={() => {
-                  const diff = dateDiffDays(dateFrom, dateTo)
-                  const newFrom = new Date(dateTo); newFrom.setDate(newFrom.getDate() + 1)
-                  const newTo   = new Date(newFrom); newTo.setDate(newTo.getDate() + diff)
-                  const capTo = newTo.toISOString().slice(0, 10) > today ? today : newTo.toISOString().slice(0, 10)
-                  setDateFrom(newFrom.toISOString().slice(0, 10))
-                  setDateTo(capTo)
-                }}
-                className="rounded-md px-2.5 py-1.5 font-mono text-xs text-ink-muted border border-line transition-colors hover:bg-surface-subtle hover:text-ink disabled:opacity-30 disabled:cursor-not-allowed">
-                다음 →
-              </button>
+            <div className="flex items-center gap-3">
+              <div className="flex gap-1 rounded-lg border border-line bg-surface-subtle p-1">
+                {(['hourly', 'daily'] as const).map(mode => (
+                  <button key={mode} onClick={() => setChartMode(mode)}
+                    className={['rounded-md px-3 py-1 font-mono text-[11px] font-medium transition-all',
+                      chartMode === mode ? 'bg-surface-card text-brand shadow-card' : 'text-ink-muted hover:text-ink-sub'].join(' ')}>
+                    {mode === 'hourly' ? '시간별' : '일별'}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => {
+                    const diff = dateDiffDays(dateFrom, dateTo)
+                    const newTo   = new Date(dateFrom); newTo.setDate(newTo.getDate() - 1)
+                    const newFrom = new Date(newTo);    newFrom.setDate(newFrom.getDate() - diff)
+                    setDateFrom(newFrom.toISOString().slice(0, 10))
+                    setDateTo(newTo.toISOString().slice(0, 10))
+                  }}
+                  className="rounded-md px-2.5 py-1.5 font-mono text-xs text-ink-muted border border-line transition-colors hover:bg-surface-subtle hover:text-ink">
+                  ← 이전
+                </button>
+                <button
+                  disabled={dateTo >= today}
+                  onClick={() => {
+                    const diff = dateDiffDays(dateFrom, dateTo)
+                    const newFrom = new Date(dateTo); newFrom.setDate(newFrom.getDate() + 1)
+                    const newTo   = new Date(newFrom); newTo.setDate(newTo.getDate() + diff)
+                    const capTo = newTo.toISOString().slice(0, 10) > today ? today : newTo.toISOString().slice(0, 10)
+                    setDateFrom(newFrom.toISOString().slice(0, 10))
+                    setDateTo(capTo)
+                  }}
+                  className="rounded-md px-2.5 py-1.5 font-mono text-xs text-ink-muted border border-line transition-colors hover:bg-surface-subtle hover:text-ink disabled:opacity-30 disabled:cursor-not-allowed">
+                  다음 →
+                </button>
+              </div>
             </div>
           </div>
 
@@ -661,7 +623,7 @@ export default function SensorDetailPage() {
 
         {/* 측정 데이터 테이블 (페이지네이션) */}
         {(() => {
-          const tableData = dailyTableData
+          const tableData = chartMode === 'hourly' ? measurements : dailyTableData
           const totalPages = Math.max(1, Math.ceil(tableData.length / TABLE_PAGE_SIZE))
           const safePage = Math.min(tablePage, totalPages)
           const pageData = tableData.slice((safePage - 1) * TABLE_PAGE_SIZE, safePage * TABLE_PAGE_SIZE)
@@ -669,32 +631,43 @@ export default function SensorDetailPage() {
             <div className="geo-card overflow-hidden">
               <div className="flex items-center justify-between border-b border-line px-5 py-3">
                 <div>
-                  <h2 className="text-sm font-semibold text-ink">측정 데이터 (일별)</h2>
+                  <h2 className="text-sm font-semibold text-ink">측정 데이터</h2>
                   <p className="font-mono text-[10px] text-ink-muted">
                     {isValidRange
                       ? `${dateFrom} ~ ${dateTo} · 전체 ${tableData.length}건 · ${TABLE_PAGE_SIZE}건씩 표시`
                       : '날짜 범위를 확인해 주세요.'}
                   </p>
                 </div>
-                {tableData.length > TABLE_PAGE_SIZE && (
-                  <div className="flex items-center gap-2">
-                    <button
-                      disabled={safePage <= 1}
-                      onClick={() => setTablePage(p => Math.max(1, p - 1))}
-                      className="rounded-md border border-line px-2.5 py-1 font-mono text-xs text-ink-muted transition-colors hover:bg-surface-subtle hover:text-ink disabled:opacity-30 disabled:cursor-not-allowed">
-                      ←
-                    </button>
-                    <span className="font-mono text-xs text-ink-muted">
-                      <span className="font-semibold text-ink">{safePage}</span> / {totalPages}
-                    </span>
-                    <button
-                      disabled={safePage >= totalPages}
-                      onClick={() => setTablePage(p => Math.min(totalPages, p + 1))}
-                      className="rounded-md border border-line px-2.5 py-1 font-mono text-xs text-ink-muted transition-colors hover:bg-surface-subtle hover:text-ink disabled:opacity-30 disabled:cursor-not-allowed">
-                      →
-                    </button>
+                <div className="flex items-center gap-3">
+                  <div className="flex gap-1 rounded-lg border border-line bg-surface-subtle p-1">
+                    {(['hourly', 'daily'] as const).map(mode => (
+                      <button key={mode} onClick={() => { setChartMode(mode); setTablePage(1) }}
+                        className={['rounded-md px-3 py-1 font-mono text-[11px] font-medium transition-all',
+                          chartMode === mode ? 'bg-surface-card text-brand shadow-card' : 'text-ink-muted hover:text-ink-sub'].join(' ')}>
+                        {mode === 'hourly' ? '시간별' : '일별'}
+                      </button>
+                    ))}
                   </div>
-                )}
+                  {tableData.length > TABLE_PAGE_SIZE && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        disabled={safePage <= 1}
+                        onClick={() => setTablePage(p => Math.max(1, p - 1))}
+                        className="rounded-md border border-line px-2.5 py-1 font-mono text-xs text-ink-muted transition-colors hover:bg-surface-subtle hover:text-ink disabled:opacity-30 disabled:cursor-not-allowed">
+                        ←
+                      </button>
+                      <span className="font-mono text-xs text-ink-muted">
+                        <span className="font-semibold text-ink">{safePage}</span> / {totalPages}
+                      </span>
+                      <button
+                        disabled={safePage >= totalPages}
+                        onClick={() => setTablePage(p => Math.min(totalPages, p + 1))}
+                        className="rounded-md border border-line px-2.5 py-1 font-mono text-xs text-ink-muted transition-colors hover:bg-surface-subtle hover:text-ink disabled:opacity-30 disabled:cursor-not-allowed">
+                        →
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="overflow-x-auto">
@@ -702,9 +675,14 @@ export default function SensorDetailPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-line bg-surface-subtle">
-                        {['측정일', '경과일', `지하수위 G.L(${sensor.unit})`, '전측정대비', '초기치대비', '비고'].map(h => (
-                          <th key={h} className="px-4 py-2.5 text-left font-mono text-[10px] font-semibold uppercase tracking-wide text-ink-muted">{h}</th>
-                        ))}
+                      {chartMode === 'hourly'
+                        ? ['날짜', '시각', '측정값', '상태'].map(h => (
+                            <th key={h} className="px-4 py-2.5 text-left font-mono text-[10px] font-semibold uppercase tracking-wide text-ink-muted">{h}</th>
+                          ))
+                        : ['측정일', '경과일', `지하수위 G.L(${sensor.unit})`, '전측정대비', '초기치대비', '비고'].map(h => (
+                            <th key={h} className="px-4 py-2.5 text-left font-mono text-[10px] font-semibold uppercase tracking-wide text-ink-muted">{h}</th>
+                          ))
+                      }
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-line">
@@ -713,36 +691,57 @@ export default function SensorDetailPage() {
                         const rowCls =
                           r.status === 'danger'  ? 'bg-sensor-dangerbg/30'  :
                           r.status === 'warning' ? 'bg-sensor-warningbg/30' : ''
-                        return (
-                          <tr key={i} className={`transition-colors hover:bg-surface-subtle ${rowCls}`}>
-                            <td className="px-4 py-2 font-mono text-xs text-ink-muted">
-                              {dt.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })}
-                            </td>
-                            <td className="px-4 py-2 font-mono text-xs text-ink-muted text-center">
-                              {r.elapsed}
-                            </td>
-                            <td className={`px-4 py-2 font-mono text-sm font-medium ${
-                              r.status === 'danger'  ? 'text-sensor-danger'  :
-                              r.status === 'warning' ? 'text-sensor-warning' : 'text-ink'}`}>
-                              {r.value}
-                            </td>
-                            <td className={`px-4 py-2 font-mono text-xs ${r.prevDiff > 0 ? 'text-sensor-danger' : r.prevDiff < 0 ? 'text-sensor-normal' : 'text-ink-muted'}`}>
-                              {r.prevDiff > 0 ? '+' : ''}{r.prevDiff}
-                            </td>
-                            <td className={`px-4 py-2 font-mono text-xs ${r.initDiff > 0 ? 'text-sensor-danger' : r.initDiff < 0 ? 'text-sensor-normal' : 'text-ink-muted'}`}>
-                              {r.initDiff > 0 ? '+' : ''}{r.initDiff}
-                            </td>
-                            <td className="px-4 py-2">
-                              <input
-                                type="text"
-                                value={remarks[r.dateKey] || ''}
-                                onChange={e => setRemarks(prev => ({ ...prev, [r.dateKey]: e.target.value }))}
-                                placeholder="비고 입력"
-                                className="w-full rounded border border-line bg-transparent px-2 py-1 font-mono text-xs text-ink outline-none focus:border-brand/50"
-                              />
-                            </td>
-                          </tr>
-                        )
+                          return (
+                            <tr key={i} className={`transition-colors hover:bg-surface-subtle ${rowCls}`}>
+                              {chartMode === 'hourly' ? (
+                                <>
+                                  <td className="px-4 py-2 font-mono text-xs text-ink-muted">
+                                    {dt.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })}
+                                  </td>
+                                  <td className="px-4 py-2 font-mono text-xs text-ink-muted">
+                                    {dt.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                                  </td>
+                                  <td className={`px-4 py-2 font-mono text-sm font-medium ${
+                                    r.status === 'danger' ? 'text-sensor-danger' :
+                                    r.status === 'warning' ? 'text-sensor-warning' : 'text-ink'}`}>
+                                    {r.value} {sensor.unit}
+                                  </td>
+                                  <td className="px-4 py-2">
+                                    <StatusBadge status={r.status} size="sm" />
+                                  </td>
+                                </>
+                              ) : (
+                                <>
+                                  <td className="px-4 py-2 font-mono text-xs text-ink-muted">
+                                    {dt.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })}
+                                  </td>
+                                  <td className="px-4 py-2 font-mono text-xs text-ink-muted text-center">
+                                    {r.elapsed}
+                                  </td>
+                                  <td className={`px-4 py-2 font-mono text-sm font-medium ${
+                                    r.status === 'danger' ? 'text-sensor-danger' :
+                                    r.status === 'warning' ? 'text-sensor-warning' : 'text-ink'}`}>
+                                    {r.value}
+                                  </td>
+                                  <td className={`px-4 py-2 font-mono text-xs ${r.prevDiff > 0 ? 'text-sensor-danger' : r.prevDiff < 0 ? 'text-sensor-normal' : 'text-ink-muted'}`}>
+                                    {r.prevDiff > 0 ? '+' : ''}{r.prevDiff}
+                                  </td>
+                                  <td className={`px-4 py-2 font-mono text-xs ${r.initDiff > 0 ? 'text-sensor-danger' : r.initDiff < 0 ? 'text-sensor-normal' : 'text-ink-muted'}`}>
+                                    {r.initDiff > 0 ? '+' : ''}{r.initDiff}
+                                  </td>
+                                  <td className="px-4 py-2">
+                                    <input
+                                      type="text"
+                                      value={remarks[r.dateKey] || ''}
+                                      onChange={e => setRemarks(prev => ({ ...prev, [r.dateKey]: e.target.value }))}
+                                      placeholder="비고 입력"
+                                      className="w-full rounded border border-line bg-transparent px-2 py-1 font-mono text-xs text-ink outline-none focus:border-brand/50"
+                                    />
+                                  </td>
+                                </>
+                              )}
+                            </tr>
+                          )
                       })}
                     </tbody>
                   </table>
