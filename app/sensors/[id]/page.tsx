@@ -9,6 +9,10 @@ import { SensorTrendChart } from '@/components/charts/SensorTrendChart'
 import { QRModal } from '@/components/ui/QRModal'
 import Link from 'next/link'
 import type { SensorReading, UnifiedSensor } from '@/types'
+import * as XLSX from 'xlsx'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
+import html2canvas from 'html2canvas'
 
 // ─── 날짜 범위별 readings 생성 (15분 단위) ──────────────────────────────────
 function getReadingsByRange(
@@ -79,7 +83,8 @@ const INTERVAL_OPTIONS = [
 // ─── 인쇄 모달 ────────────────────────────────────────────────────────────────
 function PrintModal({ sensor, config, onChange, onPrint, onClose }: {
   sensor: UnifiedSensor; config: PrintConfig
-  onChange: (c: PrintConfig) => void; onPrint: () => void; onClose: () => void
+  onChange: (c: PrintConfig) => void; onPrint: () => void
+  onExcel: () => void; onPdf: () => void; onClose: () => void
 }) {
   const set = (key: keyof PrintConfig, val: string) => onChange({ ...config, [key]: val })
   const inputCls = 'w-full rounded-lg border border-line bg-surface-subtle px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-brand/50 focus:ring-2 focus:ring-brand/10'
@@ -187,6 +192,8 @@ function PrintModal({ sensor, config, onChange, onPrint, onClose }: {
 
         <div className="flex gap-2 border-t border-line px-6 py-4">
           <button onClick={onClose} className="flex-1 rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-sub transition-colors hover:border-line-strong hover:text-ink">취소</button>
+          <button onClick={onExcel} className="flex-1 rounded-lg bg-sensor-normal px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90">📊 엑셀</button>
+          <button onClick={onPdf} className="flex-1 rounded-lg bg-sensor-warning px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90">📄 PDF</button>
           <button onClick={onPrint} className="flex-1 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-hover">🖨 인쇄</button>
         </div>
       </div>
@@ -275,6 +282,7 @@ export default function SensorDetailPage() {
   const TABLE_PAGE_SIZE = 15
   const [printOpen, setPrintOpen] = useState(false)
   const printRef = useRef<HTMLDivElement>(null)
+  const chartRef = useRef<HTMLDivElement>(null)
 
   const [printConfig, setPrintConfig] = useState<PrintConfig>({
     title: '계측 모니터링 현황 보고서', range: '계측센서',
@@ -335,6 +343,84 @@ export default function SensorDetailPage() {
     'text-sensor-normal'
 
   const handlePrint = () => { setPrintOpen(false); setTimeout(() => window.print(), 300) }
+
+  const handleExcelDownload = () => {
+    const data = dailyTableData.map(r => ({
+      '측정일': new Date(r.timestamp).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }),
+      '경과일': r.elapsed,
+      [`지하수위 G.L(${sensor.unit})`]: r.value,
+      '전측정대비': r.prevDiff,
+      '초기치대비': r.initDiff,
+      '비고': remarks[r.dateKey] || '',
+    }))
+    const ws = XLSX.utils.json_to_sheet(data)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, '측정데이터')
+    XLSX.writeFile(wb, `${sensor.manageNo || sensor.name}_${dateFrom}_${dateTo}.xlsx`)
+  }
+
+  const handlePdfDownload = async () => {
+    const doc = new jsPDF('p', 'mm', 'a4')
+    const pageWidth = doc.internal.pageSize.getWidth()
+  
+    // 헤더
+    doc.setFontSize(16)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Water Level Meter Report', pageWidth / 2, 20, { align: 'center' })
+  
+    // 센서 정보 테이블
+    autoTable(doc, {
+      startY: 28,
+      head: [],
+      body: [
+        ['현장명', sensor.siteName || '—', '계측기 No.', sensor.manageNo || '—'],
+        ['설치현황', sensor.installDate ? `설치일자 (${sensor.installDate})` : '—', '초기측정일', dateFrom],
+        ['관리자', '—', '설치위치', sensor.location?.description || '—'],
+      ],
+      theme: 'grid',
+      styles: { fontSize: 9, cellPadding: 2 },
+      columnStyles: {
+        0: { fontStyle: 'bold', fillColor: [240, 240, 240], cellWidth: 25 },
+        1: { cellWidth: 65 },
+        2: { fontStyle: 'bold', fillColor: [240, 240, 240], cellWidth: 25 },
+        3: { cellWidth: 65 },
+      },
+    })
+  
+    // 그래프 이미지 캡처
+    if (chartRef.current) {
+      try {
+        const canvas = await html2canvas(chartRef.current, { scale: 2, backgroundColor: '#ffffff' })
+        const imgData = canvas.toDataURL('image/png')
+        const imgWidth = pageWidth - 20
+        const imgHeight = (canvas.height * imgWidth) / canvas.width
+        const currentY = (doc as any).lastAutoTable.finalY + 5
+        doc.addImage(imgData, 'PNG', 10, currentY, imgWidth, imgHeight)
+  
+        // 측정 데이터 테이블
+        const tableStartY = currentY + imgHeight + 5
+        autoTable(doc, {
+          startY: tableStartY,
+          head: [['측정일', '경과일', `지하수위 G.L(${sensor.unit})`, '전측정대비', '초기치대비', '비고']],
+          body: dailyTableData.map(r => [
+            new Date(r.timestamp).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }),
+            r.elapsed,
+            r.value,
+            r.prevDiff > 0 ? `+${r.prevDiff}` : r.prevDiff,
+            r.initDiff > 0 ? `+${r.initDiff}` : r.initDiff,
+            remarks[r.dateKey] || '',
+          ]),
+          theme: 'grid',
+          headStyles: { fillColor: [60, 80, 120], textColor: 255, fontSize: 8 },
+          styles: { fontSize: 8, cellPadding: 2 },
+        })
+      } catch (e) {
+        console.error('그래프 캡처 실패:', e)
+      }
+    }
+  
+    doc.save(`${sensor.manageNo || sensor.name}_${dateFrom}_${dateTo}.pdf`)
+  }
 
   // 빠른 기간 선택
   const setPreset = (days: number) => {
@@ -609,7 +695,7 @@ export default function SensorDetailPage() {
           </div>
 
           {(chartMode === 'hourly' ? measurements : dailyReadings).length > 0 ? (
-            <div key={`${dateFrom}-${dateTo}-${chartMode}`} className="animate-fade-in-up">
+            <div key={`${dateFrom}-${dateTo}-${chartMode}`} className="animate-fade-in-up" ref={chartRef}>
               <SensorTrendChart sensor={sensor} readings={chartMode === 'hourly' ? measurements : dailyReadings} />
             </div>
           ) : (
@@ -770,7 +856,9 @@ export default function SensorDetailPage() {
 
       {printOpen && (
         <PrintModal sensor={sensor} config={printConfig} onChange={setPrintConfig}
-          onPrint={handlePrint} onClose={() => setPrintOpen(false)} />
+          onPrint={handlePrint} onExcel={() => { setPrintOpen(false); handleExcelDownload() }}
+          onPdf={() => { setPrintOpen(false); handlePdfDownload() }}
+          onClose={() => setPrintOpen(false)} />
       )}
       {qrOpen && <QRModal sensorId={sensor.id} onClose={() => setQrOpen(false)} />}
     </div>
