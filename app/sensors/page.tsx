@@ -567,6 +567,7 @@ export default function SensorsPage() {
       const fresh = await sensorApi.getById(Number(s.id))
       const freshSensor: UnifiedSensor = {
         ...s,
+        formula: fresh.formula || '(A*X+B)',
         criteria: {
           level1Upper: fresh.level1_upper ?? '',
           level1Lower: fresh.level1_lower ?? '',
