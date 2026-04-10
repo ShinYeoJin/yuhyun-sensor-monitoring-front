@@ -375,7 +375,8 @@ export default function SensorDetailPage() {
   const fontBase64 = btoa(binary)
   doc.addFileToVFS('NanumGothic.ttf', fontBase64)
   doc.addFont('NanumGothic.ttf', 'NanumGothic', 'normal')
-  doc.setFont('NanumGothic')
+  doc.addFont('NanumGothic.ttf', 'NanumGothic', 'bold')
+  doc.setFont('NanumGothic', 'normal')
 
   // 헤더
   doc.setFontSize(16)
@@ -394,9 +395,9 @@ export default function SensorDetailPage() {
     theme: 'grid',
     styles: { fontSize: 9, cellPadding: 2, font: 'NanumGothic' },
     columnStyles: {
-      0: { fontStyle: 'bold', fillColor: [240, 240, 240], cellWidth: 25 },
+      0: { fillColor: [240, 240, 240], cellWidth: 25 },
       1: { cellWidth: 65 },
-      2: { fontStyle: 'bold', fillColor: [240, 240, 240], cellWidth: 25 },
+      2: { fillColor: [240, 240, 240], cellWidth: 25 },
       3: { cellWidth: 65 },
     },
   })
@@ -425,7 +426,7 @@ export default function SensorDetailPage() {
           remarks[r.dateKey] || '',
         ]),
         theme: 'grid',
-        headStyles: { fillColor: [60, 80, 120], textColor: 255, fontSize: 8, font: 'NanumGothic' },
+        headStyles: { fillColor: [60, 80, 120], textColor: 255, fontSize: 8, font: 'NanumGothic', fontStyle: 'normal' },
         styles: { fontSize: 8, cellPadding: 2, font: 'NanumGothic' },
       })
     } catch (e) {
