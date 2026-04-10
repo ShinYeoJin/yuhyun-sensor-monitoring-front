@@ -217,7 +217,7 @@ export default function SensorDetailPage() {
         nameAbbr: data.sensor_code,
         field: data.field || '공통',
         measureMethod: '해당없음',
-        formula: '(A*X+B)',
+        formula: data.formula || '(A*X+B)',
         group: '',
         unit: data.unit || '',
         unitName: '',

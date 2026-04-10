@@ -46,6 +46,7 @@ export const sensorApi = {
     request(`/api/sensors/${id}/depths`),
   updateInfo: (id: number, body: {
     name?: string; manage_no?: string; sensor_type?: string; unit?: string; field?: string;
+    formula?: string;
     level1_upper?: number | string | null;
     level1_lower?: number | string | null;
     level2_upper?: number | string | null;
