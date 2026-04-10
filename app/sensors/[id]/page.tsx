@@ -127,16 +127,10 @@ function PrintModal({ sensor, config, onChange, onPrint, onExcel, onPdf, onClose
           </div>
           <div>
             <label className={labelCls}>출력일시</label>
-            <div className="flex gap-2">
-              <input type="datetime-local"
-                value={/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(config.printedAt) ? config.printedAt : ''}
-                onChange={e => set('printedAt', e.target.value)}
-                className="w-10 shrink-0 rounded-lg border border-line bg-surface-subtle px-2 py-2 text-sm text-ink outline-none transition-colors focus:border-brand/50"
-                title="달력으로 선택" />
-              <input type="text" value={config.printedAt} onChange={e => set('printedAt', e.target.value)}
-                placeholder="YYYY-MM-DDTHH:mm 또는 자유 형식" className={`${inputCls} flex-1`} />
-            </div>
-            <p className="mt-1 font-mono text-[10px] text-ink-muted">달력으로 선택하거나 직접 입력</p>
+            <input type="datetime-local"
+              value={config.printedAt}
+              onChange={e => set('printedAt', e.target.value)}
+              className={inputCls} />
           </div>
           <div>
             <label className={labelCls}>출력범위</label>
@@ -286,7 +280,7 @@ export default function SensorDetailPage() {
 
   const [printConfig, setPrintConfig] = useState<PrintConfig>({
     title: '계측 모니터링 현황 보고서', range: '계측센서',
-    dateFrom: today, dateTo: today,
+    dateFrom: dateFrom, dateTo: dateTo,
     printedAt: new Date().toISOString().slice(0, 16),
     outputScope: '모든 센서', interval: '모든데이터',
     imgMargin: '0.10', footer: '',
@@ -490,7 +484,7 @@ export default function SensorDetailPage() {
           <span className="font-mono text-xs text-ink-muted">{sensor.name}</span>
           <StatusBadge status={sensor.status} />
           <div className="ml-auto flex items-center gap-2">
-            <button onClick={() => setPrintOpen(true)}
+            <button onClick={() => { setPrintConfig(c => ({ ...c, dateFrom, dateTo })); setPrintOpen(true) }}
               className="flex items-center gap-1.5 rounded-lg border border-line bg-surface-card px-3 py-1.5 font-mono text-xs text-ink-sub shadow-card transition-colors hover:border-brand/40 hover:bg-brand/10 hover:text-brand">
               🖨 출력
             </button>
