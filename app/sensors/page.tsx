@@ -491,6 +491,17 @@ export default function SensorsPage() {
   const { user:me } = useAuth()
   const canManage = me?.role !== 'MultiMonitor'
   const { sensors } = useSensorStore()
+
+  const [search,       setSearch]      = useState('')
+  const [statusFilter, setStatus]      = useState<SensorStatus | 'all'>('all')
+  const [siteFilter,   setSite]        = useState('all')
+  const [activeTab,    setActiveTab]   = useState<'monitor' | 'manage'>('monitor')
+  const [addOpen,      setAddOpen]     = useState(false)
+  const [editTarget,   setEditTarget]  = useState<UnifiedSensor | null>(null)
+  const [deleteTarget, setDeleteTarget]= useState<UnifiedSensor | null>(null)
+  const [form,         setForm]        = useState<SensorForm>(emptyForm)
+  const [toast,        setToast]       = useState<string | null>(null)
+
   useEffect(() => {
     sensorApi.getAll().then((data: any[]) => {
       data.forEach((s: any) => {
@@ -545,16 +556,7 @@ export default function SensorsPage() {
         }
       })
     }).catch(console.error)
-  }, [])
-  const [search,       setSearch]      = useState('')
-  const [statusFilter, setStatus]      = useState<SensorStatus | 'all'>('all')
-  const [siteFilter,   setSite]        = useState('all')
-  const [activeTab,    setActiveTab]   = useState<'monitor' | 'manage'>('monitor')
-  const [addOpen,      setAddOpen]     = useState(false)
-  const [editTarget,   setEditTarget]  = useState<UnifiedSensor | null>(null)
-  const [deleteTarget, setDeleteTarget]= useState<UnifiedSensor | null>(null)
-  const [form,         setForm]        = useState<SensorForm>(emptyForm)
-  const [toast,        setToast]       = useState<string | null>(null)
+  }, [activeTab])
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 2500) }
 
