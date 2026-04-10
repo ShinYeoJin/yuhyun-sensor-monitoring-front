@@ -78,70 +78,72 @@ export function SensorTrendChart({ sensor, readings, hideXAxis = false }: Props)
   const showDiamond = data.length <= 100
 
   return (
-    <ResponsiveContainer width="100%" height={240}>
-      <LineChart data={data} margin={{ top: 8, right: 60, bottom: 8, left: 8 }}>
-        <CartesianGrid strokeDasharray="" stroke="#e5e9f0" horizontal={true} vertical={false} />
-        <XAxis
-          dataKey="time"
-          tick={hideXAxis ? false : { fontSize: 10, fill: '#8a9ab8', fontFamily: 'DM Mono, monospace' }}
-          tickLine={false}
-          axisLine={{ stroke: '#dde3ed' }}
-          interval={0}
-          tickFormatter={hideXAxis ? () => '' : tickFormatter}
-          height={hideXAxis ? 4 : 28}
-          label={{ value: '계측일자(Day)', position: 'insideBottomRight', offset: -4, fontSize: 10, fill: '#8a9ab8' }}
-        />
-        <YAxis
-          tick={{ fontSize: 10, fill: '#8a9ab8', fontFamily: 'DM Mono, monospace' }}
-          tickLine={false}
-          axisLine={{ stroke: '#dde3ed' }}
-          tickFormatter={(v) => `${v}`}
-          width={52}
-          domain={['auto', 'auto']}
-          label={{ value: `G.L(${sensor.unit || 'm'})`, angle: -90, position: 'insideLeft', offset: 10, fontSize: 10, fill: '#8a9ab8' }}
-        />
-        <Tooltip content={<CustomTooltip />} />
-
-        {/* 1차 관리기준 빨간 점선 */}
-        {refLine !== null && (
-          <ReferenceLine
-            y={refLine}
-            stroke="#C0392B"
-            strokeDasharray="6 3"
-            strokeWidth={1.5}
-            label={{ value: '1차 관리기준', position: 'insideTopRight', fontSize: 10, fill: '#C0392B', fontFamily: 'DM Mono, monospace' }}
+    <div>
+      <ResponsiveContainer width="100%" height={240}>
+        <LineChart data={data} margin={{ top: 8, right: 60, bottom: 8, left: 8 }}>
+          <CartesianGrid strokeDasharray="" stroke="#e5e9f0" horizontal={true} vertical={false} />
+          <XAxis
+            dataKey="time"
+            tick={hideXAxis ? false : { fontSize: 10, fill: '#8a9ab8', fontFamily: 'DM Mono, monospace' }}
+            tickLine={false}
+            axisLine={{ stroke: '#dde3ed' }}
+            interval={0}
+            tickFormatter={hideXAxis ? () => '' : tickFormatter}
+            height={hideXAxis ? 4 : 28}
+            label={{ value: '계측일자(Day)', position: 'insideBottomRight', offset: -4, fontSize: 10, fill: '#8a9ab8' }}
           />
-        )}
+          <YAxis
+            tick={{ fontSize: 10, fill: '#8a9ab8', fontFamily: 'DM Mono, monospace' }}
+            tickLine={false}
+            axisLine={{ stroke: '#dde3ed' }}
+            tickFormatter={(v) => `${v}`}
+            width={52}
+            domain={['auto', 'auto']}
+            label={{ value: `G.L(${sensor.unit || 'm'})`, angle: -90, position: 'insideLeft', offset: 10, fontSize: 10, fill: '#8a9ab8' }}
+          />
+          <Tooltip content={<CustomTooltip />} />
 
-        <Line
-          type="monotone"
-          dataKey="value"
-          stroke="#1D9E75"
-          strokeWidth={1.5}
-          dot={showDiamond ? <DiamondDot fill="#1D9E75" /> : false}
-          activeDot={{ r: 5 }}
-          isAnimationActive={data.length <= 300}
-          animationDuration={350}
-        />
-      </LineChart>
-    </ResponsiveContainer>
-    {/* 범례 */}
-    <div className="mt-2 flex items-center justify-center gap-6 font-mono text-[11px] text-ink-muted">
-     <div className="flex items-center gap-1.5">
-       <svg width="24" height="10">
-         <line x1="0" y1="5" x2="16" y2="5" stroke="#1D9E75" strokeWidth="2" />
-         <polygon points="12,2 16,5 12,8 8,5" fill="#1D9E75" />
-       </svg>
-       <span>{sensor.manageNo || sensor.name}</span>
-     </div>
-     {refLine !== null && (
-       <div className="flex items-center gap-1.5">
-         <svg width="24" height="10">
-           <line x1="0" y1="5" x2="24" y2="5" stroke="#C0392B" strokeWidth="1.5" strokeDasharray="4 2" />
-         </svg>
-         <span className="text-sensor-dangertext">1차 관리기준</span>
-       </div>
-     )}
+          {/* 1차 관리기준 빨간 점선 */}
+          {refLine !== null && (
+            <ReferenceLine
+              y={refLine}
+              stroke="#C0392B"
+              strokeDasharray="6 3"
+              strokeWidth={1.5}
+              label={{ value: '1차 관리기준', position: 'insideTopRight', fontSize: 10, fill: '#C0392B', fontFamily: 'DM Mono, monospace' }}
+            />
+          )}
+
+          <Line
+            type="monotone"
+            dataKey="value"
+            stroke="#1D9E75"
+            strokeWidth={1.5}
+            dot={showDiamond ? <DiamondDot fill="#1D9E75" /> : false}
+            activeDot={{ r: 5 }}
+            isAnimationActive={data.length <= 300}
+            animationDuration={350}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+      {/* 범례 */}
+      <div className="mt-2 flex items-center justify-center gap-6 font-mono text-[11px] text-ink-muted">
+      <div className="flex items-center gap-1.5">
+        <svg width="24" height="10">
+          <line x1="0" y1="5" x2="16" y2="5" stroke="#1D9E75" strokeWidth="2" />
+          <polygon points="12,2 16,5 12,8 8,5" fill="#1D9E75" />
+        </svg>
+        <span>{sensor.manageNo || sensor.name}</span>
+      </div>
+      {refLine !== null && (
+        <div className="flex items-center gap-1.5">
+          <svg width="24" height="10">
+            <line x1="0" y1="5" x2="24" y2="5" stroke="#C0392B" strokeWidth="1.5" strokeDasharray="4 2" />
+          </svg>
+          <span className="text-sensor-dangertext">1차 관리기준</span>
+        </div>
+      )}
+    </div>
    </div>
   )
 }
