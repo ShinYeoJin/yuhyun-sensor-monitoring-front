@@ -369,9 +369,8 @@ export default function SensorDetailPage() {
   const uint8Array = new Uint8Array(fontBuffer)
   let binary = ''
   const chunkSize = 8192
-  for (let i = 0; i < uint8Array.length; i += chunkSize) {
-    const chunk = uint8Array.subarray(i, i + chunkSize)
-    binary += String.fromCharCode(...chunk)
+  for (let i = 0; i < uint8Array.byteLength; i++) {
+    binary += String.fromCharCode(uint8Array[i])
   }
   const fontBase64 = btoa(binary)
   doc.addFileToVFS('NanumGothic.ttf', fontBase64)
