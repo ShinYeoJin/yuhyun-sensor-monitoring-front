@@ -97,6 +97,7 @@ export function SensorTrendChart({ sensor, readings, hideXAxis = false }: Props)
           axisLine={{ stroke: '#dde3ed' }}
           tickFormatter={(v) => `${v}`}
           width={52}
+          domain={['auto', 'auto']}
           label={{ value: `G.L(${sensor.unit || 'm'})`, angle: -90, position: 'insideLeft', offset: 10, fontSize: 10, fill: '#8a9ab8' }}
         />
         <Tooltip content={<CustomTooltip />} />
