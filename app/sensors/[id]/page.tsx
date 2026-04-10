@@ -363,9 +363,17 @@ export default function SensorDetailPage() {
     const doc = new jsPDF('p', 'mm', 'a4')
     const pageWidth = doc.internal.pageSize.getWidth()
   
+    // 한글 폰트 로드
+    const fontRes = await fetch('/NanumGothic.ttf')
+    const fontBuffer = await fontRes.arrayBuffer()
+    const fontBase64 = btoa(String.fromCharCode(...new Uint8Array(fontBuffer)))
+    doc.addFileToVFS('NanumGothic.ttf', fontBase64)
+    doc.addFont('NanumGothic.ttf', 'NanumGothic', 'normal')
+    doc.setFont('NanumGothic')
+  
     // 헤더
     doc.setFontSize(16)
-    doc.setFont('helvetica', 'bold')
+    doc.setFont('NanumGothic', 'normal')
     doc.text('Water Level Meter Report', pageWidth / 2, 20, { align: 'center' })
   
     // 센서 정보 테이블
@@ -378,7 +386,7 @@ export default function SensorDetailPage() {
         ['관리자', '—', '설치위치', sensor.location?.description || '—'],
       ],
       theme: 'grid',
-      styles: { fontSize: 9, cellPadding: 2 },
+      styles: { fontSize: 9, cellPadding: 2, font: 'NanumGothic' },
       columnStyles: {
         0: { fontStyle: 'bold', fillColor: [240, 240, 240], cellWidth: 25 },
         1: { cellWidth: 65 },
@@ -411,8 +419,8 @@ export default function SensorDetailPage() {
             remarks[r.dateKey] || '',
           ]),
           theme: 'grid',
-          headStyles: { fillColor: [60, 80, 120], textColor: 255, fontSize: 8 },
-          styles: { fontSize: 8, cellPadding: 2 },
+          headStyles: { fillColor: [60, 80, 120], textColor: 255, fontSize: 8, font: 'NanumGothic' },
+          styles: { fontSize: 8, cellPadding: 2, font: 'NanumGothic' },
         })
       } catch (e) {
         console.error('그래프 캡처 실패:', e)
