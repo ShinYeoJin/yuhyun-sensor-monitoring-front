@@ -360,89 +360,102 @@ export default function SensorDetailPage() {
   }
 
   const handlePdfDownload = async () => {
-  const doc = new jsPDF('p', 'mm', 'a4')
-  const pageWidth = doc.internal.pageSize.getWidth()
-
-  // 한글 폰트 로드
-  const fontRes = await fetch('/NanumGothic.ttf')
-  const fontBuffer = await fontRes.arrayBuffer()
-  const uint8Array = new Uint8Array(fontBuffer)
-  let binary = ''
-  const chunkSize = 8192
-  for (let i = 0; i < uint8Array.byteLength; i++) {
-    binary += String.fromCharCode(uint8Array[i])
-  }
-  const fontBase64 = btoa(binary)
-  doc.addFileToVFS('NanumGothic.ttf', fontBase64)
-  doc.addFont('NanumGothic.ttf', 'NanumGothic', 'normal')
-  doc.addFont('NanumGothic.ttf', 'NanumGothic', 'bold')
-  doc.setFont('NanumGothic', 'normal')
-
-  // 헤더
-  doc.setFontSize(16)
-  doc.setFont('NanumGothic', 'normal')
-  doc.text('Water Level Meter Report', pageWidth / 2, 20, { align: 'center' })
-
-  // 센서 정보 테이블
-  autoTable(doc, {
-    startY: 28,
-    head: [],
-    body: [
-      ['현장명', sensor.siteName || '—', '계측기 No.', sensor.manageNo || '—'],
-      ['설치현황', sensor.installDate ? `설치일자 (${sensor.installDate})` : '—', '초기측정일', dateFrom],
-      ['관리자', '—', '설치위치', sensor.location?.description || '—'],
-    ],
-    theme: 'grid',
-    styles: { fontSize: 9, cellPadding: 2, font: 'NanumGothic' },
-    columnStyles: {
-      0: { fillColor: [240, 240, 240], cellWidth: 25 },
-      1: { cellWidth: 65 },
-      2: { fillColor: [240, 240, 240], cellWidth: 25 },
-      3: { cellWidth: 65 },
-    },
-  })
-
-  // 그래프 이미지 캡처
-  if (chartRef.current) {
-    try {
-      const canvas = await html2canvas(chartRef.current, {
-        scale: 2,
-        backgroundColor: '#ffffff',
-        useCORS: true,
-        allowTaint: true,
-        foreignObjectRendering: false,
-        logging: false,
-      })
-      const imgData = canvas.toDataURL('image/png')
-      const imgWidth = pageWidth - 20
-      const imgHeight = (canvas.height * imgWidth) / canvas.width
-      const currentY = (doc as any).lastAutoTable.finalY + 5
-      doc.addImage(imgData, 'PNG', 10, currentY, imgWidth, imgHeight)
-
-      // 측정 데이터 테이블
-      const tableStartY = currentY + imgHeight + 5
-      autoTable(doc, {
-        startY: tableStartY,
-        head: [['측정일', '경과일', `지하수위 G.L(${sensor.unit})`, '전측정대비', '초기치대비', '비고']],
-        body: dailyTableData.map(r => [
-          new Date(r.timestamp).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }),
-          r.elapsed,
-          r.value,
-          r.prevDiff > 0 ? `+${r.prevDiff}` : r.prevDiff,
-          r.initDiff > 0 ? `+${r.initDiff}` : r.initDiff,
-          remarks[r.dateKey] || '',
-        ]),
-        theme: 'grid',
-        headStyles: { fillColor: [60, 80, 120], textColor: 255, fontSize: 8, font: 'NanumGothic', fontStyle: 'normal' },
-        styles: { fontSize: 8, cellPadding: 2, font: 'NanumGothic' },
-      })
-    } catch (e) {
-      console.error('그래프 캡처 실패:', e)
+    const doc = new jsPDF('p', 'mm', 'a4')
+    const pageWidth = doc.internal.pageSize.getWidth()
+  
+    // 한글 폰트 로드
+    const fontRes = await fetch('/NanumGothic.ttf')
+    const fontBuffer = await fontRes.arrayBuffer()
+    const uint8Array = new Uint8Array(fontBuffer)
+    let binary = ''
+    for (let i = 0; i < uint8Array.byteLength; i++) {
+      binary += String.fromCharCode(uint8Array[i])
     }
+    const fontBase64 = btoa(binary)
+    doc.addFileToVFS('NanumGothic.ttf', fontBase64)
+    doc.addFont('NanumGothic.ttf', 'NanumGothic', 'normal')
+    doc.addFont('NanumGothic.ttf', 'NanumGothic', 'bold')
+    doc.setFont('NanumGothic', 'normal')
+  
+    // 헤더
+    doc.setFontSize(16)
+    doc.text('Water Level Meter Report', pageWidth / 2, 20, { align: 'center' })
+  
+    // 센서 정보 테이블
+    autoTable(doc, {
+      startY: 28,
+      head: [],
+      body: [
+        ['현장명', sensor.siteName || '—', '계측기 No.', sensor.manageNo || '—'],
+        ['설치현황', sensor.installDate ? `설치일자 (${sensor.installDate})` : '—', '초기측정일', dateFrom],
+        ['관리자', '—', '설치위치', sensor.location?.description || '—'],
+      ],
+      theme: 'grid',
+      styles: { fontSize: 9, cellPadding: 2, font: 'NanumGothic' },
+      columnStyles: {
+        0: { fillColor: [240, 240, 240], cellWidth: 25 },
+        1: { cellWidth: 65 },
+        2: { fillColor: [240, 240, 240], cellWidth: 25 },
+        3: { cellWidth: 65 },
+      },
+    })
+  
+    // 그래프를 jsPDF로 직접 그리기
+    const currentY = (doc as any).lastAutoTable.finalY + 5
+    const chartData = chartMode === 'hourly' ? measurements : dailyReadings
+    if (chartData.length > 0) {
+      const chartX = 10
+      const chartY = currentY
+      const chartW = pageWidth - 20
+      const chartH = 60
+  
+      doc.setDrawColor(200, 200, 200)
+      doc.setLineWidth(0.3)
+      doc.line(chartX, chartY + chartH, chartX + chartW, chartY + chartH)
+      doc.line(chartX, chartY, chartX, chartY + chartH)
+  
+      const values = chartData.map((r: any) => parseFloat(r.value))
+      const minVal = Math.min(...values)
+      const maxVal = Math.max(...values)
+      const range = maxVal - minVal || 1
+  
+      doc.setDrawColor(34, 197, 94)
+      doc.setLineWidth(0.5)
+      for (let i = 1; i < chartData.length; i++) {
+        const x1 = chartX + ((i - 1) / (chartData.length - 1)) * chartW
+        const x2 = chartX + (i / (chartData.length - 1)) * chartW
+        const y1 = chartY + chartH - ((parseFloat(chartData[i-1].value) - minVal) / range) * chartH
+        const y2 = chartY + chartH - ((parseFloat(chartData[i].value) - minVal) / range) * chartH
+        doc.line(x1, y1, x2, y2)
+      }
+  
+      doc.setFontSize(6)
+      doc.setTextColor(100, 100, 100)
+      doc.text(`${maxVal.toFixed(1)}`, chartX - 1, chartY + 2, { align: 'right' })
+      doc.text(`${minVal.toFixed(1)}`, chartX - 1, chartY + chartH, { align: 'right' })
+      doc.setTextColor(0, 0, 0)
+    }
+  
+    // 측정 데이터 테이블
+    const tableStartY = currentY + 65
+    autoTable(doc, {
+      startY: tableStartY,
+      head: [['측정일', '경과일', `지하수위 G.L(${sensor.unit})`, '전측정대비', '초기치대비', '비고']],
+      body: dailyTableData.map(r => [
+        new Date(r.timestamp).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }),
+        r.elapsed,
+        r.value,
+        r.prevDiff > 0 ? `+${r.prevDiff}` : r.prevDiff,
+        r.initDiff > 0 ? `+${r.initDiff}` : r.initDiff,
+        remarks[r.dateKey] || '',
+      ]),
+      theme: 'grid',
+      headStyles: { fillColor: [60, 80, 120], textColor: 255, fontSize: 8, font: 'NanumGothic', fontStyle: 'normal' },
+      styles: { fontSize: 8, cellPadding: 2, font: 'NanumGothic' },
+    })
+  
+    doc.save(`${sensor.manageNo || sensor.name}_${dateFrom}_${dateTo}.pdf`)
   }
-
-  doc.save(`${sensor.manageNo || sensor.name}_${dateFrom}_${dateTo}.pdf`)
-}
 
   // 빠른 기간 선택
   const setPreset = (days: number) => {
