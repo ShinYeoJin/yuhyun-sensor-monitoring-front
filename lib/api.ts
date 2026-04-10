@@ -46,8 +46,14 @@ export const sensorApi = {
     request(`/api/sensors/${id}/depths`),
   updateInfo: (id: number, body: {
     name?: string; manage_no?: string; sensor_type?: string; unit?: string; field?: string;
+    level1_upper?: number | string | null;
+    level1_lower?: number | string | null;
+    level2_upper?: number | string | null;
+    level2_lower?: number | string | null;
+    criteria_unit?: string | null;
+    criteria_unit_name?: string | null;
   }) =>
-    request(`/api/sensors/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  request(`/api/sensors/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   updateThreshold: (id: number, body: { threshold_normal_max: any; threshold_warning_max: any; threshold_danger_min: any }) =>
     request(`/api/sensors/${id}/threshold`, { method: 'PATCH', body: JSON.stringify(body) }),
   updateSite: (id: number, site_code: string) =>
