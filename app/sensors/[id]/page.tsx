@@ -428,6 +428,29 @@ export default function SensorDetailPage() {
       doc.text(`${maxVal.toFixed(1)}`, chartX - 1, chartY + 2, { align: 'right' })
       doc.text(`${minVal.toFixed(1)}`, chartX - 1, chartY + chartH, { align: 'right' })
       doc.setTextColor(0, 0, 0)
+
+      // 1차 관리기준 빨간 점선 추가
+      if (sensor.threshold?.dangerMin && parseFloat(sensor.threshold.dangerMin) !== 0) {
+        const dangerVal = parseFloat(sensor.threshold.dangerMin)
+        if (dangerVal >= minVal && dangerVal <= maxVal) {
+          const dangerY = chartY + chartH - ((dangerVal - minVal) / range) * chartH
+          doc.setDrawColor(255, 0, 0)
+          doc.setLineWidth(0.3)
+          // 점선 그리기
+          const dashLen = 3
+          const gapLen = 2
+          let x = chartX
+          while (x < chartX + chartW) {
+            doc.line(x, dangerY, Math.min(x + dashLen, chartX + chartW), dangerY)
+            x += dashLen + gapLen
+          }
+          // 라벨
+          doc.setFontSize(6)
+          doc.setTextColor(255, 0, 0)
+          doc.text('1차 관리기준', chartX + chartW + 1, dangerY + 1)
+          doc.setTextColor(0, 0, 0)
+        }
+      }
     }
   
     // 측정 데이터 테이블
