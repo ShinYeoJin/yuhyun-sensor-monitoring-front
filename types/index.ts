@@ -24,6 +24,8 @@ export type Formula =
   | '(A*X^2+B*X+C-(A*I^2+B*I+C)-(Tco*(Tc-Ti)))'
   | '(A*10^9*(1/X^2-1/I^2))'
   | '(A*X^5+B*X^4+C*X^3+D*X^2+E*X+F)'
+  | '(X/10*B)'
+  
 
 // ─── 임계값 ───────────────────────────────────────────────────────────────────
 export interface ThresholdRange {
