@@ -6,14 +6,6 @@ import {
   ReferenceLine, TooltipProps,
 } from 'recharts'
 import type { Sensor, SensorReading } from '@/types'
-import { getThresholds } from '@/lib/mock-data'
-
-const statusColor: Record<string, string> = {
-  normal:  '#1D9E75',
-  warning: '#BA7517',
-  danger:  '#C0392B',
-  offline: '#8a9ab8',
-}
 
 function CustomTooltip({ active, payload }: TooltipProps<number, string>) {
   if (!active || !payload?.[0]) return null
@@ -28,100 +20,104 @@ function CustomTooltip({ active, payload }: TooltipProps<number, string>) {
   )
 }
 
+// 다이아몬드 마커
+function DiamondDot(props: any) {
+  const { cx, cy, fill } = props
+  if (!cx || !cy) return null
+  const size = 5
+  return (
+    <polygon
+      points={`${cx},${cy - size} ${cx + size},${cy} ${cx},${cy + size} ${cx - size},${cy}`}
+      fill={fill}
+      stroke={fill}
+      strokeWidth={1}
+    />
+  )
+}
+
 interface Props {
-  sensor: Sensor
+  sensor: any
   readings?: SensorReading[]
-  hideXAxis?: boolean  // QR 페이지 등에서 X축 레이블 숨김 (툴팁은 유지)
+  hideXAxis?: boolean
 }
 
 export function SensorTrendChart({ sensor, readings, hideXAxis = false }: Props) {
-  const source = readings ?? sensor.readings
-  const { thresholdWarning, thresholdDanger } = getThresholds(sensor)
+  const source = readings ?? sensor.readings ?? []
 
-  // 모든 포인트를 데이터로 사용 (그래프는 모두 표시)
-  const data = source.map((r) => {
+  const data = source.map((r: SensorReading) => {
     const d = new Date(r.timestamp)
     return {
-      // X축 틱용 레이블 (HH:MM 또는 MM/DD)
-      time: d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
-      // 툴팁용 전체 날짜시각
+      time: d.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }),
       fullTime: d.toLocaleString('ko-KR', {
-        month: '2-digit', day: '2-digit',
+        year: 'numeric', month: '2-digit', day: '2-digit',
         hour: '2-digit', minute: '2-digit',
       }),
-      value: r.value,
+      value: typeof r.value === 'string' ? parseFloat(r.value) : r.value,
       unit: sensor.unit,
-      // 인덱스 저장 (틱 필터링에 사용)
-      _idx: 0,
     }
-  }).map((d, i) => ({ ...d, _idx: i }))
+  })
 
-  const lineColor = statusColor[sensor.status] ?? statusColor.normal
+  // 1차 관리기준 값 (criteria 우선, 없으면 threshold)
+  const level1Lower = sensor.criteria?.level1Lower !== '' && sensor.criteria?.level1Lower != null
+    ? parseFloat(sensor.criteria.level1Lower) : null
+  const level1Upper = sensor.criteria?.level1Upper !== '' && sensor.criteria?.level1Upper != null
+    ? parseFloat(sensor.criteria.level1Upper) : null
+  const refLine = level1Lower ?? level1Upper
 
-  // X축 틱: 데이터 전체를 12등분한 인덱스만 표시
-  // → 데이터가 몇 개든 X축에는 최대 12개 레이블만 나타남
-  const tickCount   = Math.min(12, data.length)
+  // x축 틱: 최대 8개
+  const tickCount = Math.min(8, data.length)
   const tickIndices = new Set<number>()
   if (data.length > 0) {
     for (let i = 0; i < tickCount; i++) {
       tickIndices.add(Math.round((i / (tickCount - 1 || 1)) * (data.length - 1)))
     }
   }
+  const tickFormatter = (val: string, index: number) => tickIndices.has(index) ? val : ''
 
-  // Recharts는 dataKey 기반 틱 필터를 지원하지 않으므로
-  // tickFormatter에서 해당 인덱스가 아니면 빈 문자열 반환
-  const tickFormatter = (val: string, index: number) => {
-    return tickIndices.has(index) ? val : ''
-  }
+  // 데이터 많으면 다이아몬드 숨김
+  const showDiamond = data.length <= 100
 
   return (
     <ResponsiveContainer width="100%" height={240}>
-      <LineChart data={data} margin={{ top: 8, right: 12, bottom: 8, left: 4 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#dde3ed" />
+      <LineChart data={data} margin={{ top: 8, right: 60, bottom: 8, left: 8 }}>
+        <CartesianGrid strokeDasharray="" stroke="#e5e9f0" horizontal={true} vertical={false} />
         <XAxis
           dataKey="time"
           tick={hideXAxis ? false : { fontSize: 10, fill: '#8a9ab8', fontFamily: 'DM Mono, monospace' }}
           tickLine={false}
-          axisLine={false}
+          axisLine={{ stroke: '#dde3ed' }}
           interval={0}
           tickFormatter={hideXAxis ? () => '' : tickFormatter}
           height={hideXAxis ? 4 : 28}
+          label={{ value: '계측일자(Day)', position: 'insideBottomRight', offset: -4, fontSize: 10, fill: '#8a9ab8' }}
         />
         <YAxis
           tick={{ fontSize: 10, fill: '#8a9ab8', fontFamily: 'DM Mono, monospace' }}
           tickLine={false}
-          axisLine={false}
-          tickFormatter={(v) => `${v}${sensor.unit}`}
-          width={56}
+          axisLine={{ stroke: '#dde3ed' }}
+          tickFormatter={(v) => `${v}`}
+          width={52}
+          label={{ value: `G.L(${sensor.unit || 'm'})`, angle: -90, position: 'insideLeft', offset: 10, fontSize: 10, fill: '#8a9ab8' }}
         />
         <Tooltip content={<CustomTooltip />} />
 
-        {thresholdWarning > 0 && (
+        {/* 1차 관리기준 빨간 점선 */}
+        {refLine !== null && (
           <ReferenceLine
-            y={thresholdWarning}
-            stroke="#BA7517"
-            strokeDasharray="4 3"
-            strokeWidth={1}
-            label={{ value: `주의 ${thresholdWarning}`, position: 'insideTopRight', fontSize: 10, fill: '#BA7517', fontFamily: 'DM Mono, monospace' }}
-          />
-        )}
-        {thresholdDanger > 0 && (
-          <ReferenceLine
-            y={thresholdDanger}
+            y={refLine}
             stroke="#C0392B"
-            strokeDasharray="4 3"
-            strokeWidth={1}
-            label={{ value: `위험 ${thresholdDanger}`, position: 'insideTopRight', fontSize: 10, fill: '#C0392B', fontFamily: 'DM Mono, monospace' }}
+            strokeDasharray="6 3"
+            strokeWidth={1.5}
+            label={{ value: '1차 관리기준', position: 'insideTopRight', fontSize: 10, fill: '#C0392B', fontFamily: 'DM Mono, monospace' }}
           />
         )}
 
         <Line
           type="monotone"
           dataKey="value"
-          stroke={lineColor}
-          strokeWidth={2}
-          // 데이터가 많으면 dot 숨김 (200개 이상)
-          dot={data.length <= 200 ? { r: 2, fill: lineColor, strokeWidth: 0 } : false}
+          stroke="#1D9E75"
+          strokeWidth={1.5}
+          dot={showDiamond ? <DiamondDot fill="#1D9E75" /> : false}
           activeDot={{ r: 5 }}
           isAnimationActive={data.length <= 300}
           animationDuration={350}
