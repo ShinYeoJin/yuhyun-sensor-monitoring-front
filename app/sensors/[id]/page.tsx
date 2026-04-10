@@ -405,7 +405,14 @@ export default function SensorDetailPage() {
   // 그래프 이미지 캡처
   if (chartRef.current) {
     try {
-      const canvas = await html2canvas(chartRef.current, { scale: 2, backgroundColor: '#ffffff' })
+      const canvas = await html2canvas(chartRef.current, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        allowTaint: true,
+        foreignObjectRendering: false,
+        logging: false,
+      })
       const imgData = canvas.toDataURL('image/png')
       const imgWidth = pageWidth - 20
       const imgHeight = (canvas.height * imgWidth) / canvas.width
