@@ -110,7 +110,6 @@ export function SensorTrendChart({ sensor, readings, hideXAxis = false }: Props)
               stroke="#C0392B"
               strokeDasharray="6 3"
               strokeWidth={1.5}
-              label={{ value: '1차 관리기준', position: 'insideTopRight', fontSize: 10, fill: '#C0392B', fontFamily: 'DM Mono, monospace' }}
             />
           )}
 
