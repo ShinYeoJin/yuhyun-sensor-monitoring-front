@@ -360,75 +360,82 @@ export default function SensorDetailPage() {
   }
 
   const handlePdfDownload = async () => {
-    const doc = new jsPDF('p', 'mm', 'a4')
-    const pageWidth = doc.internal.pageSize.getWidth()
-  
-    // 한글 폰트 로드
-    const fontRes = await fetch('/NanumGothic.ttf')
-    const fontBuffer = await fontRes.arrayBuffer()
-    const fontBase64 = btoa(String.fromCharCode(...new Uint8Array(fontBuffer)))
-    doc.addFileToVFS('NanumGothic.ttf', fontBase64)
-    doc.addFont('NanumGothic.ttf', 'NanumGothic', 'normal')
-    doc.setFont('NanumGothic')
-  
-    // 헤더
-    doc.setFontSize(16)
-    doc.setFont('NanumGothic', 'normal')
-    doc.text('Water Level Meter Report', pageWidth / 2, 20, { align: 'center' })
-  
-    // 센서 정보 테이블
-    autoTable(doc, {
-      startY: 28,
-      head: [],
-      body: [
-        ['현장명', sensor.siteName || '—', '계측기 No.', sensor.manageNo || '—'],
-        ['설치현황', sensor.installDate ? `설치일자 (${sensor.installDate})` : '—', '초기측정일', dateFrom],
-        ['관리자', '—', '설치위치', sensor.location?.description || '—'],
-      ],
-      theme: 'grid',
-      styles: { fontSize: 9, cellPadding: 2, font: 'NanumGothic' },
-      columnStyles: {
-        0: { fontStyle: 'bold', fillColor: [240, 240, 240], cellWidth: 25 },
-        1: { cellWidth: 65 },
-        2: { fontStyle: 'bold', fillColor: [240, 240, 240], cellWidth: 25 },
-        3: { cellWidth: 65 },
-      },
-    })
-  
-    // 그래프 이미지 캡처
-    if (chartRef.current) {
-      try {
-        const canvas = await html2canvas(chartRef.current, { scale: 2, backgroundColor: '#ffffff' })
-        const imgData = canvas.toDataURL('image/png')
-        const imgWidth = pageWidth - 20
-        const imgHeight = (canvas.height * imgWidth) / canvas.width
-        const currentY = (doc as any).lastAutoTable.finalY + 5
-        doc.addImage(imgData, 'PNG', 10, currentY, imgWidth, imgHeight)
-  
-        // 측정 데이터 테이블
-        const tableStartY = currentY + imgHeight + 5
-        autoTable(doc, {
-          startY: tableStartY,
-          head: [['측정일', '경과일', `지하수위 G.L(${sensor.unit})`, '전측정대비', '초기치대비', '비고']],
-          body: dailyTableData.map(r => [
-            new Date(r.timestamp).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }),
-            r.elapsed,
-            r.value,
-            r.prevDiff > 0 ? `+${r.prevDiff}` : r.prevDiff,
-            r.initDiff > 0 ? `+${r.initDiff}` : r.initDiff,
-            remarks[r.dateKey] || '',
-          ]),
-          theme: 'grid',
-          headStyles: { fillColor: [60, 80, 120], textColor: 255, fontSize: 8, font: 'NanumGothic' },
-          styles: { fontSize: 8, cellPadding: 2, font: 'NanumGothic' },
-        })
-      } catch (e) {
-        console.error('그래프 캡처 실패:', e)
-      }
-    }
-  
-    doc.save(`${sensor.manageNo || sensor.name}_${dateFrom}_${dateTo}.pdf`)
+  const doc = new jsPDF('p', 'mm', 'a4')
+  const pageWidth = doc.internal.pageSize.getWidth()
+
+  // 한글 폰트 로드
+  const fontRes = await fetch('/NanumGothic.ttf')
+  const fontBuffer = await fontRes.arrayBuffer()
+  const uint8Array = new Uint8Array(fontBuffer)
+  let binary = ''
+  const chunkSize = 8192
+  for (let i = 0; i < uint8Array.length; i += chunkSize) {
+    const chunk = uint8Array.subarray(i, i + chunkSize)
+    binary += String.fromCharCode(...chunk)
   }
+  const fontBase64 = btoa(binary)
+  doc.addFileToVFS('NanumGothic.ttf', fontBase64)
+  doc.addFont('NanumGothic.ttf', 'NanumGothic', 'normal')
+  doc.setFont('NanumGothic')
+
+  // 헤더
+  doc.setFontSize(16)
+  doc.setFont('NanumGothic', 'normal')
+  doc.text('Water Level Meter Report', pageWidth / 2, 20, { align: 'center' })
+
+  // 센서 정보 테이블
+  autoTable(doc, {
+    startY: 28,
+    head: [],
+    body: [
+      ['현장명', sensor.siteName || '—', '계측기 No.', sensor.manageNo || '—'],
+      ['설치현황', sensor.installDate ? `설치일자 (${sensor.installDate})` : '—', '초기측정일', dateFrom],
+      ['관리자', '—', '설치위치', sensor.location?.description || '—'],
+    ],
+    theme: 'grid',
+    styles: { fontSize: 9, cellPadding: 2, font: 'NanumGothic' },
+    columnStyles: {
+      0: { fontStyle: 'bold', fillColor: [240, 240, 240], cellWidth: 25 },
+      1: { cellWidth: 65 },
+      2: { fontStyle: 'bold', fillColor: [240, 240, 240], cellWidth: 25 },
+      3: { cellWidth: 65 },
+    },
+  })
+
+  // 그래프 이미지 캡처
+  if (chartRef.current) {
+    try {
+      const canvas = await html2canvas(chartRef.current, { scale: 2, backgroundColor: '#ffffff' })
+      const imgData = canvas.toDataURL('image/png')
+      const imgWidth = pageWidth - 20
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+      const currentY = (doc as any).lastAutoTable.finalY + 5
+      doc.addImage(imgData, 'PNG', 10, currentY, imgWidth, imgHeight)
+
+      // 측정 데이터 테이블
+      const tableStartY = currentY + imgHeight + 5
+      autoTable(doc, {
+        startY: tableStartY,
+        head: [['측정일', '경과일', `지하수위 G.L(${sensor.unit})`, '전측정대비', '초기치대비', '비고']],
+        body: dailyTableData.map(r => [
+          new Date(r.timestamp).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }),
+          r.elapsed,
+          r.value,
+          r.prevDiff > 0 ? `+${r.prevDiff}` : r.prevDiff,
+          r.initDiff > 0 ? `+${r.initDiff}` : r.initDiff,
+          remarks[r.dateKey] || '',
+        ]),
+        theme: 'grid',
+        headStyles: { fillColor: [60, 80, 120], textColor: 255, fontSize: 8, font: 'NanumGothic' },
+        styles: { fontSize: 8, cellPadding: 2, font: 'NanumGothic' },
+      })
+    } catch (e) {
+      console.error('그래프 캡처 실패:', e)
+    }
+  }
+
+  doc.save(`${sensor.manageNo || sensor.name}_${dateFrom}_${dateTo}.pdf`)
+}
 
   // 빠른 기간 선택
   const setPreset = (days: number) => {
