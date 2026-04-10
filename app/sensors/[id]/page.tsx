@@ -398,63 +398,90 @@ export default function SensorDetailPage() {
     const currentY = (doc as any).lastAutoTable.finalY + 5
     const chartData = chartMode === 'hourly' ? measurements : dailyReadings
     if (chartData.length > 0) {
-      const chartX = 10
+      const chartX = 15
       const chartY = currentY
-      const chartW = pageWidth - 20
-      const chartH = 60
-  
-      doc.setDrawColor(200, 200, 200)
+      const chartW = pageWidth - 30
+      const chartH = 50
+
+      // 테두리
+      doc.setDrawColor(180, 180, 180)
       doc.setLineWidth(0.3)
-      doc.line(chartX, chartY + chartH, chartX + chartW, chartY + chartH)
-      doc.line(chartX, chartY, chartX, chartY + chartH)
-  
+      doc.rect(chartX, chartY, chartW, chartH)
+
+      // 데이터 포인트 계산
       const values = chartData.map((r: any) => parseFloat(r.value))
       const minVal = Math.min(...values)
       const maxVal = Math.max(...values)
-      const range = maxVal - minVal || 1
-  
-      doc.setDrawColor(34, 197, 94)
+      const padding = (maxVal - minVal) * 0.1 || 1
+      const yMin = minVal - padding
+      const yMax = maxVal + padding
+      const range = yMax - yMin
+
+      // 수평 그리드 라인 (4개)
+      doc.setDrawColor(220, 220, 220)
+      doc.setLineWidth(0.2)
+      for (let g = 1; g <= 3; g++) {
+        const gy = chartY + (chartH / 4) * g
+        doc.line(chartX, gy, chartX + chartW, gy)
+        const gVal = yMax - (range / 4) * g
+        doc.setFontSize(5)
+        doc.setTextColor(120, 120, 120)
+        doc.text(gVal.toFixed(1), chartX - 1, gy + 1, { align: 'right' })
+      }
+
+      // y축 최대/최솟값
+      doc.setFontSize(5)
+      doc.setTextColor(120, 120, 120)
+      doc.text(yMax.toFixed(1), chartX - 1, chartY + 2, { align: 'right' })
+      doc.text(yMin.toFixed(1), chartX - 1, chartY + chartH + 1, { align: 'right' })
+
+      // 1차 관리기준 빨간 점선 (임계값이 있을 때)
+      const dangerVal = sensor.threshold?.dangerMin ? parseFloat(sensor.threshold.dangerMin) : null
+      const warningVal = sensor.threshold?.warningMax ? parseFloat(sensor.threshold.warningMax) : null
+      const refVal = dangerVal || warningVal
+      if (refVal !== null && refVal >= yMin && refVal <= yMax) {
+        const refY = chartY + chartH - ((refVal - yMin) / range) * chartH
+        doc.setDrawColor(255, 0, 0)
+        doc.setLineWidth(0.4)
+        const dashLen = 3
+        const gapLen = 2
+        let x = chartX
+        while (x < chartX + chartW) {
+          doc.line(x, refY, Math.min(x + dashLen, chartX + chartW), refY)
+          x += dashLen + gapLen
+        }
+        doc.setFontSize(5)
+        doc.setTextColor(255, 0, 0)
+        doc.text('1차 관리기준', chartX + chartW - 1, refY - 1, { align: 'right' })
+      }
+
+      // 데이터 선 그래프
+      doc.setDrawColor(34, 150, 100)
       doc.setLineWidth(0.5)
+      doc.setTextColor(0, 0, 0)
       for (let i = 1; i < chartData.length; i++) {
         const x1 = chartX + ((i - 1) / (chartData.length - 1)) * chartW
         const x2 = chartX + (i / (chartData.length - 1)) * chartW
-        const y1 = chartY + chartH - ((parseFloat(chartData[i-1].value) - minVal) / range) * chartH
-        const y2 = chartY + chartH - ((parseFloat(chartData[i].value) - minVal) / range) * chartH
+        const y1 = chartY + chartH - ((parseFloat(chartData[i-1].value) - yMin) / range) * chartH
+        const y2 = chartY + chartH - ((parseFloat(chartData[i].value) - yMin) / range) * chartH
         doc.line(x1, y1, x2, y2)
       }
-  
-      doc.setFontSize(6)
-      doc.setTextColor(100, 100, 100)
-      doc.text(`${maxVal.toFixed(1)}`, chartX - 1, chartY + 2, { align: 'right' })
-      doc.text(`${minVal.toFixed(1)}`, chartX - 1, chartY + chartH, { align: 'right' })
-      doc.setTextColor(0, 0, 0)
 
-      // 1차 관리기준 빨간 점선 추가
-      if (sensor.threshold?.dangerMin && parseFloat(sensor.threshold.dangerMin) !== 0) {
-        const dangerVal = parseFloat(sensor.threshold.dangerMin)
-        if (dangerVal >= minVal && dangerVal <= maxVal) {
-          const dangerY = chartY + chartH - ((dangerVal - minVal) / range) * chartH
-          doc.setDrawColor(255, 0, 0)
-          doc.setLineWidth(0.3)
-          // 점선 그리기
-          const dashLen = 3
-          const gapLen = 2
-          let x = chartX
-          while (x < chartX + chartW) {
-            doc.line(x, dangerY, Math.min(x + dashLen, chartX + chartW), dangerY)
-            x += dashLen + gapLen
-          }
-          // 라벨
-          doc.setFontSize(6)
-          doc.setTextColor(255, 0, 0)
-          doc.text('1차 관리기준', chartX + chartW + 1, dangerY + 1)
-          doc.setTextColor(0, 0, 0)
-        }
+      // x축 날짜 라벨 (5개)
+      doc.setFontSize(5)
+      doc.setTextColor(120, 120, 120)
+      const labelCount = Math.min(5, chartData.length)
+      for (let l = 0; l < labelCount; l++) {
+        const idx = Math.round((l / (labelCount - 1)) * (chartData.length - 1))
+        const x = chartX + (idx / (chartData.length - 1)) * chartW
+        const dateStr = new Date(chartData[idx].timestamp).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })
+        doc.text(dateStr, x, chartY + chartH + 4, { align: 'center' })
       }
+      doc.setTextColor(0, 0, 0)
     }
   
     // 측정 데이터 테이블
-    const tableStartY = currentY + 65
+    const tableStartY = currentY + 60
     autoTable(doc, {
       startY: tableStartY,
       head: [['측정일', '경과일', `지하수위 G.L(${sensor.unit})`, '전측정대비', '초기치대비', '비고']],
