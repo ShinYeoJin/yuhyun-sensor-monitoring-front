@@ -754,7 +754,7 @@ export default function SensorsPage() {
             <p className="font-mono text-xs text-ink-muted">등록된 센서 {sensors.length}개</p>
           </div>
           <div className="flex gap-1 rounded-lg border border-line bg-surface-subtle p-1">
-            {(['monitor','manage'] as const).map(tab => (
+            {(['monitor','manage','formula'] as const).map(tab => (
               <button key={tab} onClick={() => setActiveTab(tab)}
                 className={['rounded-md px-4 py-1.5 font-mono text-xs font-medium transition-all',
                   activeTab === tab ? 'bg-surface-card text-brand shadow-card' : 'text-ink-muted hover:text-ink-sub'].join(' ')}>
