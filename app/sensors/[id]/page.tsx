@@ -262,12 +262,6 @@ export default function SensorDetailPage() {
   const [dateTo,   setDateTo]   = useState(today)
   const [chartMode, setChartMode] = useState<'hourly' | 'daily'>('hourly')
 
-  const apply80053Formula = (rawValue: number, initValue: number, depthLabel: string) => {
-    const G = depthLabel === '1' ? 0.012044 : 0.013450
-    const psi = G * (initValue - rawValue)
-    return unit80053 === 'psi' ? psi : psi * 0.703
-  }
-
   useEffect(() => {
     if (!id) return
     sensorApi.getMeasurements(Number(id), {
