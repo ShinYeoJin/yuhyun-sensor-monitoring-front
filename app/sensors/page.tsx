@@ -179,7 +179,7 @@ function FormulaModal({ mode, form, onChange, onSubmit, onClose }: {
 }
 
 // ─── 센서 추가/편집 모달 ──────────────────────────────────────────────────────
-function SensorModal({ mode, form, onChange, onSubmit, onClose, formulas }: {
+function SensorModal({ mode, form, onChange, onSubmit, onClose, formulas, sites }: {
   mode: 'add' | 'edit'; form: SensorForm
   onChange: (f: SensorForm) => void; onSubmit: () => void; onClose: () => void
   formulas: any[]; sites: any[]
