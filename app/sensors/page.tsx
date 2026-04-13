@@ -137,6 +137,47 @@ function ThresholdSection({ threshold, unit, onChange }: {
   )
 }
 
+function FormulaModal({ mode, form, onChange, onSubmit, onClose }: {
+  mode: 'add' | 'edit'; form: { name: string; expression: string; description: string }
+  onChange: (f: any) => void; onSubmit: () => void; onClose: () => void
+}) {
+  const isValid = form.name.trim() !== '' && form.expression.trim() !== ''
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className="geo-card flex w-full max-w-md animate-fade-in-up flex-col" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-line px-6 py-4">
+          <h2 className="text-sm font-semibold text-ink">{mode === 'add' ? '계산식 추가' : '계산식 수정'}</h2>
+          <button onClick={onClose} className="rounded-md p-1 text-ink-muted hover:bg-surface-subtle hover:text-ink">✕</button>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          <div>
+            <label className={labelCls}>계산식 이름 *</label>
+            <input type="text" value={form.name} onChange={e => onChange({ ...form, name: e.target.value })}
+              placeholder="예: 기본 선형" className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>계산식 *</label>
+            <input type="text" value={form.expression} onChange={e => onChange({ ...form, expression: e.target.value })}
+              placeholder="예: (A*X+B)" className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>설명</label>
+            <textarea rows={2} value={form.description} onChange={e => onChange({ ...form, description: e.target.value })}
+              placeholder="계산식에 대한 설명" className={`${inputCls} resize-none`} />
+          </div>
+        </div>
+        <div className="flex gap-2 border-t border-line px-6 py-4">
+          <button onClick={onClose} className="flex-1 rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-sub hover:border-line-strong hover:text-ink">취소</button>
+          <button onClick={onSubmit} disabled={!isValid}
+            className="flex-1 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-40">
+            {mode === 'add' ? '추가' : '저장'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── 센서 추가/편집 모달 ──────────────────────────────────────────────────────
 function SensorModal({ mode, form, onChange, onSubmit, onClose, formulas }: {
   mode: 'add' | 'edit'; form: SensorForm
@@ -492,13 +533,19 @@ export default function SensorsPage() {
   const [search,       setSearch]      = useState('')
   const [statusFilter, setStatus]      = useState<SensorStatus | 'all'>('all')
   const [siteFilter,   setSite]        = useState('all')
-  const [activeTab,    setActiveTab]   = useState<'monitor' | 'manage'>('monitor')
+  const [activeTab, setActiveTab] = useState<'monitor' | 'manage' | 'formula'>('monitor')
   const [addOpen,      setAddOpen]     = useState(false)
   const [editTarget,   setEditTarget]  = useState<UnifiedSensor | null>(null)
   const [deleteTarget, setDeleteTarget]= useState<UnifiedSensor | null>(null)
   const [form,         setForm]        = useState<SensorForm>(emptyForm)
   const [toast,        setToast]       = useState<string | null>(null)
 
+  const [formulaAddOpen, setFormulaAddOpen] = useState(false)
+  const [formulaEditTarget, setFormulaEditTarget] = useState<any | null>(null)
+  const [formulaForm, setFormulaForm] = useState({ name: '', expression: '', description: '' })
+
+  const openFormulaAdd = () => { setFormulaForm({ name: '', expression: '', description: '' }); setFormulaAddOpen(true) }
+  
   const [formulas, setFormulas] = useState<any[]>([])
 
   useEffect(() => {
@@ -606,6 +653,15 @@ export default function SensorsPage() {
     }
   }
 
+  const handleFormulaAdd = async () => {
+    try {
+      const result = await formulaApi.create(formulaForm)
+      setFormulas(prev => [...prev, result.formula])
+      setFormulaAddOpen(false)
+      showToast(`'${formulaForm.name}' 계산식이 추가되었습니다.`)
+    } catch (err: any) { showToast(err.message || '추가 실패') }
+  }
+
   const handleAdd = () => {
     const newSensor: UnifiedSensor = {
       id: `GS-${String(Date.now()).slice(-4)}`, ...form,
@@ -616,6 +672,16 @@ export default function SensorsPage() {
     sensorStore.addSensor(newSensor)
     setAddOpen(false)
     showToast(`'${form.name}' 센서가 추가되었습니다.`)
+  }
+
+  const handleFormulaEdit = async () => {
+    if (!formulaEditTarget) return
+    try {
+      await formulaApi.update(formulaEditTarget.id, formulaForm)
+      setFormulas(prev => prev.map(f => f.id === formulaEditTarget.id ? { ...f, ...formulaForm } : f))
+      setFormulaEditTarget(null)
+      showToast(`'${formulaForm.name}' 계산식이 수정되었습니다.`)
+    } catch (err: any) { showToast(err.message || '수정 실패') }
   }
 
   const handleEdit = async () => {
@@ -652,6 +718,15 @@ export default function SensorsPage() {
     }
   }
 
+  const handleFormulaDelete = async (id: number, name: string) => {
+    if (!confirm(`'${name}' 계산식을 삭제하시겠습니까?`)) return
+    try {
+      await formulaApi.delete(id)
+      setFormulas(prev => prev.filter(f => f.id !== id))
+      showToast(`'${name}' 계산식이 삭제되었습니다.`)
+    } catch (err: any) { showToast(err.message || '삭제 실패') }
+  }
+
   const handleDelete = () => {
     if (!deleteTarget) return
     sensorStore.deleteSensor(deleteTarget.id)
@@ -683,15 +758,14 @@ export default function SensorsPage() {
               <button key={tab} onClick={() => setActiveTab(tab)}
                 className={['rounded-md px-4 py-1.5 font-mono text-xs font-medium transition-all',
                   activeTab === tab ? 'bg-surface-card text-brand shadow-card' : 'text-ink-muted hover:text-ink-sub'].join(' ')}>
-                {tab === 'monitor' ? '모니터링' : '센서 정의'}
+                {tab === 'monitor' ? '모니터링' : tab === 'manage' ? '센서 정의' : '계산식 관리'}
               </button>
             ))}
           </div>
           {activeTab === 'manage' ? (
-            canManage && <button onClick={openAdd}
-              className="flex items-center gap-1.5 rounded-lg bg-brand px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-hover">
-              + 센서 추가
-            </button>
+            canManage && <button onClick={openAdd} className="flex items-center gap-1.5 rounded-lg bg-brand px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-hover">+ 센서 추가</button>
+          ) : activeTab === 'formula' ? (
+            canManage && <button onClick={openFormulaAdd} className="flex items-center gap-1.5 rounded-lg bg-brand px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-hover">+ 계산식 추가</button>
           ) : (
             <div className="flex items-center gap-2">
               <div className="relative">
@@ -851,6 +925,44 @@ export default function SensorsPage() {
         </div>
       )}
 
+      {/* ── 계산식 관리 탭 ── */}
+      {activeTab === 'formula' && (
+        <div className="p-6">
+          <div className="geo-card overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-line bg-surface-subtle">
+                    {[['이름','text-left'],['계산식','text-left'],['설명','text-left'],['','text-right']].map(([th,a]) => (
+                      <th key={th} className={`px-4 py-3 font-mono text-[10px] font-semibold uppercase tracking-wide text-ink-muted ${a}`}>{th}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {formulas.map(f => (
+                    <tr key={f.id} className="transition-colors hover:bg-surface-subtle">
+                      <td className="px-4 py-3 font-medium text-ink">{f.name}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-brand">{f.expression}</td>
+                      <td className="px-4 py-3 text-xs text-ink-muted">{f.description || '—'}</td>
+                      <td className="px-4 py-3 text-right">
+                        {canManage && (
+                          <>
+                            <button onClick={() => { setFormulaForm({ name: f.name, expression: f.expression, description: f.description || '' }); setFormulaEditTarget(f) }}
+                              className="mr-3 font-mono text-xs text-ink-muted hover:text-brand">편집</button>
+                            <button onClick={() => handleFormulaDelete(f.id, f.name)}
+                              className="font-mono text-xs text-ink-muted hover:text-sensor-danger">삭제</button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 토스트 */}
       {toast && (
         <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-fade-in-up rounded-xl border border-line bg-ink px-5 py-3 font-mono text-sm text-white shadow-cardhover">
@@ -861,6 +973,8 @@ export default function SensorsPage() {
       {addOpen && <SensorModal mode="add" form={form} onChange={setForm} onSubmit={handleAdd} onClose={() => setAddOpen(false)} formulas={formulas} />}
       {editTarget && <SensorModal mode="edit" form={form} onChange={setForm} onSubmit={handleEdit} onClose={() => setEditTarget(null)} formulas={formulas} />}
       {deleteTarget && <DeleteModal sensorName={deleteTarget.name} onConfirm={handleDelete} onClose={() => setDeleteTarget(null)} />}
+      {formulaAddOpen && <FormulaModal mode="add" form={formulaForm} onChange={setFormulaForm} onSubmit={handleFormulaAdd} onClose={() => setFormulaAddOpen(false)} />}
+      {formulaEditTarget && <FormulaModal mode="edit" form={formulaForm} onChange={setFormulaForm} onSubmit={handleFormulaEdit} onClose={() => setFormulaEditTarget(null)} />}
     </div>
   )
 }
