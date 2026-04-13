@@ -805,6 +805,12 @@ export default function SensorDetailPage() {
 
           {(chartMode === 'hourly' ? measurements : dailyReadings).length > 0 ? (
             <div key={`${dateFrom}-${dateTo}-${chartMode}`} className="animate-fade-in-up" ref={chartRef}>
+              {/* depth_label 각주 - 80053 센서만 */}
+              {sensor.nameAbbr === '80053' && (
+                <p className="mb-2 font-mono text-[10px] text-ink-muted">
+                  ※ depth_label 1번 기준 데이터입니다.
+                </p>
+              )}
               <SensorTrendChart sensor={sensor} readings={chartMode === 'hourly' ? measurements : dailyReadings} />
             </div>
           ) : (
@@ -864,6 +870,13 @@ export default function SensorDetailPage() {
                   )}
                 </div>
               </div>
+              
+              {/* 초기값 각주 - 일별 모드일 때만 */}
+              {chartMode === 'daily' && (
+                <p className="px-5 pt-3 font-mono text-[10px] text-ink-muted">
+                  ※ 초기값은 첫 번째 측정값 기준입니다.
+                </p>
+              )}
 
               <div className="overflow-x-auto">
                 {tableData.length > 0 ? (
