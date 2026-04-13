@@ -410,7 +410,7 @@ export default function SensorDetailPage() {
       head: [],
       body: [
         ['현장명', sensor.siteName || '—', '계측기 No.', sensor.manageNo || '—'],
-        ['설치현황', sensor.installDate ? `설치일자 (${sensor.installDate})` : '—', '초기측정일', dateFrom],
+        ['설치현황', sensor.installDate ? `설치일자 (${sensor.installDate.slice(0, 10)})` : '—', '초기측정일', dateFrom],
         ['관리자', managerText, '설치위치', sensor.location?.description || '—'],
       ],
       theme: 'grid',
