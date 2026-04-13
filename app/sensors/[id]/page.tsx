@@ -319,8 +319,9 @@ export default function SensorDetailPage() {
   // 일별 표 데이터 (경과일, 전측정대비, 초기치대비 계산)
   const dailyTableData = useMemo(() => {
     if (dailyReadings.length === 0) return []
-    const firstValue = dailyReadings[0].value
-    const firstDate = new Date(dailyReadings[0].timestamp)
+    const lastItem = dailyReadings[dailyReadings.length - 1]
+    const firstValue = lastItem.value
+    const firstDate = new Date(lastItem.timestamp)
     return dailyReadings.map((r, i) => {
       const currentDate = new Date(r.timestamp)
       const elapsed = Math.round((currentDate.getTime() - firstDate.getTime()) / 86400000)
