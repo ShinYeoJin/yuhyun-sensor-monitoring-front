@@ -251,6 +251,7 @@ export default function SensorDetailPage() {
         currentValue: data.current_value ? parseFloat(data.current_value) : 0,
         batteryLevel: 100,
         lastUpdated: data.last_measured || new Date().toISOString(),
+        site_managers: data.site_managers || '[]',
         readings: [],
       })
     }).catch(() => setSensor(null))
