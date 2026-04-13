@@ -15,16 +15,7 @@ export type MeasureMethod =
   | 'VW D(2300~6000Hz)(4347~1666*10e-7)'
   | 'PT100' | 'RTD'
 
-export type Formula =
-  | '(A*X+B)'
-  | '(A*X+B-(A*I+B))'
-  | '(A*X+B-(A*I+B)-(Tco*(Tc-Ti)))'
-  | '(A*X^2+B*X+C)'
-  | '(A*X^2+B*X+C-(A*I^2+B*I+C))'
-  | '(A*X^2+B*X+C-(A*I^2+B*I+C)-(Tco*(Tc-Ti)))'
-  | '(A*10^9*(1/X^2-1/I^2))'
-  | '(A*X^5+B*X^4+C*X^3+D*X^2+E*X+F)'
-  | '(X/10*B)'
+export type Formula = string
   
 
 // ─── 임계값 ───────────────────────────────────────────────────────────────────

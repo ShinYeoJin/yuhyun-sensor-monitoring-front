@@ -61,6 +61,16 @@ export const sensorApi = {
     request(`/api/sensors/${id}/site`, { method: 'PATCH', body: JSON.stringify({ site_code }) }),
 }
 
+export const formulaApi = {
+  getAll: () => request('/api/formulas'),
+  create: (body: { name: string; expression: string; description?: string }) =>
+    request('/api/formulas', { method: 'POST', body: JSON.stringify(body) }),
+  update: (id: number, body: { name: string; expression: string; description?: string }) =>
+    request(`/api/formulas/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  delete: (id: number) =>
+    request(`/api/formulas/${id}`, { method: 'DELETE' }),
+}
+
 
 export const alarmApi = {
   getAll: (acknowledged?: boolean) =>

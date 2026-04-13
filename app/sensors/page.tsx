@@ -13,6 +13,7 @@ import type {
 } from '@/types'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
+import { formulaApi } from '@/lib/api'
 
 
 // ─── 상태 필터 ────────────────────────────────────────────────────────────────
@@ -45,13 +46,7 @@ const MEASURE_METHODS: MeasureMethod[] = [
   'VW C(1400~3500Hz)(7143~2857*10e-7)','VW D(2300~6000Hz)(4347~1666*10e-7)',
   'PT100','RTD',
 ]
-const FORMULAS: Formula[] = [
-  '(A*X+B)','(A*X+B-(A*I+B))','(A*X+B-(A*I+B)-(Tco*(Tc-Ti)))',
-  '(A*X^2+B*X+C)','(A*X^2+B*X+C-(A*I^2+B*I+C))',
-  '(A*X^2+B*X+C-(A*I^2+B*I+C)-(Tco*(Tc-Ti)))',
-  '(A*10^9*(1/X^2-1/I^2))','(A*X^5+B*X^4+C*X^3+D*X^2+E*X+F)',
-  '(X/10*B)'
-]
+
 const GROUPS: { value: SensorGroup; label: string }[] = [
   { value: '', label: '없음' },
   { value: '자동화모니터링 계측시스템-가시설 지하수위 계측(관리용)',   label: '지하수위 계측(관리용)'   },
@@ -143,9 +138,10 @@ function ThresholdSection({ threshold, unit, onChange }: {
 }
 
 // ─── 센서 추가/편집 모달 ──────────────────────────────────────────────────────
-function SensorModal({ mode, form, onChange, onSubmit, onClose }: {
+function SensorModal({ mode, form, onChange, onSubmit, onClose, formulas }: {
   mode: 'add' | 'edit'; form: SensorForm
   onChange: (f: SensorForm) => void; onSubmit: () => void; onClose: () => void
+  formulas: any[]
 }) {
   const isValid = form.name.trim() !== '' && form.siteId !== ''
   const set = (key: keyof SensorForm, val: string) => onChange({ ...form, [key]: val })
@@ -202,7 +198,7 @@ function SensorModal({ mode, form, onChange, onSubmit, onClose }: {
               <div>
                 <label className={labelCls}>계산식 *</label>
                 <select value={form.formula} onChange={e => set('formula', e.target.value)} className={selectCls}>
-                  {FORMULAS.map(f => <option key={f} value={f}>{f}</option>)}
+                  {formulas.map(f => <option key={f.expression} value={f.expression}>{f.name} — {f.expression}</option>)}
                 </select>
               </div>
             </div>
@@ -502,6 +498,12 @@ export default function SensorsPage() {
   const [deleteTarget, setDeleteTarget]= useState<UnifiedSensor | null>(null)
   const [form,         setForm]        = useState<SensorForm>(emptyForm)
   const [toast,        setToast]       = useState<string | null>(null)
+
+  const [formulas, setFormulas] = useState<any[]>([])
+
+  useEffect(() => {
+    formulaApi.getAll().then((data: any[]) => setFormulas(data)).catch(console.error)
+  }, [])
 
   useEffect(() => {
     sensorApi.getAll().then((data: any[]) => {
@@ -856,8 +858,8 @@ export default function SensorsPage() {
         </div>
       )}
 
-      {addOpen     && <SensorModal mode="add"  form={form} onChange={setForm} onSubmit={handleAdd}  onClose={() => setAddOpen(false)} />}
-      {editTarget  && <SensorModal mode="edit" form={form} onChange={setForm} onSubmit={handleEdit} onClose={() => setEditTarget(null)} />}
+      {addOpen && <SensorModal mode="add" form={form} onChange={setForm} onSubmit={handleAdd} onClose={() => setAddOpen(false)} formulas={formulas} />}
+      {editTarget && <SensorModal mode="edit" form={form} onChange={setForm} onSubmit={handleEdit} onClose={() => setEditTarget(null)} formulas={formulas} />}
       {deleteTarget && <DeleteModal sensorName={deleteTarget.name} onConfirm={handleDelete} onClose={() => setDeleteTarget(null)} />}
     </div>
   )
