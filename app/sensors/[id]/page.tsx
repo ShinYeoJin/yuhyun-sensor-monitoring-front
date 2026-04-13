@@ -358,6 +358,13 @@ export default function SensorDetailPage() {
     })
   }, [dailyReadings])
 
+  // 80053 계산된 현재값
+  const displayCurrentValue = useMemo(() => {
+    if (sensor?.nameAbbr !== '80053') return sensor?.currentValue ?? 0
+    if (measurements.length === 0) return 0
+    return measurements[measurements.length - 1].value
+  }, [sensor, measurements])
+
   const { thresholdWarning, thresholdDanger } = sensor ? getThresholds(sensor) : { thresholdWarning: 0, thresholdDanger: 0 }
   const overThreshold = sensor ? sensor.currentValue > thresholdDanger : false
   const nearThreshold = sensor ? sensor.currentValue > thresholdWarning : false
@@ -727,7 +734,7 @@ export default function SensorDetailPage() {
                 {isToday ? '현재 측정값' : `${dateFrom} ~ ${dateTo} 기준`}
               </p>
               <p className={`mt-1 font-mono text-5xl font-light leading-none tracking-tight ${valueColorClass}`}>
-                {sensor.status === 'offline' ? '—' : sensor.currentValue}
+                {sensor.status === 'offline' ? '—' : displayCurrentValue}
                 <span className="ml-2 text-xl font-normal text-ink-muted">{sensor.unit}</span>
               </p>
             </div>
