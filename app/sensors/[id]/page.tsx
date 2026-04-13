@@ -3,7 +3,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { formatTimestamp, getRelativeTime, getThresholds } from '@/lib/mock-data'
-import { sensorApi } from '@/lib/api'
+import { sensorApi, userApi } from '@/lib/api'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { SensorTrendChart } from '@/components/charts/SensorTrendChart'
 import { QRModal } from '@/components/ui/QRModal'
@@ -379,6 +379,25 @@ export default function SensorDetailPage() {
     doc.addFont('NanumGothic.ttf', 'NanumGothic', 'normal')
     doc.addFont('NanumGothic.ttf', 'NanumGothic', 'bold')
     doc.setFont('NanumGothic', 'normal')
+
+    const managers = (() => {
+      try {
+        return JSON.parse((sensor as any).site_managers || '[]')
+      } catch { return [] }
+    })()
+
+    let managerText = '—'
+    if (managers.length > 0) {
+      try {
+        const users = await userApi.getList()
+        managerText = managers.map((username: string) => {
+          const user = users.find((u: any) => u.username === username)
+          return user ? `${user.username} (${user.role})` : username
+        }).join(', ')
+      } catch {
+        managerText = managers.join(', ')
+      }
+    }
   
     // 헤더
     doc.setFontSize(16)
@@ -391,7 +410,7 @@ export default function SensorDetailPage() {
       body: [
         ['현장명', sensor.siteName || '—', '계측기 No.', sensor.manageNo || '—'],
         ['설치현황', sensor.installDate ? `설치일자 (${sensor.installDate})` : '—', '초기측정일', dateFrom],
-        ['관리자', '—', '설치위치', sensor.location?.description || '—'],
+        ['관리자', managerText, '설치위치', sensor.location?.description || '—'],
       ],
       theme: 'grid',
       styles: { fontSize: 9, cellPadding: 2, font: 'NanumGothic' },
