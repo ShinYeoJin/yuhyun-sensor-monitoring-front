@@ -164,20 +164,44 @@ function PrintModal({ sensor, config, onChange, onPrint, onExcel, onPdf, onClose
           <div className="rounded-xl border border-line bg-surface-subtle p-4">
             <p className="mb-3 font-mono text-[10px] font-semibold uppercase tracking-wider text-ink-muted">미리보기</p>
             <div className="rounded-lg border border-line bg-surface-card p-4 text-xs">
-              <div className="border-b border-line pb-3 text-center">
-                <p className="text-base font-bold text-ink">{config.title || '(타이틀 없음)'}</p>
-                <p className="mt-0.5 font-mono text-[10px] text-ink-muted">
-                  {config.range} · {config.dateFrom || '—'} ~ {config.dateTo || '—'}
-                </p>
+              {/* 제목 */}
+              <div className="border-b border-line pb-2 text-center">
+                <p className="text-sm font-bold text-ink">Water Level Meter Report</p>
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 font-mono text-[10px]">
-                <span className="text-ink-muted">센서</span><span className="text-ink">{sensor.manageNo || sensor.id} · {sensor.name}</span>
-                <span className="text-ink-muted">현장</span><span className="text-ink">{sensor.siteName}</span>
-                <span className="text-ink-muted">출력범위</span><span className="text-ink">{config.outputScope}</span>
-                <span className="text-ink-muted">출력대상</span><span className="text-ink">{config.interval}</span>
-                <span className="text-ink-muted">출력일시</span><span className="text-ink">{config.printedAt || '—'}</span>
+              {/* 센서 정보 표 */}
+              <table className="mt-2 w-full border-collapse text-[10px]">
+                <tbody>
+                  <tr>
+                    <td className="border border-line bg-surface-subtle px-2 py-1 font-semibold text-ink-muted w-16">현장명</td>
+                    <td className="border border-line px-2 py-1 text-ink">{sensor.siteName || '—'}</td>
+                    <td className="border border-line bg-surface-subtle px-2 py-1 font-semibold text-ink-muted w-20">계측기 No.</td>
+                    <td className="border border-line px-2 py-1 text-ink">{sensor.manageNo || '—'}</td>
+                  </tr>
+                  <tr>
+                    <td className="border border-line bg-surface-subtle px-2 py-1 font-semibold text-ink-muted">설치현황</td>
+                    <td className="border border-line px-2 py-1 text-ink">
+                      {sensor.installDate ? `설치일자 (${sensor.installDate.slice(0, 10)})` : '—'}
+                    </td>
+                    <td className="border border-line bg-surface-subtle px-2 py-1 font-semibold text-ink-muted">초기측정일</td>
+                    <td className="border border-line px-2 py-1 text-ink">{config.dateFrom || '—'}</td>
+                  </tr>
+                  <tr>
+                    <td className="border border-line bg-surface-subtle px-2 py-1 font-semibold text-ink-muted">관리자</td>
+                    <td className="border border-line px-2 py-1 text-ink">—</td>
+                    <td className="border border-line bg-surface-subtle px-2 py-1 font-semibold text-ink-muted">설치위치</td>
+                    <td className="border border-line px-2 py-1 text-ink">{sensor.location?.description || '—'}</td>
+                  </tr>
+                </tbody>
+              </table>
+              {/* 기간 및 기타 정보 */}
+              <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 font-mono text-[10px]">
+                <span className="text-ink-muted">출력기간</span>
+                <span className="text-ink">{config.dateFrom} ~ {config.dateTo}</span>
+                <span className="text-ink-muted">출력일시</span>
+                <span className="text-ink">{config.printedAt || '—'}</span>
               </div>
-              <div className="mt-3 border-t border-line pt-2 text-center font-mono text-[10px] text-ink-muted">
+              {/* 바닥글 */}
+              <div className="mt-2 border-t border-line pt-1 text-center font-mono text-[10px] text-ink-muted">
                 {config.footer || '회사명'}
               </div>
             </div>
