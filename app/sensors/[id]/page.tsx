@@ -261,7 +261,6 @@ export default function SensorDetailPage() {
   const [dateFrom, setDateFrom] = useState(today)
   const [dateTo,   setDateTo]   = useState(today)
   const [chartMode, setChartMode] = useState<'hourly' | 'daily'>('hourly')
-  const [unit80053, setUnit80053] = useState<'psi' | 'm'>('m')
 
   const apply80053Formula = (rawValue: number, initValue: number, depthLabel: string) => {
     const G = depthLabel === '1' ? 0.012044 : 0.013450
@@ -276,31 +275,15 @@ export default function SensorDetailPage() {
       to: dateTo,
       limit: 2000
     }).then((data: any[]) => {
-      const reversed = [...data].reverse()
-      const is80053 = sensor?.nameAbbr === '80053'
-      const initValue = is80053 && reversed.length > 0 ? parseFloat(reversed[0].value) : 0
-      const mapped = reversed.map((m: any) => {
-        if (is80053) {
-          const G = (m.depth_label === '1') ? 0.012044 : 0.013450
-          const psi = G * (initValue - parseFloat(m.value))
-          const converted = unit80053 === 'psi' ? psi : psi * 0.703
-          return {
-            timestamp: m.measured_at,
-            value: parseFloat(converted.toFixed(4)),
-            unit: unit80053,
-            status: 'normal',
-          }
-        }
-        return {
-          timestamp: m.measured_at,
-          value: parseFloat(m.value),
-          unit: sensor?.unit || '',
-          status: 'normal',
-        }
-      })
-      setMeasurements(mapped)
+      const mapped = data.map((m: any) => ({
+        timestamp: m.measured_at,
+        value: parseFloat(m.value),
+        unit: sensor?.unit || '',
+        status: 'normal',
+      }))
+      setMeasurements(mapped.reverse())
     }).catch(() => {})
-  }, [id, sensor?.unit, dateFrom, dateTo, unit80053])
+  }, [id, sensor?.unit, dateFrom, dateTo])
 
   // 조회 기간 (시작일 ~ 종료일)
   const [qrOpen,   setQrOpen]   = useState(false)
@@ -358,12 +341,6 @@ export default function SensorDetailPage() {
     })
   }, [dailyReadings])
 
-  // 80053 계산된 현재값
-  const displayCurrentValue = useMemo(() => {
-    if (sensor?.nameAbbr !== '80053') return sensor?.currentValue ?? 0
-    if (measurements.length === 0) return 0
-    return measurements[measurements.length - 1].value
-  }, [sensor, measurements])
 
   const { thresholdWarning, thresholdDanger } = sensor ? getThresholds(sensor) : { thresholdWarning: 0, thresholdDanger: 0 }
   const overThreshold = sensor ? sensor.currentValue > thresholdDanger : false
@@ -734,7 +711,7 @@ export default function SensorDetailPage() {
                 {isToday ? '현재 측정값' : `${dateFrom} ~ ${dateTo} 기준`}
               </p>
               <p className={`mt-1 font-mono text-5xl font-light leading-none tracking-tight ${valueColorClass}`}>
-                {sensor.status === 'offline' ? '—' : displayCurrentValue}
+                {sensor.status === 'offline' ? '—' : sensor.currentValue}
                 <span className="ml-2 text-xl font-normal text-ink-muted">{sensor.unit}</span>
               </p>
             </div>
@@ -795,17 +772,38 @@ export default function SensorDetailPage() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              {sensor.nameAbbr === '80053' && (
-                <div className="flex gap-1 rounded-lg border border-line bg-surface-subtle p-1">
-                  {(['psi', 'm'] as const).map(u => (
-                    <button key={u} onClick={() => setUnit80053(u)}
-                      className={['rounded-md px-3 py-1 font-mono text-[11px] font-medium transition-all',
-                        unit80053 === u ? 'bg-surface-card text-brand shadow-card' : 'text-ink-muted hover:text-ink-sub'].join(' ')}>
-                      {u}
-                    </button>
-                  ))}
-                </div>
-              )}
+            {sensor.nameAbbr === '80053' && (
+              <div className="flex gap-1 rounded-lg border border-line bg-surface-subtle p-1">
+                {(['m', 'psi'] as const).map(u => (
+                  <button key={u} onClick={() => {
+                    if (u === 'psi') {
+                      setMeasurements(prev => prev.map(m => ({
+                        ...m,
+                        value: parseFloat((m.value / 0.703).toFixed(4)),
+                        unit: 'psi',
+                      })))
+                    } else {
+                      // m으로 전환 시 API 재호출
+                      sensorApi.getMeasurements(Number(id), {
+                        from: dateFrom, to: dateTo, limit: 2000
+                      }).then((data: any[]) => {
+                        const mapped = data.map((m: any) => ({
+                          timestamp: m.measured_at,
+                          value: parseFloat(m.value),
+                          unit: sensor?.unit || '',
+                          status: 'normal',
+                        }))
+                        setMeasurements(mapped.reverse())
+                      }).catch(() => {})
+                    }
+                  }}
+                    className={['rounded-md px-3 py-1 font-mono text-[11px] font-medium transition-all',
+                      'text-ink-muted hover:text-ink-sub'].join(' ')}>
+                    {u}
+                  </button>
+                ))}
+              </div>
+            )}
               <div className="flex gap-1 rounded-lg border border-line bg-surface-subtle p-1">
                 {(['hourly', 'daily'] as const).map(mode => (
                   <button key={mode} onClick={() => setChartMode(mode)}
