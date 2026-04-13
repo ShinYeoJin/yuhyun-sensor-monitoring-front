@@ -650,7 +650,8 @@ export default function SensorsPage() {
         formulaParams: { ...freshSensor.formulaParams },
         criteria: { ...freshSensor.criteria },
         siteId: freshSensor.siteId, siteName: freshSensor.siteName,
-        installDate: freshSensor.installDate, location: { ...freshSensor.location },
+        installDate: freshSensor.installDate ? freshSensor.installDate.slice(0, 10) : '',
+        location: { ...freshSensor.location },
       })
       setEditTarget(freshSensor)
     } catch (err) {

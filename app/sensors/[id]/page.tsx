@@ -261,6 +261,7 @@ export default function SensorDetailPage() {
   const [dateFrom, setDateFrom] = useState(today)
   const [dateTo,   setDateTo]   = useState(today)
   const [chartMode, setChartMode] = useState<'hourly' | 'daily'>('hourly')
+  const [unit80053, setUnit80053] = useState<'m' | 'psi'>('m')
 
   useEffect(() => {
     if (!id) return
@@ -770,6 +771,7 @@ export default function SensorDetailPage() {
               <div className="flex gap-1 rounded-lg border border-line bg-surface-subtle p-1">
                 {(['m', 'psi'] as const).map(u => (
                   <button key={u} onClick={() => {
+                    setUnit80053(u)  // 활성화 표시용 추가
                     if (u === 'psi') {
                       setMeasurements(prev => prev.map(m => ({
                         ...m,
@@ -777,7 +779,6 @@ export default function SensorDetailPage() {
                         unit: 'psi',
                       })))
                     } else {
-                      // m으로 전환 시 API 재호출
                       sensorApi.getMeasurements(Number(id), {
                         from: dateFrom, to: dateTo, limit: 2000
                       }).then((data: any[]) => {
@@ -792,7 +793,7 @@ export default function SensorDetailPage() {
                     }
                   }}
                     className={['rounded-md px-3 py-1 font-mono text-[11px] font-medium transition-all',
-                      'text-ink-muted hover:text-ink-sub'].join(' ')}>
+                      unit80053 === u ? 'bg-surface-card text-brand shadow-card' : 'text-ink-muted hover:text-ink-sub'].join(' ')}>
                     {u}
                   </button>
                 ))}
