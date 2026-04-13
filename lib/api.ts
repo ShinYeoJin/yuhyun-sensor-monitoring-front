@@ -53,6 +53,8 @@ export const sensorApi = {
     level2_lower?: number | string | null;
     criteria_unit?: string | null;
     criteria_unit_name?: string | null;
+    install_date?: string | null;
+    location_desc?: string | null;
   }) =>
   request(`/api/sensors/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   updateThreshold: (id: number, body: { threshold_normal_max: any; threshold_warning_max: any; threshold_danger_min: any }) =>

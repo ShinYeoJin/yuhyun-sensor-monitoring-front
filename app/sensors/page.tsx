@@ -699,6 +699,8 @@ export default function SensorsPage() {
         level2_lower: form.criteria.level2Lower !== '' ? form.criteria.level2Lower : null,
         criteria_unit: form.criteria.criteriaUnit || null,
         criteria_unit_name: form.criteria.criteriaUnitName || null,
+        install_date: form.installDate || null,
+        location_desc: form.location.description || null,
       })
       await sensorApi.updateThreshold(Number(editTarget.id), {
         threshold_normal_max: form.threshold.normalMax !== '' ? form.threshold.normalMax : null,
