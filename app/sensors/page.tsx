@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { getRelativeTime, getThresholds } from '@/lib/mock-data'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { sensorStore, useSensorStore, evaluateStatus } from '@/lib/sensor-store'
-import { sensorApi } from '@/lib/api'
+import { sensorApi, siteApi, formulaApi } from '@/lib/api'
 import { useEffect } from 'react'
 import type {
   SensorStatus, UnifiedSensor, SensorField, MeasureMethod, Formula,
@@ -13,7 +13,7 @@ import type {
 } from '@/types'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
-import { formulaApi } from '@/lib/api'
+
 
 
 // ─── 상태 필터 ────────────────────────────────────────────────────────────────
@@ -182,7 +182,7 @@ function FormulaModal({ mode, form, onChange, onSubmit, onClose }: {
 function SensorModal({ mode, form, onChange, onSubmit, onClose, formulas }: {
   mode: 'add' | 'edit'; form: SensorForm
   onChange: (f: SensorForm) => void; onSubmit: () => void; onClose: () => void
-  formulas: any[]
+  formulas: any[]; sites: any[]
 }) {
   const isValid = form.name.trim() !== '' && form.siteId !== ''
   const set = (key: keyof SensorForm, val: string) => onChange({ ...form, [key]: val })
@@ -430,13 +430,12 @@ function SensorModal({ mode, form, onChange, onSubmit, onClose, formulas }: {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelCls}>현장 *</label>
-                <select value={form.siteId}
-                  onChange={e => {
-                    onChange({ ...form, siteId: e.target.value, siteName: e.target.value === 'site-main' ? '계측 현장' : '' })
-                  }}
-                  className={selectCls}>
+                <select value={form.siteId} onChange={e => {
+                  const selected = sites.find(s => s.site_code === e.target.value)
+                  onChange({ ...form, siteId: e.target.value, siteName: selected?.name || '' })
+                }} className={selectCls}>
                   <option value="">현장 선택</option>
-                  <option value="site-main">계측 현장</option>
+                  {sites.map(s => <option key={s.site_code} value={s.site_code}>{s.name}</option>)}
                 </select>
               </div>
               <div>
@@ -550,6 +549,12 @@ export default function SensorsPage() {
 
   useEffect(() => {
     formulaApi.getAll().then((data: any[]) => setFormulas(data)).catch(console.error)
+  }, [])
+
+  const [sites, setSites] = useState<any[]>([])
+
+  useEffect(() => {
+    siteApi.getAll().then((data: any[]) => setSites(data)).catch(console.error)
   }, [])
 
   useEffect(() => {
@@ -972,8 +977,8 @@ export default function SensorsPage() {
         </div>
       )}
 
-      {addOpen && <SensorModal mode="add" form={form} onChange={setForm} onSubmit={handleAdd} onClose={() => setAddOpen(false)} formulas={formulas} />}
-      {editTarget && <SensorModal mode="edit" form={form} onChange={setForm} onSubmit={handleEdit} onClose={() => setEditTarget(null)} formulas={formulas} />}
+      {addOpen && <SensorModal mode="add" form={form} onChange={setForm} onSubmit={handleAdd} onClose={() => setAddOpen(false)} formulas={formulas} sites={sites} />}
+      {editTarget && <SensorModal mode="edit" form={form} onChange={setForm} onSubmit={handleEdit} onClose={() => setEditTarget(null)} formulas={formulas} sites={sites} />}
       {deleteTarget && <DeleteModal sensorName={deleteTarget.name} onConfirm={handleDelete} onClose={() => setDeleteTarget(null)} />}
       {formulaAddOpen && <FormulaModal mode="add" form={formulaForm} onChange={setFormulaForm} onSubmit={handleFormulaAdd} onClose={() => setFormulaAddOpen(false)} />}
       {formulaEditTarget && <FormulaModal mode="edit" form={formulaForm} onChange={setFormulaForm} onSubmit={handleFormulaEdit} onClose={() => setFormulaEditTarget(null)} />}
