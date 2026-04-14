@@ -122,10 +122,7 @@ function PrintModal({ sensor, config, onChange, onPrint, onExcel, onPdf, onClose
           </div>
           <div>
             <label className={labelCls}>출력일시</label>
-            <input type="datetime-local"
-              value={config.printedAt}
-              onChange={e => set('printedAt', e.target.value)}
-              className={inputCls} />
+            <input type="datetime-local" value={config.printedAt} onChange={e => set('printedAt', e.target.value)} className={inputCls} />
           </div>
           <div>
             <label className={labelCls}>출력범위</label>
@@ -303,11 +300,9 @@ export default function SensorDetailPage() {
 
   useEffect(() => {
     if (!id) return
-    // limit=1, 날짜 필터 없이 → 가장 오래된 값 1개
-    sensorApi.getMeasurements(Number(id), { limit: 1 }).then((data: any[]) => {
+    sensorApi.getMeasurements(Number(id), { limit: 2000 }).then((data: any[]) => {
       if (data.length > 0) {
-        // API가 ASC 반환 → 첫 번째가 가장 오래된 값
-        const oldest = [...data].sort((a, b) =>
+        const oldest = [...data].sort((a: any, b: any) =>
           new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime()
         )[0]
         setGlobalInitReading({
@@ -317,7 +312,6 @@ export default function SensorDetailPage() {
       }
     }).catch(() => {})
   }, [id])
-  
 
   const [qrOpen,    setQrOpen]    = useState(false)
   const [tablePage, setTablePage] = useState(1)
@@ -341,7 +335,6 @@ export default function SensorDetailPage() {
   const readings = measurements
 
   const dailyReadings = useMemo(() => {
-    // 날짜별 마지막 측정값(가장 늦은 시각)을 대표값으로 통일
     const map = new Map<string, any>()
     const sorted = [...measurements].sort((a, b) =>
       new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
@@ -350,15 +343,13 @@ export default function SensorDetailPage() {
       const date = new Date(m.timestamp).toLocaleDateString('ko-KR', {
         year: 'numeric', month: '2-digit', day: '2-digit'
       })
-      map.set(date, m)  // 항상 덮어쓰면 마지막(최신) 값이 남음
+      map.set(date, m)
     })
     return Array.from(map.values())
   }, [measurements])
 
   const dailyTableData = useMemo(() => {
     if (dailyReadings.length === 0) return []
-    // measurements는 최신→오래된 순으로 reverse되어 있음
-    // dailyReadings[마지막]이 가장 오래된 날짜 = 초기치
     const sorted = [...dailyReadings].sort((a, b) =>
       new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     )
@@ -393,11 +384,9 @@ export default function SensorDetailPage() {
   const handlePrint = () => { setPrintOpen(false); setTimeout(() => window.print(), 300) }
 
   const handleExcelDownload = async () => {
-    // ── 1. 차트 이미지 캡처 ───────────────────────────────────────────────
     let chartBase64: string | null = null
     if (chartRef.current) {
       try {
-        // SVG 기반 Recharts를 선명하게 캡처하기 위해 XMLSerializer 사용
         const svgEl = chartRef.current.querySelector('svg')
         if (svgEl) {
           const svgData = new XMLSerializer().serializeToString(svgEl)
@@ -422,7 +411,6 @@ export default function SensorDetailPage() {
             img.src = svgUrl
           })
         } else {
-          // SVG 없으면 html2canvas fallback
           const canvas = await html2canvas(chartRef.current, {
             scale: 3, backgroundColor: '#ffffff', useCORS: true,
           })
@@ -431,7 +419,6 @@ export default function SensorDetailPage() {
       } catch { chartBase64 = null }
     }
 
-    // ── 2. 관리자 이름+권한 조회 ─────────────────────────────────────────
     const managerUsernames: string[] = (() => {
       try { return JSON.parse(sensor.site_managers || '[]') } catch { return [] }
     })()
@@ -446,14 +433,12 @@ export default function SensorDetailPage() {
       } catch { managerText = managerUsernames.join(', ') }
     }
 
-    // ── 3. 데이터 정렬 — 오래된 순(초기치 맨 위) ─────────────────────────
     const sortedRows = [...dailyReadings].sort((a: any, b: any) =>
       new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     )
     const initValue = sortedRows.length > 0 ? parseFloat(String(sortedRows[0].value)) : 0
     const initDate  = sortedRows.length > 0 ? new Date(sortedRows[0].timestamp) : new Date()
 
-    // ── 4. ExcelJS 동적 import ────────────────────────────────────────────
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ExcelJSModule = await import('exceljs') as any
     const ExcelJS = ExcelJSModule.default ?? ExcelJSModule
@@ -477,17 +462,15 @@ export default function SensorDetailPage() {
     setH(1, 28); setH(2, 4); setH(3, 18); setH(4, 18); setH(5, 18); setH(6, 4)
     const CR_END = 28
     for (let r = 7; r <= CR_END; r++) setH(r, 16)
-    setH(CR_END + 1, 16)  // 범례
+    setH(CR_END + 1, 16)
     setH(CR_END + 2, 4); setH(CR_END + 3, 18); setH(CR_END + 4, 18); setH(CR_END + 5, 18); setH(CR_END + 6, 3)
     const DS = CR_END + 7
     sortedRows.forEach((_: any, i: number) => setH(DS + i, 17))
 
-    // 타이틀
     ws2.mergeCells('A1:F1')
     const t = ws2.getCell('A1')
     t.value = 'Water Level Meter Report'; t.font = font(true, 15, WHITE); t.fill = fill(DARK); t.alignment = aln(); t.border = MB
 
-    // 정보 행 3~5
     const infoRows = [
       ['현   장   명', sensor.siteName || '—',          '계측기 No.', sensor.manageNo || '—'],
       ['설 치 현 황',  sensor.installDate ? `설치일자 (${sensor.installDate.slice(0, 10)})` : '—', '초기측정일', initDate.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })],
@@ -505,7 +488,6 @@ export default function SensorDetailPage() {
       setC(5, v2, font(false, 9, BLACK), fill(WHITE), aln('left'))
     })
 
-    // 차트 이미지 삽입
     if (chartBase64) {
       const imgId = wb2.addImage({ base64: chartBase64.split(',')[1], extension: 'png' })
       ws2.addImage(imgId, {
@@ -515,7 +497,6 @@ export default function SensorDetailPage() {
       })
     }
 
-    // 범례 행 (CR_END+1)
     const legendRow = CR_END + 1
     ws2.mergeCells(legendRow, 1, legendRow, 3)
     const lgLine = ws2.getCell(legendRow, 1)
@@ -529,7 +510,6 @@ export default function SensorDetailPage() {
     lgRef.font = { name: '맑은 고딕', size: 9, color: { argb: 'FFC00000' } }
     lgRef.alignment = { horizontal: 'center', vertical: 'middle' }
 
-    // 컬럼 헤더
     const H1 = CR_END + 3, H2 = CR_END + 4, H3 = CR_END + 5
     const mhdr = (r1: number, c1: number, r2: number, c2: number, val: string, sz = 9, bg = DARK) => {
       ws2.mergeCells(r1, c1, r2, c2)
@@ -545,7 +525,6 @@ export default function SensorDetailPage() {
     ws2.getCell(H3, 3).fill = fill(MID); ws2.getCell(H3, 3).border = TB
     setHdr(H3, 4, '전측정치대비'); setHdr(H3, 5, '초기치대비')
 
-    // 데이터 행 — 오래된 순(초기치 맨 위)
     sortedRows.forEach((row: any, i: number) => {
       const r = DS + i
       const isFirst = i === 0
@@ -578,11 +557,9 @@ export default function SensorDetailPage() {
       cn.fill = fill(isFirst ? YELL : rf); cn.border = TB; cn.alignment = aln()
     })
 
-    // 인쇄 설정
     ws2.pageSetup.paperSize = 9; ws2.pageSetup.orientation = 'portrait'
     ws2.pageSetup.fitToPage = true; ws2.pageSetup.fitToWidth = 1; ws2.pageSetup.fitToHeight = 0
 
-    // 다운로드
     const buf  = await wb2.xlsx.writeBuffer()
     const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     const url  = URL.createObjectURL(blob)
@@ -611,7 +588,6 @@ export default function SensorDetailPage() {
     const managers = (() => {
       try { return JSON.parse((sensor as any).site_managers || '[]') } catch { return [] }
     })()
-
     let managerText = '—'
     if (managers.length > 0) {
       try {
@@ -620,13 +596,10 @@ export default function SensorDetailPage() {
           const user = users.find((u: any) => u.username === username)
           return user ? `${user.username} (${user.role})` : username
         }).join(', ')
-      } catch {
-        managerText = managers.join(', ')
-      }
+      } catch { managerText = managers.join(', ') }
     }
 
-    // PDF 초기측정일: 가장 오래된 날짜
-    const pdfInitDate = globalInitReading
+    const pdfInitDateStr = globalInitReading
       ? new Date(globalInitReading.timestamp).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
       : dateFrom
 
@@ -637,9 +610,9 @@ export default function SensorDetailPage() {
       startY: 28,
       head: [],
       body: [
-        ['현장명',  sensor.siteName || '—',                                                         '계측기 No.', sensor.manageNo || '—'],
-        ['설치현황', sensor.installDate ? `설치일자 (${sensor.installDate.slice(0, 10)})` : '—',  '초기측정일', pdfInitDate],
-        ['관리자',  managerText,                                                                      '설치위치',   sensor.location?.description || '—'],
+        ['현장명',  sensor.siteName || '—',                                                        '계측기 No.', sensor.manageNo || '—'],
+        ['설치현황', sensor.installDate ? `설치일자 (${sensor.installDate.slice(0, 10)})` : '—', '초기측정일', pdfInitDateStr],
+        ['관리자',  managerText,                                                                     '설치위치',   sensor.location?.description || '—'],
       ],
       theme: 'grid',
       styles: { fontSize: 9, cellPadding: 2, font: 'NanumGothic' },
@@ -653,6 +626,15 @@ export default function SensorDetailPage() {
 
     const currentY = (doc as any).lastAutoTable.finalY + 5
     const chartData = chartMode === 'hourly' ? measurements : dailyReadings
+
+    // 1차 관리기준 값 계산
+    const level1Lower = sensor.criteria?.level1Lower !== '' && sensor.criteria?.level1Lower != null
+      ? parseFloat(sensor.criteria.level1Lower) : null
+    const level1Upper = sensor.criteria?.level1Upper !== '' && sensor.criteria?.level1Upper != null
+      ? parseFloat(sensor.criteria.level1Upper) : null
+    const refVal = (level1Lower !== null && !isNaN(level1Lower)) ? level1Lower
+      : (level1Upper !== null && !isNaN(level1Upper)) ? level1Upper : null
+
     if (chartData.length > 0) {
       const chartX = 15, chartY = currentY, chartW = pageWidth - 30, chartH = 50
 
@@ -660,7 +642,8 @@ export default function SensorDetailPage() {
       doc.rect(chartX, chartY, chartW, chartH)
 
       const values = chartData.map((r: any) => parseFloat(r.value))
-      const minVal = Math.min(...values), maxVal = Math.max(...values)
+      const candidates = refVal !== null ? [...values, refVal] : values
+      const minVal = Math.min(...candidates), maxVal = Math.max(...candidates)
       const padding = (maxVal - minVal) * 0.1 || 1
       const yMin = minVal - padding, yMax = maxVal + padding, range = yMax - yMin
 
@@ -669,21 +652,14 @@ export default function SensorDetailPage() {
         const gy = chartY + (chartH / 4) * g
         doc.line(chartX, gy, chartX + chartW, gy)
         doc.setFontSize(5); doc.setTextColor(120, 120, 120)
-        doc.text((yMax - (range / 4) * g).toFixed(1), chartX - 1, gy + 1, { align: 'right' })
+        doc.text((yMax - (range / 4) * g).toFixed(2), chartX - 1, gy + 1, { align: 'right' })
       }
       doc.setFontSize(5); doc.setTextColor(120, 120, 120)
-      doc.text(yMax.toFixed(1), chartX - 1, chartY + 2, { align: 'right' })
-      doc.text(yMin.toFixed(1), chartX - 1, chartY + chartH + 1, { align: 'right' })
+      doc.text(yMax.toFixed(2), chartX - 1, chartY + 2, { align: 'right' })
+      doc.text(yMin.toFixed(2), chartX - 1, chartY + chartH + 1, { align: 'right' })
 
       // 1차 관리기준선
-      const level1Lower = sensor.criteria?.level1Lower !== '' && sensor.criteria?.level1Lower != null
-        ? parseFloat(sensor.criteria.level1Lower) : null
-      const level1Upper = sensor.criteria?.level1Upper !== '' && sensor.criteria?.level1Upper != null
-        ? parseFloat(sensor.criteria.level1Upper) : null
-      const refVal = (level1Lower !== null && !isNaN(level1Lower)) ? level1Lower
-        : (level1Upper !== null && !isNaN(level1Upper)) ? level1Upper : null
-
-      if (refVal !== null && refVal >= yMin && refVal <= yMax) {
+      if (refVal !== null) {
         const refY = chartY + chartH - ((refVal - yMin) / range) * chartH
         doc.setDrawColor(255, 0, 0); doc.setLineWidth(0.4)
         let x = chartX
@@ -694,6 +670,7 @@ export default function SensorDetailPage() {
         doc.text('1차 관리기준', chartX + chartW - 1, refY - 1, { align: 'right' })
       }
 
+      // 데이터 선
       doc.setDrawColor(34, 150, 100); doc.setLineWidth(0.5); doc.setTextColor(0, 0, 0)
       for (let i = 1; i < chartData.length; i++) {
         const x1 = chartX + ((i - 1) / (chartData.length - 1)) * chartW
@@ -703,6 +680,7 @@ export default function SensorDetailPage() {
         doc.line(x1, y1, x2, y2)
       }
 
+      // X축 날짜 레이블
       doc.setFontSize(5); doc.setTextColor(120, 120, 120)
       const labelCount = Math.min(5, chartData.length)
       for (let l = 0; l < labelCount; l++) {
@@ -713,23 +691,19 @@ export default function SensorDetailPage() {
       doc.setTextColor(0, 0, 0)
 
       // 범례 — 가운데 정렬
-      const legendY = chartY + chartH + 8
-      doc.setFontSize(7)
+      const legendY = chartY + chartH + 10
       const centerX = chartX + chartW / 2
+      doc.setFontSize(7)
 
-      // 좌측: MN-007
       const leftLegendX = centerX - 35
-      doc.setDrawColor(34, 150, 100)
-      doc.setLineWidth(0.8)
+      doc.setDrawColor(34, 150, 100); doc.setLineWidth(0.8)
       doc.line(leftLegendX, legendY, leftLegendX + 8, legendY)
       doc.setTextColor(34, 150, 100)
       doc.text(`── ${sensor.manageNo || sensor.name}`, leftLegendX + 10, legendY + 0.5)
 
-      // 우측: 1차 관리기준
       if (refVal !== null) {
         const rightLegendX = centerX + 5
-        doc.setDrawColor(255, 0, 0)
-        doc.setLineWidth(0.6)
+        doc.setDrawColor(255, 0, 0); doc.setLineWidth(0.6)
         let lx = rightLegendX
         while (lx < rightLegendX + 8) {
           doc.line(lx, legendY, Math.min(lx + 3, rightLegendX + 8), legendY); lx += 5
@@ -738,21 +712,22 @@ export default function SensorDetailPage() {
         doc.text('- - - 1차 관리기준', rightLegendX + 10, legendY + 0.5)
       }
       doc.setTextColor(0, 0, 0)
+    }  // ← if (chartData.length > 0) 닫는 중괄호
 
-    // PDF도 엑셀과 동일하게 dailyReadings 기반으로 직접 계산 (수치 통일)
+    // PDF 표 — dailyReadings 기반 직접 계산 (엑셀과 동일 소스)
     const pdfSortedRows = [...dailyReadings].sort((a: any, b: any) =>
       new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     )
     const pdfInitVal  = pdfSortedRows.length > 0 ? parseFloat(parseFloat(String(pdfSortedRows[0].value)).toFixed(2)) : 0
     const pdfInitDate = pdfSortedRows.length > 0 ? new Date(pdfSortedRows[0].timestamp) : new Date()
 
-    const tableStartY = currentY + 70
+    const tableStartY = currentY + 65
     autoTable(doc, {
       startY: tableStartY,
       head: [['측정일', '경과일', `지하수위 G.L(${sensor.unit})`, '전측정대비', '초기치대비', '비고']],
       body: pdfSortedRows.map((r: any, i: number) => {
         const curVal   = parseFloat(parseFloat(String(r.value)).toFixed(2))
-        const prevVal  = i > 0 ? parseFloat(parseFloat(String(pdfSortedRows[i-1].value)).toFixed(2)) : curVal
+        const prevVal  = i > 0 ? parseFloat(parseFloat(String(pdfSortedRows[i - 1].value)).toFixed(2)) : curVal
         const prevDiff = parseFloat((curVal - prevVal).toFixed(2))
         const initDiff = parseFloat((curVal - pdfInitVal).toFixed(2))
         const elapsed  = Math.round((new Date(r.timestamp).getTime() - pdfInitDate.getTime()) / 86400000)
@@ -944,7 +919,6 @@ export default function SensorDetailPage() {
               </p>
             </div>
 
-            {/* 초기측정값 표시 */}
             {globalInitReading && (
               <div className="mb-4 rounded-lg border border-line bg-surface-subtle px-4 py-2.5 text-center">
                 <p className="font-mono text-[10px] text-ink-muted">초기측정값 (최초 수신)</p>
@@ -1251,5 +1225,5 @@ export default function SensorDetailPage() {
       )}
       {qrOpen && <QRModal sensorId={sensor.id} onClose={() => setQrOpen(false)} />}
     </div>
-  )}
+  )
 }
