@@ -57,12 +57,14 @@ export function SensorTrendChart({ sensor, readings, hideXAxis = false }: Props)
     }
   })
 
-  // 1차 관리기준 값 (criteria 우선, 없으면 threshold)
+  // 1차 관리기준 값 
   const level1Lower = sensor.criteria?.level1Lower !== '' && sensor.criteria?.level1Lower != null
     ? parseFloat(sensor.criteria.level1Lower) : null
   const level1Upper = sensor.criteria?.level1Upper !== '' && sensor.criteria?.level1Upper != null
     ? parseFloat(sensor.criteria.level1Upper) : null
-  const refLine = level1Lower ?? level1Upper
+  const refLine = (level1Lower !== null && !isNaN(level1Lower)) ? level1Lower
+    : (level1Upper !== null && !isNaN(level1Upper)) ? level1Upper
+    : null
 
   // x축 틱: 최대 8개
   const tickCount = Math.min(8, data.length)

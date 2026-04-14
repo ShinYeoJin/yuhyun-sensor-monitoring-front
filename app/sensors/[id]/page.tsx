@@ -450,25 +450,39 @@ export default function SensorDetailPage() {
     ws2.getCell(H3,3).fill=fill(MID); ws2.getCell(H3,3).border=TB
     setHdr(H3,4,'전측정치대비'); setHdr(H3,5,'초기치대비')
 
-    // 데이터 행
-    dailyTableData.forEach((row:any, i:number) => {
-      const r=DS+i, isFirst=i===0
+    // 데이터 행 — 오래된 날짜(초기치)부터 최신 순으로 표시
+    const sortedRows = [...dailyTableData].sort((a:any, b:any) =>
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    )
+    const initValue = sortedRows.length > 0 ? sortedRows[0].value : 0
+    const initDate  = sortedRows.length > 0 ? new Date(sortedRows[0].timestamp) : new Date()
+
+    sortedRows.forEach((row:any, i:number) => {
+      const r=DS+i
+      const isFirst = i === 0
       const rf=isFirst?YELL:(i%2===0?ALT:WHITE)
       const base = { fill:fill(rf), border:TB, alignment:aln() }
       const setD = (c:number,val:any,fnt:any,numFmt?:string) => {
         const cell=ws2.getCell(r,c); cell.value=val; cell.font=fnt; Object.assign(cell,base)
         if(numFmt) cell.numFmt=numFmt
       }
-      setD(1, new Date(row.timestamp).toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'}), font(false,9,BLACK))
-      setD(2, row.elapsed, font(false,9,BLACK))
-      setD(3, row.value,   font(false,9,BLACK), '0.00')
+      const curDate = new Date(row.timestamp)
+      const elapsed = Math.round((curDate.getTime() - initDate.getTime()) / 86400000)
+      const prevVal = i > 0 ? sortedRows[i-1].value : row.value
+      const prevDiff = parseFloat((row.value - prevVal).toFixed(2))
+      const initDiff = parseFloat((row.value - initValue).toFixed(2))
+
+      setD(1, curDate.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'}), font(false,9,BLACK))
+      setD(2, elapsed, font(false,9,BLACK))
+      setD(3, row.value, font(false,9,BLACK), '0.00')
       if(isFirst) {
         setD(4,0,font(false,9,BLACK),'0.00'); setD(5,0,font(false,9,BLACK),'0.00')
       } else {
-        setD(4,row.prevDiff,font(false,9,row.prevDiff<0?RED:BLUE),'+0.00;-0.00;0.00')
-        setD(5,row.initDiff,font(false,9,row.initDiff<0?RED:BLUE),'+0.00;-0.00;0.00')
+        setD(4,prevDiff,font(false,9,prevDiff<0?RED:BLUE),'+0.00;-0.00;0.00')
+        setD(5,initDiff,font(false,9,initDiff<0?RED:BLUE),'+0.00;-0.00;0.00')
       }
-      const note=remarks[row.dateKey]||(isFirst?'초기치':'')
+      const dateKey = curDate.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'})
+      const note=remarks[dateKey]||(isFirst?'초기치':'')
       const cn=ws2.getCell(r,6); cn.value=note; cn.font=font(isFirst,9,isFirst?RED:BLACK)
       cn.fill=fill(isFirst?YELL:rf); cn.border=TB; cn.alignment=aln()
     })
