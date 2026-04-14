@@ -475,8 +475,8 @@ export default function SensorDetailPage() {
 
     const setH = (r: number, h: number) => { ws2.getRow(r).height = h }
     setH(1, 28); setH(2, 4); setH(3, 18); setH(4, 18); setH(5, 18); setH(6, 4)
-    const CR_END = 36  // 7~36행 = 30행으로 그래프 영역 확장
-    for (let r = 7; r <= CR_END; r++) setH(r, 20)
+    const CR_END = 28
+    for (let r = 7; r <= CR_END; r++) setH(r, 16)
     setH(CR_END + 1, 16)  // 범례
     setH(CR_END + 2, 4); setH(CR_END + 3, 18); setH(CR_END + 4, 18); setH(CR_END + 5, 18); setH(CR_END + 6, 3)
     const DS = CR_END + 7
@@ -712,40 +712,60 @@ export default function SensorDetailPage() {
       }
       doc.setTextColor(0, 0, 0)
 
-      // 범례
+      // 범례 — 가운데 정렬
       const legendY = chartY + chartH + 8
       doc.setFontSize(7)
+      const centerX = chartX + chartW / 2
+
+      // 좌측: MN-007
+      const leftLegendX = centerX - 35
       doc.setDrawColor(34, 150, 100)
       doc.setLineWidth(0.8)
-      doc.line(chartX, legendY, chartX + 8, legendY)
+      doc.line(leftLegendX, legendY, leftLegendX + 8, legendY)
       doc.setTextColor(34, 150, 100)
-      doc.text(`── ${sensor.manageNo || sensor.name}`, chartX + 10, legendY + 0.5)
+      doc.text(`── ${sensor.manageNo || sensor.name}`, leftLegendX + 10, legendY + 0.5)
 
+      // 우측: 1차 관리기준
       if (refVal !== null) {
+        const rightLegendX = centerX + 5
         doc.setDrawColor(255, 0, 0)
         doc.setLineWidth(0.6)
-        let lx = chartX + 50
-        while (lx < chartX + 58) {
-          doc.line(lx, legendY, Math.min(lx + 3, chartX + 58), legendY); lx += 5
+        let lx = rightLegendX
+        while (lx < rightLegendX + 8) {
+          doc.line(lx, legendY, Math.min(lx + 3, rightLegendX + 8), legendY); lx += 5
         }
         doc.setTextColor(255, 0, 0)
-        doc.text('- - - 1차 관리기준', chartX + 60, legendY + 0.5)
+        doc.text('- - - 1차 관리기준', rightLegendX + 10, legendY + 0.5)
       }
       doc.setTextColor(0, 0, 0)
-    }
+
+    // PDF도 엑셀과 동일하게 dailyReadings 기반으로 직접 계산 (수치 통일)
+    const pdfSortedRows = [...dailyReadings].sort((a: any, b: any) =>
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    )
+    const pdfInitVal  = pdfSortedRows.length > 0 ? parseFloat(parseFloat(String(pdfSortedRows[0].value)).toFixed(2)) : 0
+    const pdfInitDate = pdfSortedRows.length > 0 ? new Date(pdfSortedRows[0].timestamp) : new Date()
 
     const tableStartY = currentY + 70
     autoTable(doc, {
       startY: tableStartY,
       head: [['측정일', '경과일', `지하수위 G.L(${sensor.unit})`, '전측정대비', '초기치대비', '비고']],
-      body: dailyTableData.map((r: any, i: number) => [
-        new Date(r.timestamp).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }),
-        r.elapsed,
-        parseFloat(r.value).toFixed(2),
-        i === 0 ? '0.00' : (r.prevDiff > 0 ? `+${r.prevDiff}` : String(r.prevDiff)),
-        i === 0 ? '0.00' : (r.initDiff > 0 ? `+${r.initDiff}` : String(r.initDiff)),
-        i === 0 ? '초기치' : (remarks[r.dateKey] || ''),
-      ]),
+      body: pdfSortedRows.map((r: any, i: number) => {
+        const curVal   = parseFloat(parseFloat(String(r.value)).toFixed(2))
+        const prevVal  = i > 0 ? parseFloat(parseFloat(String(pdfSortedRows[i-1].value)).toFixed(2)) : curVal
+        const prevDiff = parseFloat((curVal - prevVal).toFixed(2))
+        const initDiff = parseFloat((curVal - pdfInitVal).toFixed(2))
+        const elapsed  = Math.round((new Date(r.timestamp).getTime() - pdfInitDate.getTime()) / 86400000)
+        const dateKey  = new Date(r.timestamp).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
+        return [
+          dateKey,
+          elapsed,
+          curVal.toFixed(2),
+          i === 0 ? '0.00' : (prevDiff > 0 ? `+${prevDiff}` : String(prevDiff)),
+          i === 0 ? '0.00' : (initDiff > 0 ? `+${initDiff}` : String(initDiff)),
+          i === 0 ? '초기치' : (remarks[dateKey] || ''),
+        ]
+      }),
       theme: 'grid',
       headStyles: { fillColor: [60, 80, 120], textColor: 255, fontSize: 8, font: 'NanumGothic', fontStyle: 'normal' },
       styles: { fontSize: 8, cellPadding: 2, font: 'NanumGothic' },
