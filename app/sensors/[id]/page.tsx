@@ -476,7 +476,6 @@ export default function SensorDetailPage() {
     // 인쇄 설정
     ws2.pageSetup.paperSize=9; ws2.pageSetup.orientation='portrait'
     ws2.pageSetup.fitToPage=true; ws2.pageSetup.fitToWidth=1; ws2.pageSetup.fitToHeight=0
-    ws2.printArea=`A1:F${DS+dailyTableData.length-1}`
 
     // 다운로드
     const buf = await wb2.xlsx.writeBuffer()
