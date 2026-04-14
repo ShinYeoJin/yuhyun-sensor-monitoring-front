@@ -164,44 +164,20 @@ function PrintModal({ sensor, config, onChange, onPrint, onExcel, onPdf, onClose
           <div className="rounded-xl border border-line bg-surface-subtle p-4">
             <p className="mb-3 font-mono text-[10px] font-semibold uppercase tracking-wider text-ink-muted">미리보기</p>
             <div className="rounded-lg border border-line bg-surface-card p-4 text-xs">
-              {/* 제목 */}
-              <div className="border-b border-line pb-2 text-center">
-                <p className="text-sm font-bold text-ink">Water Level Meter Report</p>
+              <div className="border-b border-line pb-3 text-center">
+                <p className="text-base font-bold text-ink">{config.title || '(타이틀 없음)'}</p>
+                <p className="mt-0.5 font-mono text-[10px] text-ink-muted">
+                  {config.range} · {config.dateFrom || '—'} ~ {config.dateTo || '—'}
+                </p>
               </div>
-              {/* 센서 정보 표 */}
-              <table className="mt-2 w-full border-collapse text-[10px]">
-                <tbody>
-                  <tr>
-                    <td className="border border-line bg-surface-subtle px-2 py-1 font-semibold text-ink-muted w-16">현장명</td>
-                    <td className="border border-line px-2 py-1 text-ink">{sensor.siteName || '—'}</td>
-                    <td className="border border-line bg-surface-subtle px-2 py-1 font-semibold text-ink-muted w-20">계측기 No.</td>
-                    <td className="border border-line px-2 py-1 text-ink">{sensor.manageNo || '—'}</td>
-                  </tr>
-                  <tr>
-                    <td className="border border-line bg-surface-subtle px-2 py-1 font-semibold text-ink-muted">설치현황</td>
-                    <td className="border border-line px-2 py-1 text-ink">
-                      {sensor.installDate ? `설치일자 (${sensor.installDate.slice(0, 10)})` : '—'}
-                    </td>
-                    <td className="border border-line bg-surface-subtle px-2 py-1 font-semibold text-ink-muted">초기측정일</td>
-                    <td className="border border-line px-2 py-1 text-ink">{config.dateFrom || '—'}</td>
-                  </tr>
-                  <tr>
-                    <td className="border border-line bg-surface-subtle px-2 py-1 font-semibold text-ink-muted">관리자</td>
-                    <td className="border border-line px-2 py-1 text-ink">—</td>
-                    <td className="border border-line bg-surface-subtle px-2 py-1 font-semibold text-ink-muted">설치위치</td>
-                    <td className="border border-line px-2 py-1 text-ink">{sensor.location?.description || '—'}</td>
-                  </tr>
-                </tbody>
-              </table>
-              {/* 기간 및 기타 정보 */}
-              <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 font-mono text-[10px]">
-                <span className="text-ink-muted">출력기간</span>
-                <span className="text-ink">{config.dateFrom} ~ {config.dateTo}</span>
-                <span className="text-ink-muted">출력일시</span>
-                <span className="text-ink">{config.printedAt || '—'}</span>
+              <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 font-mono text-[10px]">
+                <span className="text-ink-muted">센서</span><span className="text-ink">{sensor.manageNo || sensor.id} · {sensor.name}</span>
+                <span className="text-ink-muted">현장</span><span className="text-ink">{sensor.siteName}</span>
+                <span className="text-ink-muted">출력범위</span><span className="text-ink">{config.outputScope}</span>
+                <span className="text-ink-muted">출력대상</span><span className="text-ink">{config.interval}</span>
+                <span className="text-ink-muted">출력일시</span><span className="text-ink">{config.printedAt || '—'}</span>
               </div>
-              {/* 바닥글 */}
-              <div className="mt-2 border-t border-line pt-1 text-center font-mono text-[10px] text-ink-muted">
+              <div className="mt-3 border-t border-line pt-2 text-center font-mono text-[10px] text-ink-muted">
                 {config.footer || '회사명'}
               </div>
             </div>
@@ -657,39 +633,6 @@ export default function SensorDetailPage() {
           </div>
         </div>
       </div>
-
-          <span className="text-ink-muted">|</span>
-
-          {/* 직접 날짜 입력 */}
-          <div className="flex items-center gap-1.5 rounded-lg border border-line bg-surface-card px-3 py-1 shadow-card">
-            <span className="font-mono text-[10px] text-ink-muted">시작</span>
-            <input type="date" value={dateFrom} max={today}
-              onChange={e => { setDateFrom(e.target.value); setTablePage(1) }}
-              className="font-mono text-xs text-ink outline-none bg-transparent" />
-          </div>
-          <span className="font-mono text-xs text-ink-muted">~</span>
-          <div className={[
-            'flex items-center gap-1.5 rounded-lg border px-3 py-1 shadow-card',
-            !isValidRange ? 'border-sensor-dangerborder bg-sensor-dangerbg' : 'border-line bg-surface-card',
-          ].join(' ')}>
-            <span className="font-mono text-[10px] text-ink-muted">종료</span>
-            <input type="date" value={dateTo} min={dateFrom} max={today}
-              onChange={e => { setDateTo(e.target.value); setTablePage(1) }}
-              className="font-mono text-xs text-ink outline-none bg-transparent" />
-          </div>
-
-          {/* 범위 요약 */}
-          {isValidRange && (
-            <span className="rounded-full border border-line bg-surface-subtle px-2.5 py-1 font-mono text-[11px] text-ink-muted">
-              {dayCount}일 · {readings.length}개 포인트
-            </span>
-          )}
-          {!isValidRange && (
-            <span className="font-mono text-[11px] text-sensor-dangertext">종료일이 시작일보다 앞설 수 없습니다.</span>
-          )}
-        </div>
-      </div>
-
       <div ref={printRef} style={{ display: 'none' }} />
 
       <div className="space-y-5 p-6">
