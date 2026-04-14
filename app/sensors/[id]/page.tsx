@@ -1251,6 +1251,5 @@ export default function SensorDetailPage() {
       )}
       {qrOpen && <QRModal sensorId={sensor.id} onClose={() => setQrOpen(false)} />}
     </div>
-  )
-}
+  )}
 }
