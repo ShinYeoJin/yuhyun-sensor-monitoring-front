@@ -341,12 +341,16 @@ export default function SensorDetailPage() {
   const readings = measurements
 
   const dailyReadings = useMemo(() => {
+    // 날짜별 마지막 측정값(가장 늦은 시각)을 대표값으로 통일
     const map = new Map<string, any>()
-    measurements.forEach(m => {
+    const sorted = [...measurements].sort((a, b) =>
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    )
+    sorted.forEach(m => {
       const date = new Date(m.timestamp).toLocaleDateString('ko-KR', {
         year: 'numeric', month: '2-digit', day: '2-digit'
       })
-      if (!map.has(date)) map.set(date, m)
+      map.set(date, m)  // 항상 덮어쓰면 마지막(최신) 값이 남음
     })
     return Array.from(map.values())
   }, [measurements])
@@ -471,9 +475,9 @@ export default function SensorDetailPage() {
 
     const setH = (r: number, h: number) => { ws2.getRow(r).height = h }
     setH(1, 28); setH(2, 4); setH(3, 18); setH(4, 18); setH(5, 18); setH(6, 4)
-    const CR_END = 32  // 7→32행으로 늘려서 그래프 더 크게
-    for (let r = 7; r <= CR_END; r++) setH(r, 18)
-    setH(CR_END + 1, 14)  // 범례 행
+    const CR_END = 36  // 7~36행 = 30행으로 그래프 영역 확장
+    for (let r = 7; r <= CR_END; r++) setH(r, 20)
+    setH(CR_END + 1, 16)  // 범례
     setH(CR_END + 2, 4); setH(CR_END + 3, 18); setH(CR_END + 4, 18); setH(CR_END + 5, 18); setH(CR_END + 6, 3)
     const DS = CR_END + 7
     sortedRows.forEach((_: any, i: number) => setH(DS + i, 17))
@@ -526,7 +530,7 @@ export default function SensorDetailPage() {
     lgRef.alignment = { horizontal: 'center', vertical: 'middle' }
 
     // 컬럼 헤더
-    const H1 = CR_END + 2, H2 = CR_END + 3, H3 = CR_END + 4
+    const H1 = CR_END + 3, H2 = CR_END + 4, H3 = CR_END + 5
     const mhdr = (r1: number, c1: number, r2: number, c2: number, val: string, sz = 9, bg = DARK) => {
       ws2.mergeCells(r1, c1, r2, c2)
       const c = ws2.getCell(r1, c1); c.value = val; c.font = font(true, sz, WHITE); c.fill = fill(bg); c.alignment = aln('center', 'middle', true); c.border = TB
@@ -707,9 +711,30 @@ export default function SensorDetailPage() {
         doc.text(new Date(chartData[idx].timestamp).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }), x, chartY + chartH + 4, { align: 'center' })
       }
       doc.setTextColor(0, 0, 0)
+
+      // 범례
+      const legendY = chartY + chartH + 8
+      doc.setFontSize(7)
+      doc.setDrawColor(34, 150, 100)
+      doc.setLineWidth(0.8)
+      doc.line(chartX, legendY, chartX + 8, legendY)
+      doc.setTextColor(34, 150, 100)
+      doc.text(`── ${sensor.manageNo || sensor.name}`, chartX + 10, legendY + 0.5)
+
+      if (refVal !== null) {
+        doc.setDrawColor(255, 0, 0)
+        doc.setLineWidth(0.6)
+        let lx = chartX + 50
+        while (lx < chartX + 58) {
+          doc.line(lx, legendY, Math.min(lx + 3, chartX + 58), legendY); lx += 5
+        }
+        doc.setTextColor(255, 0, 0)
+        doc.text('- - - 1차 관리기준', chartX + 60, legendY + 0.5)
+      }
+      doc.setTextColor(0, 0, 0)
     }
 
-    const tableStartY = currentY + 60
+    const tableStartY = currentY + 70
     autoTable(doc, {
       startY: tableStartY,
       head: [['측정일', '경과일', `지하수위 G.L(${sensor.unit})`, '전측정대비', '초기치대비', '비고']],
