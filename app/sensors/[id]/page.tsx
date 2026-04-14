@@ -388,7 +388,7 @@ export default function SensorDetailPage() {
     const MB = { top: med,  left: med,  bottom: med,  right: med  }
     const fill = (argb: string) => ({ type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb } })
     const font = (bold=false, sz=9, argb=BLACK) => ({ name: '맑은 고딕', size: sz, bold, color: { argb } })
-    const aln  = (h='center' as const, v='middle' as const, wrap=false) => ({ horizontal: h, vertical: v, wrapText: wrap })
+    const aln  = (h: 'center' | 'left' | 'right' = 'center', v: 'middle' | 'top' | 'bottom' = 'middle', wrap=false) => ({ horizontal: h, vertical: v, wrapText: wrap })
 
     ws2.columns = [{ width:14 },{ width:7 },{ width:13 },{ width:12 },{ width:12 },{ width:14 }]
 
