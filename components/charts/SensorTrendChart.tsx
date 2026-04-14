@@ -62,9 +62,9 @@ export function SensorTrendChart({ sensor, readings, hideXAxis = false }: Props)
     ? parseFloat(sensor.criteria.level1Lower) : null
   const level1Upper = sensor.criteria?.level1Upper !== '' && sensor.criteria?.level1Upper != null
     ? parseFloat(sensor.criteria.level1Upper) : null
-  const refLine = (level1Lower !== null && !isNaN(level1Lower)) ? level1Lower
-    : (level1Upper !== null && !isNaN(level1Upper)) ? level1Upper
-    : null
+  // 둘 다 있으면 둘 다 표시, 하나만 있으면 그것만 표시
+  const refLine  = (level1Lower !== null && !isNaN(level1Lower)) ? level1Lower : null
+  const refLine2 = (level1Upper !== null && !isNaN(level1Upper)) ? level1Upper : null
 
   // x축 틱: 최대 8개
   const tickCount = Math.min(8, data.length)
@@ -100,7 +100,22 @@ export function SensorTrendChart({ sensor, readings, hideXAxis = false }: Props)
             axisLine={{ stroke: '#dde3ed' }}
             tickFormatter={(v) => `${v}`}
             width={52}
-            domain={['auto', 'auto']}
+            domain={
+              (refLine !== null || refLine2 !== null)
+                ? [
+                    (dataMin: number) => {
+                      const candidates = [dataMin, refLine, refLine2].filter(v => v !== null) as number[]
+                      const mn = Math.min(...candidates)
+                      return mn >= 0 ? mn * 0.997 : mn * 1.003
+                    },
+                    (dataMax: number) => {
+                      const candidates = [dataMax, refLine, refLine2].filter(v => v !== null) as number[]
+                      const mx = Math.max(...candidates)
+                      return mx >= 0 ? mx * 1.003 : mx * 0.997
+                    },
+                  ]
+                : ['auto', 'auto']
+            }
             label={{ value: `G.L(${sensor.unit || 'm'})`, angle: -90, position: 'insideLeft', offset: 10, fontSize: 10, fill: '#8a9ab8' }}
           />
           <Tooltip content={<CustomTooltip />} />
@@ -112,6 +127,16 @@ export function SensorTrendChart({ sensor, readings, hideXAxis = false }: Props)
               stroke="#C0392B"
               strokeDasharray="6 3"
               strokeWidth={1.5}
+              label={{ value: '1차 하한', position: 'insideTopRight', fontSize: 9, fill: '#C0392B' }}
+            />
+          )}
+          {refLine2 !== null && (
+            <ReferenceLine
+              y={refLine2}
+              stroke="#E07000"
+              strokeDasharray="6 3"
+              strokeWidth={1.5}
+              label={{ value: '1차 상한', position: 'insideBottomRight', fontSize: 9, fill: '#E07000' }}
             />
           )}
 
@@ -141,7 +166,15 @@ export function SensorTrendChart({ sensor, readings, hideXAxis = false }: Props)
           <svg width="24" height="10">
             <line x1="0" y1="5" x2="24" y2="5" stroke="#C0392B" strokeWidth="1.5" strokeDasharray="4 2" />
           </svg>
-          <span className="text-sensor-dangertext">1차 관리기준</span>
+          <span className="text-sensor-dangertext">1차 하한기준</span>
+        </div>
+      )}
+      {refLine2 !== null && (
+        <div className="flex items-center gap-1.5">
+          <svg width="24" height="10">
+            <line x1="0" y1="5" x2="24" y2="5" stroke="#E07000" strokeWidth="1.5" strokeDasharray="4 2" />
+          </svg>
+          <span className="font-mono text-[11px]" style={{ color: '#E07000' }}>1차 상한기준</span>
         </div>
       )}
     </div>

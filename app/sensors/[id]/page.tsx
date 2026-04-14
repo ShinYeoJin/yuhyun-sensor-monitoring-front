@@ -471,10 +471,11 @@ export default function SensorDetailPage() {
 
     const setH = (r: number, h: number) => { ws2.getRow(r).height = h }
     setH(1, 28); setH(2, 4); setH(3, 18); setH(4, 18); setH(5, 18); setH(6, 4)
-    const CR_END = 26
-    for (let r = 7; r <= CR_END; r++) setH(r, 15)
-    setH(CR_END + 1, 4); setH(CR_END + 2, 18); setH(CR_END + 3, 18); setH(CR_END + 4, 18); setH(CR_END + 5, 3)
-    const DS = CR_END + 6
+    const CR_END = 32  // 7→32행으로 늘려서 그래프 더 크게
+    for (let r = 7; r <= CR_END; r++) setH(r, 18)
+    setH(CR_END + 1, 14)  // 범례 행
+    setH(CR_END + 2, 4); setH(CR_END + 3, 18); setH(CR_END + 4, 18); setH(CR_END + 5, 18); setH(CR_END + 6, 3)
+    const DS = CR_END + 7
     sortedRows.forEach((_: any, i: number) => setH(DS + i, 17))
 
     // 타이틀
@@ -509,6 +510,20 @@ export default function SensorDetailPage() {
         editAs: 'oneCell',
       })
     }
+
+    // 범례 행 (CR_END+1)
+    const legendRow = CR_END + 1
+    ws2.mergeCells(legendRow, 1, legendRow, 3)
+    const lgLine = ws2.getCell(legendRow, 1)
+    lgLine.value = '── ' + (sensor.manageNo || sensor.name)
+    lgLine.font = { name: '맑은 고딕', size: 9, color: { argb: 'FF2F5496' } }
+    lgLine.alignment = { horizontal: 'center', vertical: 'middle' }
+
+    ws2.mergeCells(legendRow, 4, legendRow, 6)
+    const lgRef = ws2.getCell(legendRow, 4)
+    lgRef.value = '- - - 1차 관리기준'
+    lgRef.font = { name: '맑은 고딕', size: 9, color: { argb: 'FFC00000' } }
+    lgRef.alignment = { horizontal: 'center', vertical: 'middle' }
 
     // 컬럼 헤더
     const H1 = CR_END + 2, H2 = CR_END + 3, H3 = CR_END + 4
