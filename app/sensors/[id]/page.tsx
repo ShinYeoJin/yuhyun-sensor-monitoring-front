@@ -298,6 +298,27 @@ export default function SensorDetailPage() {
     }).catch(() => {})
   }, [id, sensor?.unit, dateFrom, dateTo, depthLabel, calcMode])
 
+  // 초기측정값: 전체 기간 기준 최초 수신값 (날짜 범위와 무관)
+  const [globalInitReading, setGlobalInitReading] = useState<any>(null)
+
+  useEffect(() => {
+    if (!id) return
+    // limit=1, 날짜 필터 없이 → 가장 오래된 값 1개
+    sensorApi.getMeasurements(Number(id), { limit: 1 }).then((data: any[]) => {
+      if (data.length > 0) {
+        // API가 ASC 반환 → 첫 번째가 가장 오래된 값
+        const oldest = [...data].sort((a, b) =>
+          new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime()
+        )[0]
+        setGlobalInitReading({
+          value: oldest.value,
+          timestamp: oldest.measured_at,
+        })
+      }
+    }).catch(() => {})
+  }, [id])
+  
+
   const [qrOpen,    setQrOpen]    = useState(false)
   const [tablePage, setTablePage] = useState(1)
   const [remarks,   setRemarks]   = useState<Record<string, string>>({})
@@ -365,14 +386,6 @@ export default function SensorDetailPage() {
     sensor?.status === 'offline' ? 'text-ink-muted'      :
     'text-sensor-normal'
 
-  // 초기값 (가장 오래된 측정값)
-  const initReading = useMemo(() => {
-    if (dailyReadings.length === 0) return null
-    return [...dailyReadings].sort((a, b) =>
-      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-    )[0]
-  }, [dailyReadings])
-
   const handlePrint = () => { setPrintOpen(false); setTimeout(() => window.print(), 300) }
 
   const handleExcelDownload = async () => {
@@ -380,15 +393,37 @@ export default function SensorDetailPage() {
     let chartBase64: string | null = null
     if (chartRef.current) {
       try {
-        const canvas = await html2canvas(chartRef.current, {
-          scale: 3,
-          backgroundColor: '#ffffff',
-          useCORS: true,
-          allowTaint: true,
-          logging: false,
-          imageTimeout: 0,
-        })
-        chartBase64 = canvas.toDataURL('image/png', 1.0)
+        // SVG 기반 Recharts를 선명하게 캡처하기 위해 XMLSerializer 사용
+        const svgEl = chartRef.current.querySelector('svg')
+        if (svgEl) {
+          const svgData = new XMLSerializer().serializeToString(svgEl)
+          const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' })
+          const svgUrl  = URL.createObjectURL(svgBlob)
+          await new Promise<void>((resolve) => {
+            const img = new Image()
+            const scale = 3
+            img.onload = () => {
+              const canvas = document.createElement('canvas')
+              canvas.width  = svgEl.clientWidth  * scale
+              canvas.height = svgEl.clientHeight * scale
+              const ctx = canvas.getContext('2d')!
+              ctx.fillStyle = '#ffffff'
+              ctx.fillRect(0, 0, canvas.width, canvas.height)
+              ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+              chartBase64 = canvas.toDataURL('image/png', 1.0)
+              URL.revokeObjectURL(svgUrl)
+              resolve()
+            }
+            img.onerror = () => { URL.revokeObjectURL(svgUrl); resolve() }
+            img.src = svgUrl
+          })
+        } else {
+          // SVG 없으면 html2canvas fallback
+          const canvas = await html2canvas(chartRef.current, {
+            scale: 3, backgroundColor: '#ffffff', useCORS: true,
+          })
+          chartBase64 = canvas.toDataURL('image/png', 1.0)
+        }
       } catch { chartBase64 = null }
     }
 
@@ -572,8 +607,8 @@ export default function SensorDetailPage() {
     }
 
     // PDF 초기측정일: 가장 오래된 날짜
-    const pdfInitDate = initReading
-      ? new Date(initReading.timestamp).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
+    const pdfInitDate = globalInitReading
+      ? new Date(globalInitReading.timestamp).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
       : dateFrom
 
     doc.setFontSize(16)
@@ -663,13 +698,13 @@ export default function SensorDetailPage() {
     autoTable(doc, {
       startY: tableStartY,
       head: [['측정일', '경과일', `지하수위 G.L(${sensor.unit})`, '전측정대비', '초기치대비', '비고']],
-      body: dailyTableData.map((r: any) => [
+      body: dailyTableData.map((r: any, i: number) => [
         new Date(r.timestamp).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }),
         r.elapsed,
         parseFloat(r.value).toFixed(2),
-        r.prevDiff > 0 ? `+${r.prevDiff}` : String(r.prevDiff),
-        r.initDiff > 0 ? `+${r.initDiff}` : String(r.initDiff),
-        remarks[r.dateKey] || '',
+        i === 0 ? '0.00' : (r.prevDiff > 0 ? `+${r.prevDiff}` : String(r.prevDiff)),
+        i === 0 ? '0.00' : (r.initDiff > 0 ? `+${r.initDiff}` : String(r.initDiff)),
+        i === 0 ? '초기치' : (remarks[r.dateKey] || ''),
       ]),
       theme: 'grid',
       headStyles: { fillColor: [60, 80, 120], textColor: 255, fontSize: 8, font: 'NanumGothic', fontStyle: 'normal' },
@@ -850,14 +885,14 @@ export default function SensorDetailPage() {
             </div>
 
             {/* 초기측정값 표시 */}
-            {initReading && (
+            {globalInitReading && (
               <div className="mb-4 rounded-lg border border-line bg-surface-subtle px-4 py-2.5 text-center">
                 <p className="font-mono text-[10px] text-ink-muted">초기측정값 (최초 수신)</p>
                 <p className="mt-0.5 font-mono text-sm font-semibold text-ink">
-                  {parseFloat(String(initReading.value)).toFixed(2)} {sensor.unit}
+                  {parseFloat(String(globalInitReading.value)).toFixed(2)} {sensor.unit}
                   <span className="ml-2 font-normal text-[11px] text-ink-muted">
-                    · {new Date(initReading.timestamp).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })}
-                    {' '}{new Date(initReading.timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                    · {new Date(globalInitReading.timestamp).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })}
+                    {' '}{new Date(globalInitReading.timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </p>
               </div>
