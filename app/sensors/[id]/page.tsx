@@ -279,23 +279,26 @@ export default function SensorDetailPage() {
   const [dateTo,   setDateTo]   = useState(today)
   const [chartMode, setChartMode] = useState<'hourly' | 'daily'>('hourly')
   const [unit80053, setUnit80053] = useState<'m' | 'psi'>('m')
+  const [depthLabel, setDepthLabel] = useState<'1' | '2' | '3'>('1')
+  const [calcMode, setCalcMode] = useState<'poly' | 'linear'>('poly')
 
   useEffect(() => {
     if (!id) return
     sensorApi.getMeasurements(Number(id), {
       from: dateFrom,
       to: dateTo,
-      limit: 2000
+      limit: 2000,
+      depthLabel: depthLabel,
     }).then((data: any[]) => {
       const mapped = data.map((m: any) => ({
         timestamp: m.measured_at,
-        value: parseFloat(m.value),
+        value: calcMode === 'poly' ? parseFloat(m.value) : parseFloat(m.linear_value ?? m.value),
         unit: sensor?.unit || '',
         status: 'normal',
       }))
       setMeasurements(mapped.reverse())
     }).catch(() => {})
-  }, [id, sensor?.unit, dateFrom, dateTo])
+  }, [id, sensor?.unit, dateFrom, dateTo, depthLabel, calcMode])
 
   const [qrOpen,   setQrOpen]   = useState(false)
   const [tablePage, setTablePage] = useState(1)
@@ -757,38 +760,30 @@ export default function SensorDetailPage() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              {sensor.nameAbbr === '80053' && (
+            {sensor.nameAbbr === '80053' && (
+              <>
+                {/* depth_label 선택 */}
                 <div className="flex gap-1 rounded-lg border border-line bg-surface-subtle p-1">
-                  {(['m', 'psi'] as const).map(u => (
-                    <button key={u} onClick={() => {
-                      setUnit80053(u)
-                      if (u === 'psi') {
-                        setMeasurements(prev => prev.map(m => ({
-                          ...m,
-                          value: parseFloat((m.value / 0.703).toFixed(4)),
-                          unit: 'psi',
-                        })))
-                      } else {
-                        sensorApi.getMeasurements(Number(id), {
-                          from: dateFrom, to: dateTo, limit: 2000
-                        }).then((data: any[]) => {
-                          const mapped = data.map((m: any) => ({
-                            timestamp: m.measured_at,
-                            value: parseFloat(m.value),
-                            unit: sensor?.unit || '',
-                            status: 'normal',
-                          }))
-                          setMeasurements(mapped.reverse())
-                        }).catch(() => {})
-                      }
-                    }}
+                  {(['1', '2', '3'] as const).map(d => (
+                    <button key={d} onClick={() => setDepthLabel(d)}
                       className={['rounded-md px-3 py-1 font-mono text-[11px] font-medium transition-all',
-                        unit80053 === u ? 'bg-surface-card text-brand shadow-card' : 'text-ink-muted hover:text-ink-sub'].join(' ')}>
-                      {u}
+                        depthLabel === d ? 'bg-surface-card text-brand shadow-card' : 'text-ink-muted hover:text-ink-sub'].join(' ')}>
+                      {d}번
                     </button>
                   ))}
                 </div>
-              )}
+                {/* Poly/Linear 토글 */}
+                <div className="flex gap-1 rounded-lg border border-line bg-surface-subtle p-1">
+                  {(['poly', 'linear'] as const).map(mode => (
+                    <button key={mode} onClick={() => setCalcMode(mode)}
+                      className={['rounded-md px-3 py-1 font-mono text-[11px] font-medium transition-all',
+                        calcMode === mode ? 'bg-surface-card text-brand shadow-card' : 'text-ink-muted hover:text-ink-sub'].join(' ')}>
+                      {mode === 'poly' ? 'Poly' : 'Linear'}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
               <div className="flex gap-1 rounded-lg border border-line bg-surface-subtle p-1">
                 {(['hourly', 'daily'] as const).map(mode => (
                   <button key={mode} onClick={() => setChartMode(mode)}
@@ -831,7 +826,7 @@ export default function SensorDetailPage() {
             <div key={`${dateFrom}-${dateTo}-${chartMode}`} className="animate-fade-in-up" ref={chartRef}>
               {sensor.nameAbbr === '80053' && (
                 <p className="mb-2 font-mono text-[10px] text-ink-muted">
-                  ※ depth_label 1번 기준 데이터입니다.
+                  ※ depth_label {depthLabel}번 기준 데이터입니다. ({calcMode === 'poly' ? 'Polynomial' : 'Linear'} 계산값)
                 </p>
               )}
               <SensorTrendChart sensor={sensor} readings={chartMode === 'hourly' ? measurements : dailyReadings} />
