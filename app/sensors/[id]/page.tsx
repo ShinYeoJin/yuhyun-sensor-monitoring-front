@@ -590,19 +590,9 @@ export default function SensorDetailPage() {
           <h1 className="font-mono text-[15px] font-semibold text-ink">{sensor.manageNo || sensor.id}</h1>
           <span className="font-mono text-xs text-ink-muted">{sensor.name}</span>
           <StatusBadge status={sensor.status} />
-          <div className="ml-auto flex items-center gap-2">
-            <button onClick={() => { setPrintConfig(c => ({ ...c, dateFrom, dateTo })); setPrintOpen(true) }}
-              className="flex items-center gap-1.5 rounded-lg border border-line bg-surface-card px-3 py-1.5 font-mono text-xs text-ink-sub shadow-card transition-colors hover:border-brand/40 hover:bg-brand/10 hover:text-brand">
-              🖨 출력
-            </button>
-            <button onClick={() => setQrOpen(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-line bg-surface-card px-3 py-1.5 font-mono text-xs text-ink-sub shadow-card transition-colors hover:border-brand/40 hover:bg-brand/10 hover:text-brand">
-              ⊞ QR
-            </button>
-          </div>
         </div>
 
-        {/* 날짜 범위 선택 바 */}
+        {/* 날짜 범위 선택 바 + 출력/QR 버튼 한 줄 */}
         <div className="mt-2 flex flex-wrap items-center gap-2">
           {/* 빠른 선택 */}
           <div className="flex gap-1">
@@ -614,7 +604,7 @@ export default function SensorDetailPage() {
             ].map(p => (
               <button key={p.label} onClick={() => setPreset(p.days)}
                 className={[
-                  'rounded-md px-2.5 py-1 font-mono text-[11px] font-medium transition-all border',
+                  'rounded-md px-3 py-1.5 font-mono text-xs font-medium transition-all border',
                   dateFrom === new Date(new Date().setDate(new Date().getDate() - p.days + 1)).toISOString().slice(0,10) && dateTo === today
                     ? 'border-brand/40 bg-brand/10 text-brand'
                     : 'border-line text-ink-muted hover:border-line-strong hover:text-ink-sub',
@@ -623,6 +613,50 @@ export default function SensorDetailPage() {
               </button>
             ))}
           </div>
+
+          <span className="text-ink-muted">|</span>
+
+          {/* 직접 날짜 입력 */}
+          <div className="flex items-center gap-1.5 rounded-lg border border-line bg-surface-card px-3 py-1.5 shadow-card">
+            <span className="font-mono text-xs text-ink-muted">시작</span>
+            <input type="date" value={dateFrom} max={today}
+              onChange={e => { setDateFrom(e.target.value); setTablePage(1) }}
+              className="font-mono text-xs text-ink outline-none bg-transparent" />
+          </div>
+          <span className="font-mono text-xs text-ink-muted">~</span>
+          <div className={[
+            'flex items-center gap-1.5 rounded-lg border px-3 py-1.5 shadow-card',
+            !isValidRange ? 'border-sensor-dangerborder bg-sensor-dangerbg' : 'border-line bg-surface-card',
+          ].join(' ')}>
+            <span className="font-mono text-xs text-ink-muted">종료</span>
+            <input type="date" value={dateTo} min={dateFrom} max={today}
+              onChange={e => { setDateTo(e.target.value); setTablePage(1) }}
+              className="font-mono text-xs text-ink outline-none bg-transparent" />
+          </div>
+
+          {/* 범위 요약 */}
+          {isValidRange && (
+            <span className="rounded-full border border-line bg-surface-subtle px-2.5 py-1 font-mono text-xs text-ink-muted">
+              {dayCount}일 · {readings.length}개 포인트
+            </span>
+          )}
+          {!isValidRange && (
+            <span className="font-mono text-xs text-sensor-dangertext">종료일이 시작일보다 앞설 수 없습니다.</span>
+          )}
+
+          {/* 출력/QR 버튼 - 오른쪽 끝 */}
+          <div className="ml-auto flex items-center gap-2">
+            <button onClick={() => { setPrintConfig(c => ({ ...c, dateFrom, dateTo })); setPrintOpen(true) }}
+              className="flex items-center gap-1.5 rounded-lg border border-line bg-surface-card px-4 py-1.5 font-mono text-sm text-ink-sub shadow-card transition-colors hover:border-brand/40 hover:bg-brand/10 hover:text-brand">
+              🖨 출력
+            </button>
+            <button onClick={() => setQrOpen(true)}
+              className="flex items-center gap-1.5 rounded-lg border border-line bg-surface-card px-4 py-1.5 font-mono text-sm text-ink-sub shadow-card transition-colors hover:border-brand/40 hover:bg-brand/10 hover:text-brand">
+              ⊞ QR
+            </button>
+          </div>
+        </div>
+      </div>
 
           <span className="text-ink-muted">|</span>
 
