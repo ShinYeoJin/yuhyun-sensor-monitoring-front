@@ -9,7 +9,6 @@ import { SensorTrendChart } from '@/components/charts/SensorTrendChart'
 import { QRModal } from '@/components/ui/QRModal'
 import Link from 'next/link'
 import type { SensorReading, UnifiedSensor } from '@/types'
-import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import html2canvas from 'html2canvas'
@@ -365,19 +364,123 @@ export default function SensorDetailPage() {
 
   const handlePrint = () => { setPrintOpen(false); setTimeout(() => window.print(), 300) }
 
-  const handleExcelDownload = () => {
-    const data = dailyTableData.map(r => ({
-      '측정일': new Date(r.timestamp).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }),
-      '경과일': r.elapsed,
-      [`지하수위 G.L(${sensor.unit})`]: r.value,
-      '전측정대비': r.prevDiff,
-      '초기치대비': r.initDiff,
-      '비고': remarks[r.dateKey] || '',
-    }))
-    const ws = XLSX.utils.json_to_sheet(data)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, '측정데이터')
-    XLSX.writeFile(wb, `${sensor.manageNo || sensor.name}_${dateFrom}_${dateTo}.xlsx`)
+  const handleExcelDownload = async () => {
+    // ── 1. 차트 이미지 캡처 ───────────────────────────────────────────────
+    let chartBase64: string | null = null
+    if (chartRef.current) {
+      try {
+        const canvas = await html2canvas(chartRef.current, { scale: 2, backgroundColor: '#ffffff', useCORS: true })
+        chartBase64 = canvas.toDataURL('image/png')
+      } catch { chartBase64 = null }
+    }
+
+    // ── 2. ExcelJS로 참조 양식 생성 ───────────────────────────────────────
+    const ExcelJS = (await import('exceljs')).default
+    const wb2 = new ExcelJS.Workbook()
+    const ws2 = wb2.addWorksheet(sensor.manageNo || sensor.name || '측정데이터')
+
+    const DARK = 'FF1F3864', MID = 'FF2F5496', WHITE = 'FFFFFFFF'
+    const BLACK = 'FF000000', RED = 'FFC00000', BLUE = 'FF2F5496'
+    const YELL = 'FFFFF2CC', ALT = 'FFEEF4FB'
+    const thin = { style: 'thin' as const, color: { argb: 'FF000000' } }
+    const med  = { style: 'medium' as const, color: { argb: DARK } }
+    const TB = { top: thin, left: thin, bottom: thin, right: thin }
+    const MB = { top: med,  left: med,  bottom: med,  right: med  }
+    const fill = (argb: string) => ({ type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb } })
+    const font = (bold=false, sz=9, argb=BLACK) => ({ name: '맑은 고딕', size: sz, bold, color: { argb } })
+    const aln  = (h='center' as const, v='middle' as const, wrap=false) => ({ horizontal: h, vertical: v, wrapText: wrap })
+
+    ws2.columns = [{ width:14 },{ width:7 },{ width:13 },{ width:12 },{ width:12 },{ width:14 }]
+
+    const setH = (r: number, h: number) => { ws2.getRow(r).height = h }
+    setH(1,28); setH(2,4); setH(3,18); setH(4,18); setH(5,18); setH(6,4)
+    const CR_END = 26
+    for (let r=7; r<=CR_END; r++) setH(r,15)
+    setH(CR_END+1,4); setH(CR_END+2,18); setH(CR_END+3,18); setH(CR_END+4,18); setH(CR_END+5,3)
+    const DS = CR_END+6
+    dailyTableData.forEach((_:any,i:number) => setH(DS+i,17))
+
+    // 타이틀
+    ws2.mergeCells('A1:F1')
+    const t = ws2.getCell('A1')
+    t.value='Water Level Meter Report'; t.font=font(true,15,WHITE); t.fill=fill(DARK); t.alignment=aln(); t.border=MB
+
+    // 정보 행 3~5
+    const managers = (() => { try { return JSON.parse(sensor.site_managers||'[]') } catch { return [] } })()
+    const infoRows = [
+      ['현   장   명', sensor.siteName||'—',         '계측기 No.', sensor.manageNo||'—'],
+      ['설 치 현 황',  sensor.installDate ? `설치일자 (${sensor.installDate.slice(0,10)})` : '—', '초기측정일', dateFrom],
+      ['관   리   자', managers.join(', ')||'—',      '설치위치',   sensor.location?.description||'—'],
+    ]
+    infoRows.forEach(([l1,v1,l2,v2]:any, i:number) => {
+      const r=3+i
+      ws2.mergeCells(r,2,r,3); ws2.mergeCells(r,5,r,6)
+      const setC = (col:number, val:string, fnt:any, fil:any, al:any) => {
+        const c=ws2.getCell(r,col); c.value=val; c.font=fnt; c.fill=fil; c.alignment=al; c.border=TB
+      }
+      setC(1,l1,font(true,9,WHITE),fill(MID),aln())
+      setC(2,v1,font(false,9,BLACK),fill(WHITE),aln('left'))
+      setC(4,l2,font(true,9,WHITE),fill(MID),aln())
+      setC(5,v2,font(false,9,BLACK),fill(WHITE),aln('left'))
+    })
+
+    // 차트 이미지 삽입
+    if (chartBase64) {
+      const imgId = wb2.addImage({ base64: chartBase64.split(',')[1], extension: 'png' })
+      ws2.addImage(imgId, { tl:{col:0,row:6}, br:{col:6,row:CR_END}, editAs:'oneCell' })
+    }
+
+    // 컬럼 헤더 (CR_END+2 ~ CR_END+4)
+    const H1=CR_END+2, H2=CR_END+3, H3=CR_END+4
+    const mhdr = (r1:number,c1:number,r2:number,c2:number,val:string,sz=9,bg=DARK) => {
+      ws2.mergeCells(r1,c1,r2,c2)
+      const c=ws2.getCell(r1,c1); c.value=val; c.font=font(true,sz,WHITE); c.fill=fill(bg); c.alignment=aln('center','middle',true); c.border=TB
+    }
+    mhdr(H1,1,H3,1,'측  정  일'); mhdr(H1,2,H3,2,'경과일')
+    mhdr(H1,3,H1,5,sensor.manageNo||sensor.name); mhdr(H1,6,H3,6,'비  고')
+    mhdr(H2,3,H2,3,`지하수위 G.L(${sensor.unit})`,8,MID)
+    mhdr(H2,4,H2,5,'변화량(m)',8,MID)
+    const setHdr = (r:number,c:number,val:string,sz=7,bg=MID) => {
+      const cell=ws2.getCell(r,c); cell.value=val; cell.font=font(true,sz,WHITE); cell.fill=fill(bg); cell.alignment=aln('center','middle',true); cell.border=TB
+    }
+    ws2.getCell(H3,3).fill=fill(MID); ws2.getCell(H3,3).border=TB
+    setHdr(H3,4,'전측정치대비'); setHdr(H3,5,'초기치대비')
+
+    // 데이터 행
+    dailyTableData.forEach((row:any, i:number) => {
+      const r=DS+i, isFirst=i===0
+      const rf=isFirst?YELL:(i%2===0?ALT:WHITE)
+      const base = { fill:fill(rf), border:TB, alignment:aln() }
+      const setD = (c:number,val:any,fnt:any,numFmt?:string) => {
+        const cell=ws2.getCell(r,c); cell.value=val; cell.font=fnt; Object.assign(cell,base)
+        if(numFmt) cell.numFmt=numFmt
+      }
+      setD(1, new Date(row.timestamp).toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'}), font(false,9,BLACK))
+      setD(2, row.elapsed, font(false,9,BLACK))
+      setD(3, row.value,   font(false,9,BLACK), '0.00')
+      if(isFirst) {
+        setD(4,0,font(false,9,BLACK),'0.00'); setD(5,0,font(false,9,BLACK),'0.00')
+      } else {
+        setD(4,row.prevDiff,font(false,9,row.prevDiff<0?RED:BLUE),'+0.00;-0.00;0.00')
+        setD(5,row.initDiff,font(false,9,row.initDiff<0?RED:BLUE),'+0.00;-0.00;0.00')
+      }
+      const note=remarks[row.dateKey]||(isFirst?'초기치':'')
+      const cn=ws2.getCell(r,6); cn.value=note; cn.font=font(isFirst,9,isFirst?RED:BLACK)
+      cn.fill=fill(isFirst?YELL:rf); cn.border=TB; cn.alignment=aln()
+    })
+
+    // 인쇄 설정
+    ws2.pageSetup.paperSize=9; ws2.pageSetup.orientation='portrait'
+    ws2.pageSetup.fitToPage=true; ws2.pageSetup.fitToWidth=1; ws2.pageSetup.fitToHeight=0
+    ws2.printArea=`A1:F${DS+dailyTableData.length-1}`
+
+    // 다운로드
+    const buf = await wb2.xlsx.writeBuffer()
+    const blob = new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a'); a.href=url
+    a.download=`${sensor.manageNo||sensor.name}_${dateFrom}_${dateTo}.xlsx`
+    a.click(); URL.revokeObjectURL(url)
   }
 
   const handlePdfDownload = async () => {
