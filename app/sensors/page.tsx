@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { getRelativeTime, getThresholds } from '@/lib/mock-data'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { sensorStore, useSensorStore, evaluateStatus } from '@/lib/sensor-store'
-import { sensorApi, siteApi, formulaApi } from '@/lib/api'
+import { sensorApi, siteApi, formulaApi, recollectApi, agentApi } from '@/lib/api'
 import { useEffect } from 'react'
 import type {
   SensorStatus, UnifiedSensor, SensorField, MeasureMethod, Formula,
@@ -522,6 +522,73 @@ function DeleteModal({ sensorName, onConfirm, onClose }: { sensorName: string; o
   )
 }
 
+// ─── 재수집 요청 모달 ─────────────────────────────────────────────────────────
+function RecollectModal({ sensors, onSubmit, onClose }: {
+  sensors: any[]
+  onSubmit: (body: { sensor_id: number; date_from: string; date_to: string; reason: string }) => void
+  onClose: () => void
+}) {
+  const today = new Date().toISOString().slice(0, 10)
+  const [sensorId, setSensorId] = useState<string>('')
+  const [dateFrom, setDateFrom] = useState(today)
+  const [dateTo,   setDateTo]   = useState(today)
+  const [reason,   setReason]   = useState('')
+  const isValid = sensorId !== '' && dateFrom <= dateTo
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className="geo-card flex w-full max-w-md animate-fade-in-up flex-col" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-line px-6 py-4">
+          <h2 className="text-sm font-semibold text-ink">🔄 데이터 재수집 요청</h2>
+          <button onClick={onClose} className="rounded-md p-1 text-ink-muted hover:bg-surface-subtle hover:text-ink">✕</button>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          <div className="rounded-lg border border-alarm-infoborder bg-alarm-infobg px-4 py-3">
+            <p className="font-mono text-[11px] text-alarm-infotext">
+              ※ 에이전트(회사 PC)가 온라인 상태일 때 다음 폴링 주기(1시간)에 자동으로 재수집됩니다.
+            </p>
+          </div>
+          <div>
+            <label className={labelCls}>센서 선택 *</label>
+            <select value={sensorId} onChange={e => setSensorId(e.target.value)} className={selectCls}>
+              <option value="">센서를 선택하세요</option>
+              {sensors.map(s => (
+                <option key={s.id} value={s.id}>{s.manageNo || s.nameAbbr} — {s.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>시작일 *</label>
+              <input type="date" value={dateFrom} max={today} onChange={e => setDateFrom(e.target.value)} className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>종료일 *</label>
+              <input type="date" value={dateTo} min={dateFrom} max={today} onChange={e => setDateTo(e.target.value)} className={inputCls} />
+            </div>
+          </div>
+          {dateFrom > dateTo && (
+            <p className="font-mono text-[11px] text-sensor-dangertext">종료일이 시작일보다 앞설 수 없습니다.</p>
+          )}
+          <div>
+            <label className={labelCls}>사유 (선택)</label>
+            <textarea rows={2} value={reason} onChange={e => setReason(e.target.value)}
+              placeholder="예: 에이전트 오류로 인한 데이터 누락" className={`${inputCls} resize-none`} />
+          </div>
+        </div>
+        <div className="flex gap-2 border-t border-line px-6 py-4">
+          <button onClick={onClose} className="flex-1 rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-sub hover:border-line-strong hover:text-ink">취소</button>
+          <button onClick={() => isValid && onSubmit({ sensor_id: Number(sensorId), date_from: dateFrom, date_to: dateTo, reason })}
+            disabled={!isValid}
+            className="flex-1 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-40">
+            요청 등록
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── 메인 페이지 ──────────────────────────────────────────────────────────────
 export default function SensorsPage() {
   const router = useRouter()
@@ -532,7 +599,7 @@ export default function SensorsPage() {
   const [search,       setSearch]      = useState('')
   const [statusFilter, setStatus]      = useState<SensorStatus | 'all'>('all')
   const [siteFilter,   setSite]        = useState('all')
-  const [activeTab, setActiveTab] = useState<'monitor' | 'manage' | 'formula'>('monitor')
+  const [activeTab, setActiveTab] = useState<'monitor' | 'manage' | 'formula' | 'recollect'>('monitor')
   const [addOpen,      setAddOpen]     = useState(false)
   const [editTarget,   setEditTarget]  = useState<UnifiedSensor | null>(null)
   const [deleteTarget, setDeleteTarget]= useState<UnifiedSensor | null>(null)
@@ -544,12 +611,36 @@ export default function SensorsPage() {
   const [formulaForm, setFormulaForm] = useState({ name: '', expression: '', description: '' })
 
   const openFormulaAdd = () => { setFormulaForm({ name: '', expression: '', description: '' }); setFormulaAddOpen(true) }
-  
+
   const [formulas, setFormulas] = useState<any[]>([])
+
+  // ── 재수집 상태 ──
+  const [recollectOpen, setRecollectOpen] = useState(false)
+  const [recollectList, setRecollectList] = useState<any[]>([])
+  const [agentStatus, setAgentStatus]     = useState<any[]>([])
+  const [recollectLoading, setRecollectLoading] = useState(false)
 
   useEffect(() => {
     formulaApi.getAll().then((data: any[]) => setFormulas(data)).catch(console.error)
   }, [])
+
+  // 재수집 탭 진입 시 목록 + 에이전트 상태 로드
+  useEffect(() => {
+    if (activeTab !== 'recollect') return
+    const load = async () => {
+      setRecollectLoading(true)
+      try {
+        const [rList, aStatus] = await Promise.all([
+          recollectApi.getAll(),
+          agentApi.getStatus(),
+        ])
+        setRecollectList(rList)
+        setAgentStatus(aStatus)
+      } catch {}
+      setRecollectLoading(false)
+    }
+    load()
+  }, [activeTab])
 
   const [sites, setSites] = useState<any[]>([])
 
@@ -735,6 +826,26 @@ export default function SensorsPage() {
     } catch (err: any) { showToast(err.message || '삭제 실패') }
   }
 
+  const handleRecollectSubmit = async (body: { sensor_id: number; date_from: string; date_to: string; reason: string }) => {
+    try {
+      await recollectApi.create(body)
+      setRecollectOpen(false)
+      showToast('재수집 요청이 등록되었습니다. 에이전트 다음 폴링 시 처리됩니다.')
+      // 목록 새로고침
+      const rList = await recollectApi.getAll()
+      setRecollectList(rList)
+    } catch (err: any) { showToast(err.message || '요청 실패') }
+  }
+
+  const handleRecollectDelete = async (id: number) => {
+    if (!confirm('재수집 요청을 취소하시겠습니까?')) return
+    try {
+      await recollectApi.delete(id)
+      setRecollectList(prev => prev.filter(r => r.id !== id))
+      showToast('재수집 요청이 취소되었습니다.')
+    } catch (err: any) { showToast(err.message || '취소 실패') }
+  }
+
   const handleDelete = () => {
     if (!deleteTarget) return
     sensorStore.deleteSensor(deleteTarget.id)
@@ -762,11 +873,11 @@ export default function SensorsPage() {
             <p className="font-mono text-xs text-ink-muted">등록된 센서 {sensors.length}개</p>
           </div>
           <div className="flex gap-1 rounded-lg border border-line bg-surface-subtle p-1">
-            {(['monitor','manage','formula'] as const).map(tab => (
+            {(['monitor','manage','formula','recollect'] as const).map(tab => (
               <button key={tab} onClick={() => setActiveTab(tab)}
                 className={['rounded-md px-4 py-1.5 font-mono text-xs font-medium transition-all',
                   activeTab === tab ? 'bg-surface-card text-brand shadow-card' : 'text-ink-muted hover:text-ink-sub'].join(' ')}>
-                {tab === 'monitor' ? '모니터링' : tab === 'manage' ? '센서 정의' : '계산식 관리'}
+                {tab === 'monitor' ? '모니터링' : tab === 'manage' ? '센서 정의' : tab === 'formula' ? '계산식 관리' : '🔄 재수집'}
               </button>
             ))}
           </div>
@@ -774,6 +885,8 @@ export default function SensorsPage() {
             canManage && <button onClick={openAdd} className="flex items-center gap-1.5 rounded-lg bg-brand px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-hover">+ 센서 추가</button>
           ) : activeTab === 'formula' ? (
             canManage && <button onClick={openFormulaAdd} className="flex items-center gap-1.5 rounded-lg bg-brand px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-hover">+ 계산식 추가</button>
+          ) : activeTab === 'recollect' ? (
+            canManage && <button onClick={() => setRecollectOpen(true)} className="flex items-center gap-1.5 rounded-lg bg-brand px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-hover">+ 재수집 요청</button>
           ) : (
             <div className="flex items-center gap-2">
               <div className="relative">
@@ -971,7 +1084,147 @@ export default function SensorsPage() {
         </div>
       )}
 
-      {/* 토스트 */}
+      {/* ── 재수집 탭 ── */}
+      {activeTab === 'recollect' && (
+        <div className="p-6 space-y-4">
+
+          {/* 에이전트 상태 카드 */}
+          <div className="geo-card p-4">
+            <h2 className="mb-3 text-sm font-semibold text-ink flex items-center gap-2">
+              <span className="h-3 w-0.5 rounded-sm bg-brand" />에이전트 상태
+            </h2>
+            {recollectLoading ? (
+              <p className="font-mono text-xs text-ink-muted">불러오는 중...</p>
+            ) : agentStatus.length === 0 ? (
+              <div className="flex items-center gap-3 rounded-lg border border-sensor-offlineborder bg-sensor-offlinebg px-4 py-3">
+                <span className="h-2.5 w-2.5 rounded-full bg-sensor-offline" />
+                <div>
+                  <p className="font-mono text-sm font-semibold text-sensor-offlinetext">에이전트 오프라인</p>
+                  <p className="font-mono text-[10px] text-ink-muted">회사 PC 에이전트가 아직 heartbeat를 보내지 않았습니다.</p>
+                </div>
+              </div>
+            ) : agentStatus.map((a: any) => {
+              const lastSeen  = new Date(a.last_seen)
+              const diffMin   = Math.floor((Date.now() - lastSeen.getTime()) / 60000)
+              const isOnline  = diffMin < 90   // 90분 이내면 온라인 간주
+              return (
+                <div key={a.agent_id} className={[
+                  'flex items-center justify-between rounded-lg border px-4 py-3',
+                  isOnline
+                    ? 'border-sensor-normalborder bg-sensor-normalbg'
+                    : 'border-sensor-offlineborder bg-sensor-offlinebg',
+                ].join(' ')}>
+                  <div className="flex items-center gap-3">
+                    <span className={['h-2.5 w-2.5 rounded-full', isOnline ? 'bg-sensor-normal animate-pulse' : 'bg-sensor-offline'].join(' ')} />
+                    <div>
+                      <p className={['font-mono text-sm font-semibold', isOnline ? 'text-sensor-normaltext' : 'text-sensor-offlinetext'].join(' ')}>
+                        {a.agent_id} — {isOnline ? '온라인' : '오프라인'}
+                      </p>
+                      <p className="font-mono text-[10px] text-ink-muted">
+                        마지막 응답: {diffMin < 60 ? `${diffMin}분 전` : `${Math.floor(diffMin / 60)}시간 ${diffMin % 60}분 전`}
+                        {a.info?.version ? ` · v${a.info.version}` : ''}
+                      </p>
+                    </div>
+                  </div>
+                  <span className={[
+                    'rounded-full border px-2.5 py-0.5 font-mono text-[11px]',
+                    isOnline
+                      ? 'border-sensor-normalborder text-sensor-normaltext'
+                      : 'border-sensor-offlineborder text-sensor-offlinetext',
+                  ].join(' ')}>{isOnline ? '정상' : '연결 끊김'}</span>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* 재수집 요청 목록 */}
+          <div className="geo-card overflow-hidden">
+            <div className="flex items-center justify-between border-b border-line px-5 py-3">
+              <div>
+                <h2 className="text-sm font-semibold text-ink">재수집 요청 이력</h2>
+                <p className="font-mono text-[10px] text-ink-muted">최근 100건 · 에이전트 다음 폴링 시 pending 건 처리</p>
+              </div>
+              <button onClick={async () => {
+                setRecollectLoading(true)
+                try {
+                  const [rList, aStatus] = await Promise.all([recollectApi.getAll(), agentApi.getStatus()])
+                  setRecollectList(rList); setAgentStatus(aStatus)
+                } catch {}
+                setRecollectLoading(false)
+              }} className="rounded-md border border-line px-3 py-1.5 font-mono text-xs text-ink-muted transition-colors hover:bg-surface-subtle hover:text-ink">
+                ↻ 새로고침
+              </button>
+            </div>
+
+            {recollectLoading ? (
+              <div className="py-10 text-center font-mono text-sm text-ink-muted">불러오는 중...</div>
+            ) : recollectList.length === 0 ? (
+              <div className="py-12 text-center">
+                <p className="font-mono text-sm text-ink-muted">등록된 재수집 요청이 없습니다.</p>
+                {canManage && (
+                  <button onClick={() => setRecollectOpen(true)}
+                    className="mt-3 font-mono text-xs text-brand hover:underline">
+                    + 첫 번째 재수집 요청 등록하기
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[640px] text-sm">
+                  <thead>
+                    <tr className="border-b border-line bg-surface-subtle">
+                      {[['#','text-left'],['센서','text-left'],['기간','text-left'],['사유','text-left'],['상태','text-center'],['요청자','text-left'],['요청시각','text-left'],['','text-right']].map(([th,a]) => (
+                        <th key={th} className={`px-4 py-3 font-mono text-[10px] font-semibold uppercase tracking-wide text-ink-muted ${a}`}>{th}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-line">
+                    {recollectList.map((r: any) => {
+                      const statusColor =
+                        r.status === 'pending' ? 'border-sensor-warningborder bg-sensor-warningbg text-sensor-warningtext' :
+                        r.status === 'done'    ? 'border-sensor-normalborder  bg-sensor-normalbg  text-sensor-normaltext'  :
+                        'border-line text-ink-muted'
+                      return (
+                        <tr key={r.id} className="transition-colors hover:bg-surface-subtle">
+                          <td className="px-4 py-3 font-mono text-xs text-ink-muted">{r.id}</td>
+                          <td className="px-4 py-3">
+                            <p className="font-mono text-xs font-semibold text-ink">{r.manage_no || r.sensor_code}</p>
+                            <p className="font-mono text-[10px] text-ink-muted">{r.sensor_name}</p>
+                          </td>
+                          <td className="px-4 py-3 font-mono text-xs text-ink-muted">
+                            {r.date_from ? `${r.date_from?.slice(0,10)} ~ ${r.date_to?.slice(0,10)}` : '전체'}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-ink-sub">{r.reason || '—'}</td>
+                          <td className="px-4 py-3 text-center">
+                            <span className={`rounded-full border px-2.5 py-0.5 font-mono text-[11px] ${statusColor}`}>
+                              {r.status === 'pending' ? '⏳ 대기중' : r.status === 'done' ? '✓ 완료' : r.status}
+                            </span>
+                            {r.result && r.result !== 'success' && (
+                              <p className="mt-0.5 font-mono text-[10px] text-sensor-dangertext">{r.result}</p>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 font-mono text-xs text-ink-muted">{r.requested_by_name || '—'}</td>
+                          <td className="px-4 py-3 font-mono text-[11px] text-ink-muted">
+                            {new Date(r.created_at).toLocaleString('ko-KR', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' })}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            {canManage && r.status === 'pending' && (
+                              <button onClick={() => handleRecollectDelete(r.id)}
+                                className="font-mono text-xs text-ink-muted transition-colors hover:text-sensor-danger">취소</button>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── 토스트 ── */}
       {toast && (
         <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-fade-in-up rounded-xl border border-line bg-ink px-5 py-3 font-mono text-sm text-white shadow-cardhover">
           {toast}
@@ -983,6 +1236,7 @@ export default function SensorsPage() {
       {deleteTarget && <DeleteModal sensorName={deleteTarget.name} onConfirm={handleDelete} onClose={() => setDeleteTarget(null)} />}
       {formulaAddOpen && <FormulaModal mode="add" form={formulaForm} onChange={setFormulaForm} onSubmit={handleFormulaAdd} onClose={() => setFormulaAddOpen(false)} />}
       {formulaEditTarget && <FormulaModal mode="edit" form={formulaForm} onChange={setFormulaForm} onSubmit={handleFormulaEdit} onClose={() => setFormulaEditTarget(null)} />}
+      {recollectOpen && <RecollectModal sensors={sensors} onSubmit={handleRecollectSubmit} onClose={() => setRecollectOpen(false)} />}
     </div>
   )
 }

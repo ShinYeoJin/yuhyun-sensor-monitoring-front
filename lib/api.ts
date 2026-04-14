@@ -132,3 +132,15 @@ export const siteApi = {
   delete: (id: number) =>
     request(`/api/sites/${id}`, { method: 'DELETE' }),
 }
+
+export const recollectApi = {
+  getAll: () => request('/api/recollect'),
+  create: (body: { sensor_id: number; date_from?: string; date_to?: string; reason?: string }) =>
+    request('/api/recollect', { method: 'POST', body: JSON.stringify(body) }),
+  delete: (id: number) =>
+    request(`/api/recollect/${id}`, { method: 'DELETE' }),
+}
+
+export const agentApi = {
+  getStatus: () => request('/api/agent/status'),
+}
