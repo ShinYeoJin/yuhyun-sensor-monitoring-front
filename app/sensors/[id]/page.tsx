@@ -14,7 +14,6 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import html2canvas from 'html2canvas'
 
-// ─── 날짜 범위별 readings 생성 (15분 단위) ──────────────────────────────────
 function getReadingsByRange(
   sensor: UnifiedSensor,
   dateFrom: string,
@@ -25,12 +24,12 @@ function getReadingsByRange(
   const to   = new Date(dateTo   + 'T23:59:59')
   if (from > to) return []
 
-  const INTERVAL_MIN = 15   // 15분 간격
+  const INTERVAL_MIN = 15
   const dayDiff = Math.min(
     Math.round((to.getTime() - from.getTime()) / 86400000) + 1,
-    30  // 최대 30일 (30일 × 96포인트 = 2,880개)
+    30
   )
-  const totalSlots = dayDiff * (24 * 60 / INTERVAL_MIN)  // 하루 96슬롯
+  const totalSlots = dayDiff * (24 * 60 / INTERVAL_MIN)
 
   const readings: SensorReading[] = []
   for (let slot = 0; slot < totalSlots; slot++) {
@@ -53,14 +52,12 @@ function getReadingsByRange(
   return readings
 }
 
-// 날짜 차이 계산 (일 수)
 function dateDiffDays(from: string, to: string): number {
   const a = new Date(from + 'T00:00:00')
   const b = new Date(to   + 'T00:00:00')
   return Math.round((b.getTime() - a.getTime()) / 86400000)
 }
 
-// ─── 인쇄 설정 타입 ───────────────────────────────────────────────────────────
 interface PrintConfig {
   title:       string
   range:       '현장총괄표' | '계측센서'
@@ -80,7 +77,6 @@ const INTERVAL_OPTIONS = [
   '2일 간격','3일 간격','4일 간격','5일 간격','6일 간격','7일 간격',
 ]
 
-// ─── 인쇄 모달 ────────────────────────────────────────────────────────────────
 function PrintModal({ sensor, config, onChange, onPrint, onExcel, onPdf, onClose }: {
   sensor: UnifiedSensor; config: PrintConfig
   onChange: (c: PrintConfig) => void; onPrint: () => void
@@ -170,12 +166,35 @@ function PrintModal({ sensor, config, onChange, onPrint, onExcel, onPdf, onClose
                   {config.range} · {config.dateFrom || '—'} ~ {config.dateTo || '—'}
                 </p>
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 font-mono text-[10px]">
-                <span className="text-ink-muted">센서</span><span className="text-ink">{sensor.manageNo || sensor.id} · {sensor.name}</span>
-                <span className="text-ink-muted">현장</span><span className="text-ink">{sensor.siteName}</span>
-                <span className="text-ink-muted">출력범위</span><span className="text-ink">{config.outputScope}</span>
-                <span className="text-ink-muted">출력대상</span><span className="text-ink">{config.interval}</span>
-                <span className="text-ink-muted">출력일시</span><span className="text-ink">{config.printedAt || '—'}</span>
+              <table className="mt-2 w-full border-collapse text-[10px]">
+                <tbody>
+                  <tr>
+                    <td className="border border-line bg-surface-subtle px-2 py-1 font-semibold text-ink-muted w-16">현장명</td>
+                    <td className="border border-line px-2 py-1 text-ink">{sensor.siteName || '—'}</td>
+                    <td className="border border-line bg-surface-subtle px-2 py-1 font-semibold text-ink-muted w-20">계측기 No.</td>
+                    <td className="border border-line px-2 py-1 text-ink">{sensor.manageNo || '—'}</td>
+                  </tr>
+                  <tr>
+                    <td className="border border-line bg-surface-subtle px-2 py-1 font-semibold text-ink-muted">설치현황</td>
+                    <td className="border border-line px-2 py-1 text-ink">
+                      {sensor.installDate ? `설치일자 (${sensor.installDate.slice(0, 10)})` : '—'}
+                    </td>
+                    <td className="border border-line bg-surface-subtle px-2 py-1 font-semibold text-ink-muted">초기측정일</td>
+                    <td className="border border-line px-2 py-1 text-ink">{config.dateFrom || '—'}</td>
+                  </tr>
+                  <tr>
+                    <td className="border border-line bg-surface-subtle px-2 py-1 font-semibold text-ink-muted">관리자</td>
+                    <td className="border border-line px-2 py-1 text-ink">—</td>
+                    <td className="border border-line bg-surface-subtle px-2 py-1 font-semibold text-ink-muted">설치위치</td>
+                    <td className="border border-line px-2 py-1 text-ink">{sensor.location?.description || '—'}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 font-mono text-[10px]">
+                <span className="text-ink-muted">출력기간</span>
+                <span className="text-ink">{config.dateFrom} ~ {config.dateTo}</span>
+                <span className="text-ink-muted">출력일시</span>
+                <span className="text-ink">{config.printedAt || '—'}</span>
               </div>
               <div className="mt-3 border-t border-line pt-2 text-center font-mono text-[10px] text-ink-muted">
                 {config.footer || '회사명'}
@@ -195,7 +214,6 @@ function PrintModal({ sensor, config, onChange, onPrint, onExcel, onPdf, onClose
   )
 }
 
-// ─── 메인 페이지 ──────────────────────────────────────────────────────────────
 export default function SensorDetailPage() {
   const params = useParams()
   const id = Array.isArray(params.id) ? params.id[0] : params.id
@@ -208,7 +226,6 @@ export default function SensorDetailPage() {
   useEffect(() => {
     if (!id) return
     sensorApi.getById(Number(id)).then((data: any) => {
-      // UnifiedSensor 형태로 변환
       setSensor({
         id: String(data.id),
         manageNo: data.manage_no || '',
@@ -280,7 +297,6 @@ export default function SensorDetailPage() {
     }).catch(() => {})
   }, [id, sensor?.unit, dateFrom, dateTo])
 
-  // 조회 기간 (시작일 ~ 종료일)
   const [qrOpen,   setQrOpen]   = useState(false)
   const [tablePage, setTablePage] = useState(1)
   const [remarks, setRemarks] = useState<Record<string, string>>({})
@@ -297,14 +313,11 @@ export default function SensorDetailPage() {
     imgMargin: '0.10', footer: '',
   })
 
-  // 날짜/범위 바뀌면 테이블 첫 페이지로
   const isValidRange = !!sensor && dateFrom <= dateTo && dateTo <= today
   const dayCount = isValidRange ? dateDiffDays(dateFrom, dateTo) + 1 : 0
   const isToday  = dateFrom === today && dateTo === today
-
   const readings = measurements
 
-  // 일별 데이터 (하루 마지막 측정값)
   const dailyReadings = useMemo(() => {
     const map = new Map<string, any>()
     measurements.forEach(m => {
@@ -316,7 +329,6 @@ export default function SensorDetailPage() {
     return Array.from(map.values())
   }, [measurements])
 
-  // 일별 표 데이터 (경과일, 전측정대비, 초기치대비 계산)
   const dailyTableData = useMemo(() => {
     if (dailyReadings.length === 0) return []
     const lastItem = dailyReadings[dailyReadings.length - 1]
@@ -336,7 +348,6 @@ export default function SensorDetailPage() {
       }
     })
   }, [dailyReadings])
-
 
   const { thresholdWarning, thresholdDanger } = sensor ? getThresholds(sensor) : { thresholdWarning: 0, thresholdDanger: 0 }
   const overThreshold = sensor ? sensor.currentValue > thresholdDanger : false
@@ -369,8 +380,7 @@ export default function SensorDetailPage() {
   const handlePdfDownload = async () => {
     const doc = new jsPDF('p', 'mm', 'a4')
     const pageWidth = doc.internal.pageSize.getWidth()
-  
-    // 한글 폰트 로드
+
     const fontRes = await fetch('/NanumGothic.ttf')
     const fontBuffer = await fontRes.arrayBuffer()
     const uint8Array = new Uint8Array(fontBuffer)
@@ -385,9 +395,7 @@ export default function SensorDetailPage() {
     doc.setFont('NanumGothic', 'normal')
 
     const managers = (() => {
-      try {
-        return JSON.parse((sensor as any).site_managers || '[]')
-      } catch { return [] }
+      try { return JSON.parse((sensor as any).site_managers || '[]') } catch { return [] }
     })()
 
     let managerText = '—'
@@ -402,12 +410,10 @@ export default function SensorDetailPage() {
         managerText = managers.join(', ')
       }
     }
-  
-    // 헤더
+
     doc.setFontSize(16)
     doc.text('Water Level Meter Report', pageWidth / 2, 20, { align: 'center' })
-  
-    // 센서 정보 테이블
+
     autoTable(doc, {
       startY: 28,
       head: [],
@@ -425,8 +431,7 @@ export default function SensorDetailPage() {
         3: { cellWidth: 65 },
       },
     })
-  
-    // 그래프를 jsPDF로 직접 그리기
+
     const currentY = (doc as any).lastAutoTable.finalY + 5
     const chartData = chartMode === 'hourly' ? measurements : dailyReadings
     if (chartData.length > 0) {
@@ -435,12 +440,10 @@ export default function SensorDetailPage() {
       const chartW = pageWidth - 30
       const chartH = 50
 
-      // 테두리
       doc.setDrawColor(180, 180, 180)
       doc.setLineWidth(0.3)
       doc.rect(chartX, chartY, chartW, chartH)
 
-      // 데이터 포인트 계산
       const values = chartData.map((r: any) => parseFloat(r.value))
       const minVal = Math.min(...values)
       const maxVal = Math.max(...values)
@@ -449,7 +452,6 @@ export default function SensorDetailPage() {
       const yMax = maxVal + padding
       const range = yMax - yMin
 
-      // 수평 그리드 라인 (4개)
       doc.setDrawColor(220, 220, 220)
       doc.setLineWidth(0.2)
       for (let g = 1; g <= 3; g++) {
@@ -461,13 +463,11 @@ export default function SensorDetailPage() {
         doc.text(gVal.toFixed(1), chartX - 1, gy + 1, { align: 'right' })
       }
 
-      // y축 최대/최솟값
       doc.setFontSize(5)
       doc.setTextColor(120, 120, 120)
       doc.text(yMax.toFixed(1), chartX - 1, chartY + 2, { align: 'right' })
       doc.text(yMin.toFixed(1), chartX - 1, chartY + chartH + 1, { align: 'right' })
 
-      // 1차 관리기준 빨간 점선 (임계값이 있을 때)
       const refVal = sensor.criteria?.level1Lower !== '' ? parseFloat(sensor.criteria.level1Lower)
         : sensor.criteria?.level1Upper !== '' ? parseFloat(sensor.criteria.level1Upper)
         : sensor.threshold?.dangerMin !== '' ? parseFloat(sensor.threshold.dangerMin)
@@ -488,7 +488,6 @@ export default function SensorDetailPage() {
         doc.text('1차 관리기준', chartX + chartW - 1, refY - 1, { align: 'right' })
       }
 
-      // 데이터 선 그래프
       doc.setDrawColor(34, 150, 100)
       doc.setLineWidth(0.5)
       doc.setTextColor(0, 0, 0)
@@ -500,7 +499,6 @@ export default function SensorDetailPage() {
         doc.line(x1, y1, x2, y2)
       }
 
-      // x축 날짜 라벨 (5개)
       doc.setFontSize(5)
       doc.setTextColor(120, 120, 120)
       const labelCount = Math.min(5, chartData.length)
@@ -512,8 +510,7 @@ export default function SensorDetailPage() {
       }
       doc.setTextColor(0, 0, 0)
     }
-  
-    // 측정 데이터 테이블
+
     const tableStartY = currentY + 60
     autoTable(doc, {
       startY: tableStartY,
@@ -530,11 +527,10 @@ export default function SensorDetailPage() {
       headStyles: { fillColor: [60, 80, 120], textColor: 255, fontSize: 8, font: 'NanumGothic', fontStyle: 'normal' },
       styles: { fontSize: 8, cellPadding: 2, font: 'NanumGothic' },
     })
-  
+
     doc.save(`${sensor.manageNo || sensor.name}_${dateFrom}_${dateTo}.pdf`)
   }
 
-  // 빠른 기간 선택
   const setPreset = (days: number) => {
     const from = new Date()
     from.setDate(from.getDate() - (days - 1))
@@ -548,7 +544,7 @@ export default function SensorDetailPage() {
       <p className="font-mono text-sm text-ink-muted">센서 정보 불러오는 중...</p>
     </div>
   )
-  
+
   if (!sensor) return (
     <div className="flex h-full items-center justify-center bg-surface-page">
       <p className="font-mono text-sm text-ink-muted">센서를 찾을 수 없습니다.</p>
@@ -566,21 +562,10 @@ export default function SensorDetailPage() {
           <h1 className="font-mono text-[15px] font-semibold text-ink">{sensor.manageNo || sensor.id}</h1>
           <span className="font-mono text-xs text-ink-muted">{sensor.name}</span>
           <StatusBadge status={sensor.status} />
-          <div className="ml-auto flex items-center gap-2">
-            <button onClick={() => { setPrintConfig(c => ({ ...c, dateFrom, dateTo })); setPrintOpen(true) }}
-              className="flex items-center gap-1.5 rounded-lg border border-line bg-surface-card px-3 py-1.5 font-mono text-xs text-ink-sub shadow-card transition-colors hover:border-brand/40 hover:bg-brand/10 hover:text-brand">
-              🖨 출력
-            </button>
-            <button onClick={() => setQrOpen(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-line bg-surface-card px-3 py-1.5 font-mono text-xs text-ink-sub shadow-card transition-colors hover:border-brand/40 hover:bg-brand/10 hover:text-brand">
-              ⊞ QR
-            </button>
-          </div>
         </div>
 
-        {/* 날짜 범위 선택 바 */}
+        {/* 날짜 범위 선택 바 + 출력/QR 버튼 */}
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          {/* 빠른 선택 */}
           <div className="flex gap-1">
             {[
               { label: '오늘',  days: 1  },
@@ -602,7 +587,6 @@ export default function SensorDetailPage() {
 
           <span className="text-ink-muted">|</span>
 
-          {/* 직접 날짜 입력 */}
           <div className="flex items-center gap-1.5 rounded-lg border border-line bg-surface-card px-3 py-1 shadow-card">
             <span className="font-mono text-[10px] text-ink-muted">시작</span>
             <input type="date" value={dateFrom} max={today}
@@ -620,7 +604,6 @@ export default function SensorDetailPage() {
               className="font-mono text-xs text-ink outline-none bg-transparent" />
           </div>
 
-          {/* 범위 요약 */}
           {isValidRange && (
             <span className="rounded-full border border-line bg-surface-subtle px-2.5 py-1 font-mono text-[11px] text-ink-muted">
               {dayCount}일 · {readings.length}개 포인트
@@ -629,6 +612,18 @@ export default function SensorDetailPage() {
           {!isValidRange && (
             <span className="font-mono text-[11px] text-sensor-dangertext">종료일이 시작일보다 앞설 수 없습니다.</span>
           )}
+
+          {/* 출력/QR 버튼 - 오른쪽 끝으로 이동, 크기 확대 */}
+          <div className="ml-auto flex items-center gap-2">
+            <button onClick={() => { setPrintConfig(c => ({ ...c, dateFrom, dateTo })); setPrintOpen(true) }}
+              className="flex items-center gap-1.5 rounded-lg border border-line bg-surface-card px-4 py-1.5 font-mono text-sm text-ink-sub shadow-card transition-colors hover:border-brand/40 hover:bg-brand/10 hover:text-brand">
+              🖨 출력
+            </button>
+            <button onClick={() => setQrOpen(true)}
+              className="flex items-center gap-1.5 rounded-lg border border-line bg-surface-card px-4 py-1.5 font-mono text-sm text-ink-sub shadow-card transition-colors hover:border-brand/40 hover:bg-brand/10 hover:text-brand">
+              ⊞ QR
+            </button>
+          </div>
         </div>
       </div>
 
@@ -636,7 +631,6 @@ export default function SensorDetailPage() {
 
       <div className="space-y-5 p-6">
 
-        {/* 상태 배너 */}
         {sensor.status === 'danger' && (
           <div className="rounded-xl border border-sensor-dangerborder bg-sensor-dangerbg px-5 py-4 danger-flash">
             <p className="flex items-center gap-2 font-semibold text-sensor-dangertext">
@@ -657,9 +651,7 @@ export default function SensorDetailPage() {
           </div>
         )}
 
-        {/* 정보 그리드 */}
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-          {/* 센서 정보 */}
           <div className="geo-card p-5">
             <h2 className="mb-4 text-sm font-semibold text-ink">센서 정보</h2>
             <dl className="space-y-3 text-sm">
@@ -699,7 +691,6 @@ export default function SensorDetailPage() {
             </dl>
           </div>
 
-          {/* 계측 현황 */}
           <div className="geo-card p-5">
             <h2 className="mb-4 text-sm font-semibold text-ink">계측 현황</h2>
             <div className="mb-5 rounded-xl border border-line bg-surface-subtle py-5 text-center">
@@ -732,7 +723,6 @@ export default function SensorDetailPage() {
               </div>
             )}
 
-            {/* 기간 통계 */}
             {measurements.length > 0 && sensor.status !== 'offline' && (
               <div className="mt-4 grid grid-cols-3 gap-3 border-t border-line pt-4">
                 {[
@@ -753,7 +743,6 @@ export default function SensorDetailPage() {
           </div>
         </div>
 
-        {/* 트렌드 차트 */}
         <div className="geo-card p-5">
           <div className="mb-4 flex items-center justify-between">
             <div>
@@ -768,38 +757,38 @@ export default function SensorDetailPage() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-            {sensor.nameAbbr === '80053' && (
-              <div className="flex gap-1 rounded-lg border border-line bg-surface-subtle p-1">
-                {(['m', 'psi'] as const).map(u => (
-                  <button key={u} onClick={() => {
-                    setUnit80053(u)  // 활성화 표시용 추가
-                    if (u === 'psi') {
-                      setMeasurements(prev => prev.map(m => ({
-                        ...m,
-                        value: parseFloat((m.value / 0.703).toFixed(4)),
-                        unit: 'psi',
-                      })))
-                    } else {
-                      sensorApi.getMeasurements(Number(id), {
-                        from: dateFrom, to: dateTo, limit: 2000
-                      }).then((data: any[]) => {
-                        const mapped = data.map((m: any) => ({
-                          timestamp: m.measured_at,
-                          value: parseFloat(m.value),
-                          unit: sensor?.unit || '',
-                          status: 'normal',
-                        }))
-                        setMeasurements(mapped.reverse())
-                      }).catch(() => {})
-                    }
-                  }}
-                    className={['rounded-md px-3 py-1 font-mono text-[11px] font-medium transition-all',
-                      unit80053 === u ? 'bg-surface-card text-brand shadow-card' : 'text-ink-muted hover:text-ink-sub'].join(' ')}>
-                    {u}
-                  </button>
-                ))}
-              </div>
-            )}
+              {sensor.nameAbbr === '80053' && (
+                <div className="flex gap-1 rounded-lg border border-line bg-surface-subtle p-1">
+                  {(['m', 'psi'] as const).map(u => (
+                    <button key={u} onClick={() => {
+                      setUnit80053(u)
+                      if (u === 'psi') {
+                        setMeasurements(prev => prev.map(m => ({
+                          ...m,
+                          value: parseFloat((m.value / 0.703).toFixed(4)),
+                          unit: 'psi',
+                        })))
+                      } else {
+                        sensorApi.getMeasurements(Number(id), {
+                          from: dateFrom, to: dateTo, limit: 2000
+                        }).then((data: any[]) => {
+                          const mapped = data.map((m: any) => ({
+                            timestamp: m.measured_at,
+                            value: parseFloat(m.value),
+                            unit: sensor?.unit || '',
+                            status: 'normal',
+                          }))
+                          setMeasurements(mapped.reverse())
+                        }).catch(() => {})
+                      }
+                    }}
+                      className={['rounded-md px-3 py-1 font-mono text-[11px] font-medium transition-all',
+                        unit80053 === u ? 'bg-surface-card text-brand shadow-card' : 'text-ink-muted hover:text-ink-sub'].join(' ')}>
+                      {u}
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="flex gap-1 rounded-lg border border-line bg-surface-subtle p-1">
                 {(['hourly', 'daily'] as const).map(mode => (
                   <button key={mode} onClick={() => setChartMode(mode)}
@@ -840,7 +829,6 @@ export default function SensorDetailPage() {
 
           {(chartMode === 'hourly' ? measurements : dailyReadings).length > 0 ? (
             <div key={`${dateFrom}-${dateTo}-${chartMode}`} className="animate-fade-in-up" ref={chartRef}>
-              {/* depth_label 각주 - 80053 센서만 */}
               {sensor.nameAbbr === '80053' && (
                 <p className="mb-2 font-mono text-[10px] text-ink-muted">
                   ※ depth_label 1번 기준 데이터입니다.
@@ -857,7 +845,6 @@ export default function SensorDetailPage() {
           )}
         </div>
 
-        {/* 측정 데이터 테이블 (페이지네이션) */}
         {(() => {
           const tableData = chartMode === 'hourly' ? measurements : dailyTableData
           const totalPages = Math.max(1, Math.ceil(tableData.length / TABLE_PAGE_SIZE))
@@ -906,7 +893,6 @@ export default function SensorDetailPage() {
                 </div>
               </div>
 
-              {/* 초기값 각주 - 일별 모드일 때만 */}
               {chartMode === 'daily' && (
                 <p className="px-5 pt-3 font-mono text-[10px] text-ink-muted">
                   ※ 초기값은 첫 번째 측정값 기준입니다.
@@ -918,14 +904,14 @@ export default function SensorDetailPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-line bg-surface-subtle">
-                      {chartMode === 'hourly'
-                        ? ['날짜', '시각', '측정값', '상태'].map(h => (
-                            <th key={h} className="px-4 py-2.5 text-left font-mono text-[10px] font-semibold uppercase tracking-wide text-ink-muted">{h}</th>
-                          ))
-                        : ['측정일', '경과일', `지하수위 G.L(${sensor.unit})`, '전측정대비', '초기치대비', '비고'].map(h => (
-                            <th key={h} className="px-4 py-2.5 text-left font-mono text-[10px] font-semibold uppercase tracking-wide text-ink-muted">{h}</th>
-                          ))
-                      }
+                        {chartMode === 'hourly'
+                          ? ['날짜', '시각', '측정값', '상태'].map(h => (
+                              <th key={h} className="px-4 py-2.5 text-left font-mono text-[10px] font-semibold uppercase tracking-wide text-ink-muted">{h}</th>
+                            ))
+                          : ['측정일', '경과일', `지하수위 G.L(${sensor.unit})`, '전측정대비', '초기치대비', '비고'].map(h => (
+                              <th key={h} className="px-4 py-2.5 text-left font-mono text-[10px] font-semibold uppercase tracking-wide text-ink-muted">{h}</th>
+                            ))
+                        }
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-line">
@@ -934,57 +920,57 @@ export default function SensorDetailPage() {
                         const rowCls =
                           r.status === 'danger'  ? 'bg-sensor-dangerbg/30'  :
                           r.status === 'warning' ? 'bg-sensor-warningbg/30' : ''
-                          return (
-                            <tr key={i} className={`transition-colors hover:bg-surface-subtle ${rowCls}`}>
-                              {chartMode === 'hourly' ? (
-                                <>
-                                  <td className="px-4 py-2 font-mono text-xs text-ink-muted">
-                                    {dt.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })}
-                                  </td>
-                                  <td className="px-4 py-2 font-mono text-xs text-ink-muted">
-                                    {dt.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
-                                  </td>
-                                  <td className={`px-4 py-2 font-mono text-sm font-medium ${
-                                    r.status === 'danger' ? 'text-sensor-danger' :
-                                    r.status === 'warning' ? 'text-sensor-warning' : 'text-ink'}`}>
-                                    {r.value} {sensor.unit}
-                                  </td>
-                                  <td className="px-4 py-2">
-                                    <StatusBadge status={r.status} size="sm" />
-                                  </td>
-                                </>
-                              ) : (
-                                <>
-                                  <td className="px-4 py-2 font-mono text-xs text-ink-muted">
-                                    {dt.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })}
-                                  </td>
-                                  <td className="px-4 py-2 font-mono text-xs text-ink-muted text-center">
-                                    {r.elapsed}
-                                  </td>
-                                  <td className={`px-4 py-2 font-mono text-sm font-medium ${
-                                    r.status === 'danger' ? 'text-sensor-danger' :
-                                    r.status === 'warning' ? 'text-sensor-warning' : 'text-ink'}`}>
-                                    {r.value}
-                                  </td>
-                                  <td className={`px-4 py-2 font-mono text-xs ${r.prevDiff > 0 ? 'text-sensor-danger' : r.prevDiff < 0 ? 'text-sensor-normal' : 'text-ink-muted'}`}>
-                                    {r.prevDiff > 0 ? '+' : ''}{r.prevDiff}
-                                  </td>
-                                  <td className={`px-4 py-2 font-mono text-xs ${r.initDiff > 0 ? 'text-sensor-danger' : r.initDiff < 0 ? 'text-sensor-normal' : 'text-ink-muted'}`}>
-                                    {r.initDiff > 0 ? '+' : ''}{r.initDiff}
-                                  </td>
-                                  <td className="px-4 py-2">
-                                    <input
-                                      type="text"
-                                      value={remarks[r.dateKey] || ''}
-                                      onChange={e => setRemarks(prev => ({ ...prev, [r.dateKey]: e.target.value }))}
-                                      placeholder="비고 입력"
-                                      className="w-full rounded border border-line bg-transparent px-2 py-1 font-mono text-xs text-ink outline-none focus:border-brand/50"
-                                    />
-                                  </td>
-                                </>
-                              )}
-                            </tr>
-                          )
+                        return (
+                          <tr key={i} className={`transition-colors hover:bg-surface-subtle ${rowCls}`}>
+                            {chartMode === 'hourly' ? (
+                              <>
+                                <td className="px-4 py-2 font-mono text-xs text-ink-muted">
+                                  {dt.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })}
+                                </td>
+                                <td className="px-4 py-2 font-mono text-xs text-ink-muted">
+                                  {dt.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                                </td>
+                                <td className={`px-4 py-2 font-mono text-sm font-medium ${
+                                  r.status === 'danger' ? 'text-sensor-danger' :
+                                  r.status === 'warning' ? 'text-sensor-warning' : 'text-ink'}`}>
+                                  {r.value} {sensor.unit}
+                                </td>
+                                <td className="px-4 py-2">
+                                  <StatusBadge status={r.status} size="sm" />
+                                </td>
+                              </>
+                            ) : (
+                              <>
+                                <td className="px-4 py-2 font-mono text-xs text-ink-muted">
+                                  {dt.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })}
+                                </td>
+                                <td className="px-4 py-2 font-mono text-xs text-ink-muted text-center">
+                                  {r.elapsed}
+                                </td>
+                                <td className={`px-4 py-2 font-mono text-sm font-medium ${
+                                  r.status === 'danger' ? 'text-sensor-danger' :
+                                  r.status === 'warning' ? 'text-sensor-warning' : 'text-ink'}`}>
+                                  {r.value}
+                                </td>
+                                <td className={`px-4 py-2 font-mono text-xs ${r.prevDiff > 0 ? 'text-sensor-danger' : r.prevDiff < 0 ? 'text-sensor-normal' : 'text-ink-muted'}`}>
+                                  {r.prevDiff > 0 ? '+' : ''}{r.prevDiff}
+                                </td>
+                                <td className={`px-4 py-2 font-mono text-xs ${r.initDiff > 0 ? 'text-sensor-danger' : r.initDiff < 0 ? 'text-sensor-normal' : 'text-ink-muted'}`}>
+                                  {r.initDiff > 0 ? '+' : ''}{r.initDiff}
+                                </td>
+                                <td className="px-4 py-2">
+                                  <input
+                                    type="text"
+                                    value={remarks[r.dateKey] || ''}
+                                    onChange={e => setRemarks(prev => ({ ...prev, [r.dateKey]: e.target.value }))}
+                                    placeholder="비고 입력"
+                                    className="w-full rounded border border-line bg-transparent px-2 py-1 font-mono text-xs text-ink outline-none focus:border-brand/50"
+                                  />
+                                </td>
+                              </>
+                            )}
+                          </tr>
+                        )
                       })}
                     </tbody>
                   </table>
