@@ -427,7 +427,11 @@ export default function SensorDetailPage() {
     // 차트 이미지 삽입
     if (chartBase64) {
       const imgId = wb2.addImage({ base64: chartBase64.split(',')[1], extension: 'png' })
-      ws2.addImage(imgId, { tl:{col:0,row:6}, br:{col:6,row:CR_END}, editAs:'oneCell' })
+      ws2.addImage(imgId, {
+        tl: { col: 0, row: 6 } as any,
+        br: { col: 6, row: CR_END } as any,
+        editAs: 'oneCell',
+      })
     }
 
     // 컬럼 헤더 (CR_END+2 ~ CR_END+4)
