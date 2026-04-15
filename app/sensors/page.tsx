@@ -596,6 +596,12 @@ export default function SensorsPage() {
   const canManage = me?.role !== 'MultiMonitor'
   const { sensors } = useSensorStore()
 
+  const isDataDelayed = (lastUpdated: string) => {
+    if (!lastUpdated) return true
+    const diff = Date.now() - new Date(lastUpdated).getTime()
+    return diff > 2 * 60 * 60 * 1000
+  }
+
   const [search,       setSearch]      = useState('')
   const [statusFilter, setStatus]      = useState<SensorStatus | 'all'>('all')
   const [siteFilter,   setSite]        = useState('all')
@@ -904,16 +910,28 @@ export default function SensorsPage() {
         </div>
 
         {activeTab === 'monitor' && (
-          <div className="mt-3 flex gap-1 overflow-x-auto pb-1 scrollbar-none">
-            {statusOptions.map(opt => (
-              <button key={opt.value} onClick={() => setStatus(opt.value)}
-                className={['rounded-full border px-3 py-1 font-mono text-[11px] font-medium transition-colors',
-                  statusFilter === opt.value ? tabActiveClass[opt.value] : 'border-line text-ink-muted hover:border-line-strong hover:text-ink-sub'].join(' ')}>
-                {opt.label}
-                {opt.value !== 'all' && <span className="ml-1 opacity-60">{sensors.filter(s => s.status === opt.value).length}</span>}
-              </button>
-            ))}
-          </div>
+          <>
+            {sensors.some(s => isDataDelayed(s.lastUpdated)) && (
+              <div className="mb-3 rounded-xl border border-sensor-warningborder bg-sensor-warningbg px-5 py-4">
+                <p className="flex items-center gap-2 font-semibold text-sensor-warningtext">
+                  ⚠ 데이터 수신 지연 감지
+                </p>
+                <p className="mt-1 text-sm text-sensor-warningtext/80">
+                  {sensors.filter(s => isDataDelayed(s.lastUpdated)).map(s => s.manageNo || s.nameAbbr).join(', ')} 센서에서 2시간 이상 데이터가 수신되지 않고 있습니다.
+                </p>
+              </div>
+            )}
+            <div className="mt-3 flex gap-1 overflow-x-auto pb-1 scrollbar-none">
+              {statusOptions.map(opt => (
+                <button key={opt.value} onClick={() => setStatus(opt.value)}
+                  className={['rounded-full border px-3 py-1 font-mono text-[11px] font-medium transition-colors',
+                    statusFilter === opt.value ? tabActiveClass[opt.value] : 'border-line text-ink-muted hover:border-line-strong hover:text-ink-sub'].join(' ')}>
+                  {opt.label}
+                  {opt.value !== 'all' && <span className="ml-1 opacity-60">{sensors.filter(s => s.status === opt.value).length}</span>}
+                </button>
+              ))}
+            </div>
+          </>
         )}
       </div>
 
@@ -960,7 +978,15 @@ export default function SensorsPage() {
                         <span className="ml-0.5 text-ink-muted">{sensor.unit}</span>
                       </td>
                       <td className="px-4 py-3 text-center"><StatusBadge status={sensor.status} size="sm" /></td>
-                      <td className="px-4 py-3 font-mono text-[11px] text-ink-muted">{getRelativeTime(sensor.lastUpdated)}</td>
+                      <td className="px-4 py-3 font-mono text-[11px]">
+                        {isDataDelayed(sensor.lastUpdated) ? (
+                          <span className="flex items-center gap-1 text-sensor-warningtext font-semibold">
+                            ⚠ {getRelativeTime(sensor.lastUpdated)}
+                          </span>
+                        ) : (
+                          <span className="text-ink-muted">{getRelativeTime(sensor.lastUpdated)}</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
                         <Link href={`/qr/${sensor.id}`}
                           className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-line text-xs text-ink-muted transition-colors hover:border-brand/40 hover:bg-brand/10 hover:text-brand"

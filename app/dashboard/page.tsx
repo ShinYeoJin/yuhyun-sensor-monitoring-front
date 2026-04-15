@@ -63,6 +63,12 @@ export default function DashboardPage() {
   const [refreshing, setRefreshing] = useState(false)
   const router = useRouter()
 
+  const isDataDelayed = (lastMeasured: string | null) => {
+    if (!lastMeasured) return true
+    const diff = Date.now() - new Date(lastMeasured).getTime()
+    return diff > 2 * 60 * 60 * 1000  // 2시간
+  }
+
   const fetchData = async (isManual = false) => {
     if (isManual) setRefreshing(true)
     try {
@@ -152,6 +158,17 @@ export default function DashboardPage() {
       </div>
 
       <div className="space-y-5 p-4 md:p-6">
+        {/* 수신 지연 경고 배너 */}
+        {sensors.some((s: any) => isDataDelayed(s.last_measured)) && (
+          <div className="rounded-xl border border-sensor-warningborder bg-sensor-warningbg px-5 py-4">
+            <p className="flex items-center gap-2 font-semibold text-sensor-warningtext">
+              ⚠ 데이터 수신 지연 감지
+            </p>
+            <p className="mt-1 text-sm text-sensor-warningtext/80">
+              {sensors.filter((s: any) => isDataDelayed(s.last_measured)).map((s: any) => s.manage_no || s.sensor_code).join(', ')} 센서에서 2시간 이상 데이터가 수신되지 않고 있습니다.
+            </p>
+          </div>
+        )}
 
         {/* KPI 카드 */}
         <div>
@@ -223,8 +240,14 @@ export default function DashboardPage() {
                         <td className="px-4 py-3">
                           <StatusBadge status={sensor.status} size="sm" />
                         </td>
-                        <td className="px-4 py-3 font-mono text-[10px] text-ink-muted">
-                          {sensor.last_measured ? getRelativeTime(sensor.last_measured) : '—'}
+                        <td className="px-4 py-3 font-mono text-[10px]">
+                          {isDataDelayed(sensor.last_measured) ? (
+                            <span className="flex items-center gap-1 text-sensor-warningtext font-semibold">
+                              ⚠ {sensor.last_measured ? getRelativeTime(sensor.last_measured) : '미수신'}
+                            </span>
+                          ) : (
+                            <span className="text-ink-muted">{getRelativeTime(sensor.last_measured)}</span>
+                          )}
                         </td>
                       </tr>
                     ))}
