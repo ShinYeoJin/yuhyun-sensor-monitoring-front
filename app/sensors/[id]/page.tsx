@@ -1154,10 +1154,10 @@ export default function SensorDetailPage() {
                           <tr key={i} className={`transition-colors hover:bg-surface-subtle ${rowCls}`}>
                             {chartMode === 'hourly' ? (
                               <>
-                                <td className="px-4 py-2 font-mono text-xs text-ink-muted">
+                                <td className="px-4 py-2 font-mono text-xs text-ink-muted whitespace-nowrap">
                                   {dt.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })}
                                 </td>
-                                <td className="px-4 py-2 font-mono text-xs text-ink-muted">
+                                <td className="px-4 py-2 font-mono text-xs text-ink-muted whitespace-nowrap">
                                   {dt.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
                                 </td>
                                 <td className={`px-4 py-2 font-mono text-sm font-medium ${

@@ -241,7 +241,7 @@ export default function UsersPage() {
           )}
         </div>
 
-        <div className="mt-3 flex gap-1 overflow-x-auto pb-1 scrollbar-none">
+        <div className="mt-3 flex flex-wrap gap-1 pb-1">
           {viewFilters.map(f => (
             <button key={f.value} onClick={() => setViewFilter(f.value)} className={tabCls(f.value)}>
               {f.label}
@@ -256,7 +256,7 @@ export default function UsersPage() {
       <div className="p-6">
         <div className="geo-card overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[600px] text-sm">
+            <table className="w-full min-w-[680px] text-sm">
               <thead>
                 <tr className="border-b border-line bg-surface-subtle">
                 {['사용자명', '이메일', '핸드폰', '권한', '가입일', '마지막 로그인', '상태', ''].map(h => (

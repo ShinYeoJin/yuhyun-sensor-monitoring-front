@@ -1051,7 +1051,7 @@ export default function SensorsPage() {
         <div className="p-6">
           <div className="geo-card overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[500px] text-sm">
                 <thead>
                   <tr className="border-b border-line bg-surface-subtle">
                     {[['이름','text-left'],['계산식','text-left'],['설명','text-left'],['','text-right']].map(([th,a]) => (

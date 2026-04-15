@@ -99,7 +99,9 @@ export function SensorTrendChart({ sensor, readings, hideXAxis = false }: Props)
             label={{ value: '계측일자(Day)', position: 'insideBottomRight', offset: -4, fontSize: 10, fill: '#8a9ab8' }}
           />
           <YAxis
-            tick={{ fontSize: 10, fill: '#8a9ab8', fontFamily: 'DM Mono, monospace' }}
+            tick={{ fontSize: 9, fill: '#8a9ab8', fontFamily: 'DM Mono, monospace' }}
+            interval="preserveStartEnd"
+            minTickGap={40}
             tickLine={false}
             axisLine={{ stroke: '#dde3ed' }}
             tickFormatter={(v) => {
