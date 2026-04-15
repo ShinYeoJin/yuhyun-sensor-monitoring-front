@@ -459,10 +459,11 @@ export default function SensorDetailPage() {
     ws2.columns = [{ width: 14 }, { width: 7 }, { width: 13 }, { width: 12 }, { width: 12 }, { width: 14 }]
 
     const setH = (r: number, h: number) => { ws2.getRow(r).height = h }
-    setH(1, 28); setH(2, 4); setH(3, 18); setH(4, 18); setH(5, 18); setH(6, 4)
-    const CR_END = 28
-    for (let r = 7; r <= CR_END; r++) setH(r, 16)
-    setH(CR_END + 1, 16)
+    setH(1, 28); setH(2, 4); setH(3, 18); setH(4, 18); setH(5, 18)
+    const CR_START = 6
+    const CR_END = 15
+    for (let r = CR_START; r <= CR_END; r++) setH(r, 18)
+    setH(CR_END + 1, 14)
     setH(CR_END + 2, 4); setH(CR_END + 3, 18); setH(CR_END + 4, 18); setH(CR_END + 5, 18); setH(CR_END + 6, 3)
     const DS = CR_END + 7
     sortedRows.forEach((_: any, i: number) => setH(DS + i, 17))
@@ -491,7 +492,7 @@ export default function SensorDetailPage() {
     if (chartBase64) {
       const imgId = wb2.addImage({ base64: chartBase64.split(',')[1], extension: 'png' })
       ws2.addImage(imgId, {
-        tl: { col: 0, row: 6 } as any,
+        tl: { col: 0, row: CR_START - 1 } as any,
         br: { col: 6, row: CR_END } as any,
         editAs: 'oneCell',
       })
