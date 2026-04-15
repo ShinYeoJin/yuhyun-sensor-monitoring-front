@@ -60,9 +60,11 @@ export default function DashboardPage() {
   const [alarms,    setAlarms]    = useState<any[]>([])
   const [kpiFilter, setKpiFilter] = useState<KpiFilter | null>(null)
   const [loading,   setLoading]   = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const router = useRouter()
 
-  const fetchData = async () => {
+  const fetchData = async (isManual = false) => {
+    if (isManual) setRefreshing(true)
     try {
       const [dash, sens, alm] = await Promise.all([
         dashboardApi.get(),
@@ -76,6 +78,7 @@ export default function DashboardPage() {
       console.error(err)
     } finally {
       setLoading(false)
+      if (isManual) setRefreshing(false)
     }
   }
 
@@ -138,9 +141,11 @@ export default function DashboardPage() {
             <span className="flex items-center gap-1.5 rounded-full border border-sensor-normalborder bg-sensor-normalbg px-3 py-1.5 font-mono text-xs font-medium text-sensor-normaltext">
               <span className="pulse-live" />LIVE
             </span>
-            <button onClick={fetchData}
-              className="rounded-full border border-line bg-surface-card px-3 py-1.5 font-mono text-[10px] text-ink-muted transition-colors hover:border-brand/40 hover:bg-brand/10 hover:text-brand">
-              ↻ 새로고침
+            <button
+              onClick={() => fetchData(true)}
+              disabled={refreshing}
+              className="rounded-full border border-line bg-surface-card px-3 py-1.5 font-mono text-[10px] text-ink-muted transition-colors hover:border-brand/40 hover:bg-brand/10 hover:text-brand disabled:opacity-50">
+              {refreshing ? '⟳ 갱신 중...' : '↻ 새로고침'}
             </button>
           </div>
         </div>

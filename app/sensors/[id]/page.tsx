@@ -984,7 +984,7 @@ export default function SensorDetailPage() {
         </div>
 
         <div className="geo-card p-5">
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-sm font-semibold text-ink">
                 {chartMode === 'hourly' ? '시간별' : '일별'} 트렌드
@@ -996,7 +996,7 @@ export default function SensorDetailPage() {
                   : '날짜 범위를 확인해 주세요.'}
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               {sensor.nameAbbr === '80053' && (
                 <>
                   <div className="flex gap-1 rounded-lg border border-line bg-surface-subtle p-1">
@@ -1082,7 +1082,7 @@ export default function SensorDetailPage() {
           const pageData = tableData.slice((safePage - 1) * TABLE_PAGE_SIZE, safePage * TABLE_PAGE_SIZE)
           return (
             <div className="geo-card overflow-hidden">
-              <div className="flex items-center justify-between border-b border-line px-5 py-3">
+              <div className="flex flex-col gap-2 border-b border-line px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h2 className="text-sm font-semibold text-ink">측정 데이터</h2>
                   <p className="font-mono text-[10px] text-ink-muted">
