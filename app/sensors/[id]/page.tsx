@@ -283,7 +283,7 @@ export default function SensorDetailPage() {
       from: dateFrom,
       to: dateTo,
       limit: 2000,
-      depthLabel: depthLabel,
+      depthLabel: sensor?.nameAbbr === '80053' ? depthLabel : undefined,
     }).then((data: any[]) => {
       const mapped = data.map((m: any) => ({
         timestamp: m.measured_at,
