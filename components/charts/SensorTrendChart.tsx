@@ -98,7 +98,11 @@ export function SensorTrendChart({ sensor, readings, hideXAxis = false }: Props)
             tick={{ fontSize: 10, fill: '#8a9ab8', fontFamily: 'DM Mono, monospace' }}
             tickLine={false}
             axisLine={{ stroke: '#dde3ed' }}
-            tickFormatter={(v) => `${v}`}
+            tickFormatter={(v) => {
+              const num = parseFloat(v)
+              if (isNaN(num)) return `${v}`
+              return num.toFixed(2)
+            }}
             width={52}
             domain={
               (refLine !== null || refLine2 !== null)
