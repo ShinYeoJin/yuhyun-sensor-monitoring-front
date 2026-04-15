@@ -357,7 +357,9 @@ export default function SensorDetailPage() {
     const firstDate  = new Date(sorted[0].timestamp)
     return sorted.map((r, i) => {
       const currentDate = new Date(r.timestamp)
-      const elapsed = Math.round((currentDate.getTime() - firstDate.getTime()) / 86400000)
+      const curMid   = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate())
+      const initMid  = new Date(firstDate.getFullYear(), firstDate.getMonth(), firstDate.getDate())
+      const elapsed  = Math.round((curMid.getTime() - initMid.getTime()) / 86400000)
       const prevValue = i > 0 ? sorted[i - 1].value : r.value
       const dateKey = currentDate.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
       return {
@@ -536,7 +538,9 @@ export default function SensorDetailPage() {
         if (numFmt) cell.numFmt = numFmt
       }
       const curDate  = new Date(row.timestamp)
-      const elapsed  = Math.round((curDate.getTime() - initDate.getTime()) / 86400000)
+      const curMidnight  = new Date(curDate.getFullYear(), curDate.getMonth(), curDate.getDate())
+      const initMidnight = new Date(initDate.getFullYear(), initDate.getMonth(), initDate.getDate())
+      const elapsed  = Math.round((curMidnight.getTime() - initMidnight.getTime()) / 86400000)
       const curVal   = parseFloat(parseFloat(String(row.value)).toFixed(2))
       const prevVal  = i > 0 ? parseFloat(parseFloat(String(sortedRows[i - 1].value)).toFixed(2)) : curVal
       const prevDiff = parseFloat((curVal - prevVal).toFixed(2))
@@ -626,7 +630,9 @@ export default function SensorDetailPage() {
     })
 
     const currentY = (doc as any).lastAutoTable.finalY + 5
-    const chartData = chartMode === 'hourly' ? measurements : dailyReadings
+    const chartData = [...(chartMode === 'hourly' ? measurements : dailyReadings)].sort((a: any, b: any) =>
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    )
 
     // 1차 관리기준 값 계산
     const level1Lower = sensor.criteria?.level1Lower !== '' && sensor.criteria?.level1Lower != null
@@ -731,7 +737,10 @@ export default function SensorDetailPage() {
         const prevVal  = i > 0 ? parseFloat(parseFloat(String(pdfSortedRows[i - 1].value)).toFixed(2)) : curVal
         const prevDiff = parseFloat((curVal - prevVal).toFixed(2))
         const initDiff = parseFloat((curVal - pdfInitVal).toFixed(2))
-        const elapsed  = Math.round((new Date(r.timestamp).getTime() - pdfInitDate.getTime()) / 86400000)
+        const rDate    = new Date(r.timestamp)
+        const curMid   = new Date(rDate.getFullYear(), rDate.getMonth(), rDate.getDate())
+        const initMid  = new Date(pdfInitDate.getFullYear(), pdfInitDate.getMonth(), pdfInitDate.getDate())
+        const elapsed  = Math.round((curMid.getTime() - initMid.getTime()) / 86400000)
         const dateKey  = new Date(r.timestamp).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
         return [
           dateKey,

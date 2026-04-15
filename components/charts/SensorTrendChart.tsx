@@ -44,7 +44,11 @@ interface Props {
 export function SensorTrendChart({ sensor, readings, hideXAxis = false }: Props) {
   const source = readings ?? sensor.readings ?? []
 
-  const data = source.map((r: SensorReading) => {
+  const sortedSource = [...source].sort((a, b) =>
+    new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+  )
+
+  const data = sortedSource.map((r: SensorReading) => {
     const d = new Date(r.timestamp)
     return {
       time: d.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }),
