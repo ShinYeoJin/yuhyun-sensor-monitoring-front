@@ -265,6 +265,8 @@ export default function SensorDetailPage() {
         batteryLevel: 100,
         lastUpdated: data.last_measured || new Date().toISOString(),
         site_managers: data.site_managers || '[]',
+        floor_plan_url: data.floor_plan_url || null,
+        site_floor_plan_url: data.site_floor_plan_url || null,
         readings: [],
       })
     }).catch(() => setSensor(null))
@@ -894,7 +896,6 @@ export default function SensorDetailPage() {
             </div>
             {(() => {
               const floorPlanUrl = sensor.floor_plan_url || sensor.site_floor_plan_url || null
-              const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://yuhyun-sensor-monitoring-back.onrender.com'
               return floorPlanUrl ? (
                 <div className="rounded-xl border border-line overflow-hidden bg-surface-subtle">
                   <img
@@ -921,7 +922,7 @@ export default function SensorDetailPage() {
                           try {
                             const token = localStorage.getItem('gm_token')
                             const res = await fetch(
-                              `${apiBase}/api/sensors/${sensor.id}/floor-plan`,
+                              `${process.env.NEXT_PUBLIC_API_URL || 'https://yuhyun-sensor-monitoring-back.onrender.com'}/api/sensors/${sensor.id}/floor-plan`,
                               { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData }
                             )
                             const data = await res.json()
