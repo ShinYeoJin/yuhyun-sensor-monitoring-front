@@ -12,6 +12,7 @@ import type { SensorReading, UnifiedSensor } from '@/types'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import html2canvas from 'html2canvas'
+import { useAuth } from '@/lib/auth-context'
 
 function getReadingsByRange(
   sensor: UnifiedSensor,
@@ -275,7 +276,7 @@ export default function SensorDetailPage() {
   const [chartMode, setChartMode] = useState<'hourly' | 'daily'>('hourly')
   const [unit80053, setUnit80053] = useState<'m' | 'psi'>('m')
   const [depthLabel, setDepthLabel] = useState<'1' | '2' | '3'>('1')
-  const [calcMode, setCalcMode] = useState<'poly' | 'linear'>('poly')
+  const [calcMode, setCalcMode] = useState<'poly' | 'linear'>('linear')
 
   useEffect(() => {
     if (!id) return
@@ -371,6 +372,9 @@ export default function SensorDetailPage() {
       }
     })
   }, [dailyReadings])
+
+  const { user } = useAuth()
+  const isMultiMonitor = user?.role === 'MultiMonitor'
 
   const { thresholdWarning, thresholdDanger } = sensor ? getThresholds(sensor) : { thresholdWarning: 0, thresholdDanger: 0 }
   const overThreshold = sensor ? sensor.currentValue > thresholdDanger : false
@@ -791,66 +795,6 @@ export default function SensorDetailPage() {
           <span className="font-mono text-xs text-ink-muted">{sensor.name}</span>
           <StatusBadge status={sensor.status} />
         </div>
-
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <div className="flex gap-1">
-            {[
-              { label: '오늘',  days: 1  },
-              { label: '7일',   days: 7  },
-              { label: '30일',  days: 30 },
-              { label: '90일',  days: 90 },
-            ].map(p => (
-              <button key={p.label} onClick={() => setPreset(p.days)}
-                className={[
-                  'rounded-md px-2.5 py-1 font-mono text-[11px] font-medium transition-all border',
-                  dateFrom === new Date(new Date().setDate(new Date().getDate() - p.days + 1)).toISOString().slice(0, 10) && dateTo === today
-                    ? 'border-brand/40 bg-brand/10 text-brand'
-                    : 'border-line text-ink-muted hover:border-line-strong hover:text-ink-sub',
-                ].join(' ')}>
-                {p.label}
-              </button>
-            ))}
-          </div>
-
-          <span className="text-ink-muted">|</span>
-
-          <div className="flex items-center gap-1.5 rounded-lg border border-line bg-surface-card px-3 py-1 shadow-card">
-            <span className="font-mono text-[10px] text-ink-muted">시작</span>
-            <input type="date" value={dateFrom} max={today}
-              onChange={e => { setDateFrom(e.target.value); setTablePage(1) }}
-              className="font-mono text-xs text-ink outline-none bg-transparent" />
-          </div>
-          <span className="font-mono text-xs text-ink-muted">~</span>
-          <div className={[
-            'flex items-center gap-1.5 rounded-lg border px-3 py-1 shadow-card',
-            !isValidRange ? 'border-sensor-dangerborder bg-sensor-dangerbg' : 'border-line bg-surface-card',
-          ].join(' ')}>
-            <span className="font-mono text-[10px] text-ink-muted">종료</span>
-            <input type="date" value={dateTo} min={dateFrom} max={today}
-              onChange={e => { setDateTo(e.target.value); setTablePage(1) }}
-              className="font-mono text-xs text-ink outline-none bg-transparent" />
-          </div>
-
-          {isValidRange && (
-            <span className="rounded-full border border-line bg-surface-subtle px-2.5 py-1 font-mono text-[11px] text-ink-muted">
-              {dayCount}일 · {readings.length}개 포인트
-            </span>
-          )}
-          {!isValidRange && (
-            <span className="font-mono text-[11px] text-sensor-dangertext">종료일이 시작일보다 앞설 수 없습니다.</span>
-          )}
-
-          <div className="ml-auto flex items-center gap-2">
-            <button onClick={() => { setPrintConfig(c => ({ ...c, dateFrom, dateTo })); setPrintOpen(true) }}
-              className="flex items-center gap-1.5 rounded-lg border border-line bg-surface-card px-4 py-1.5 font-mono text-sm text-ink-sub shadow-card transition-colors hover:border-brand/40 hover:bg-brand/10 hover:text-brand">
-              🖨 출력
-            </button>
-            <button onClick={() => setQrOpen(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-line bg-surface-card px-4 py-1.5 font-mono text-sm text-ink-sub shadow-card transition-colors hover:border-brand/40 hover:bg-brand/10 hover:text-brand">
-              ⊞ QR
-            </button>
-          </div>
-        </div>
       </div>
 
       <div ref={printRef} style={{ display: 'none' }} />
@@ -901,7 +845,7 @@ export default function SensorDetailPage() {
                 { label: '1차 하한',     value: sensor.criteria?.level1Lower ? `${sensor.criteria.level1Lower} ${sensor.criteria.criteriaUnit}` : '—' },
                 { label: '2차 상한',     value: sensor.criteria?.level2Upper ? `${sensor.criteria.level2Upper} ${sensor.criteria.criteriaUnit}` : '—' },
                 { label: '2차 하한',     value: sensor.criteria?.level2Lower ? `${sensor.criteria.level2Lower} ${sensor.criteria.criteriaUnit}` : '—' },
-                { label: '마지막 수신',  value: `${formatTimestamp(sensor.lastUpdated)} (${getRelativeTime(sensor.lastUpdated)})` },
+                ...(!isMultiMonitor ? [{ label: '마지막 수신', value: `${formatTimestamp(sensor.lastUpdated)} (${getRelativeTime(sensor.lastUpdated)})` }] : []),
               ].map(item => (
                 <div key={item.label} className="flex items-start gap-3">
                   <dt className="w-28 shrink-0 font-mono text-xs text-ink-muted">{item.label}</dt>
@@ -941,6 +885,79 @@ export default function SensorDetailPage() {
                 </p>
               </div>
             )}
+
+            {/* 평면도 — 센서 개별 > 현장 공통 > 없음 순 */}
+            {(() => {
+              const floorPlanUrl = sensor.floor_plan_url || sensor.site_floor_plan_url || null
+              return (
+                <div className="mb-4 rounded-xl border border-line overflow-hidden">
+                  <div className="flex items-center justify-between bg-surface-subtle px-4 py-2 border-b border-line">
+                    <p className="font-mono text-[11px] font-semibold text-ink-muted uppercase tracking-wide">계측계획 평면도</p>
+                    {!isMultiMonitor && (
+                      <label className="cursor-pointer rounded-md border border-line bg-surface-card px-2.5 py-1 font-mono text-[10px] text-ink-muted transition-colors hover:border-brand/40 hover:text-brand">
+                        📎 변경
+                        <input type="file" accept="image/*" className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0]
+                            if (!file) return
+                            const formData = new FormData()
+                            formData.append('file', file)
+                            try {
+                              const token = localStorage.getItem('token')
+                              const res = await fetch(
+                                `${process.env.NEXT_PUBLIC_API_URL}/api/sensors/${sensor.id}/floor-plan`,
+                                { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData }
+                              )
+                              const data = await res.json()
+                              if (data.success) {
+                                setSensor((prev: any) => ({ ...prev, floor_plan_url: data.floor_plan_url }))
+                              }
+                            } catch { alert('업로드 실패') }
+                          }}
+                        />
+                      </label>
+                    )}
+                  </div>
+                  <div className="relative w-full bg-surface-subtle" style={{ paddingBottom: '60%' }}>
+                    {floorPlanUrl ? (
+                      <img
+                        src={`${process.env.NEXT_PUBLIC_API_URL}${floorPlanUrl}`}
+                        alt="계측계획 평면도"
+                        className="absolute inset-0 w-full h-full object-contain"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                        <p className="font-mono text-xs text-ink-muted">평면도 이미지 준비 중</p>
+                        {!isMultiMonitor && (
+                          <label className="cursor-pointer rounded-lg border border-brand/40 bg-brand/10 px-3 py-1.5 font-mono text-[11px] text-brand transition-colors hover:bg-brand/20">
+                            📎 평면도 업로드
+                            <input type="file" accept="image/*" className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0]
+                                if (!file) return
+                                const formData = new FormData()
+                                formData.append('file', file)
+                                try {
+                                  const token = localStorage.getItem('token')
+                                  const res = await fetch(
+                                    `${process.env.NEXT_PUBLIC_API_URL}/api/sensors/${sensor.id}/floor-plan`,
+                                    { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData }
+                                  )
+                                  const data = await res.json()
+                                  if (data.success) {
+                                    setSensor((prev: any) => ({ ...prev, floor_plan_url: data.floor_plan_url }))
+                                  }
+                                } catch { alert('업로드 실패') }
+                              }}
+                            />
+                          </label>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
 
             {sensor.status !== 'offline' && (
               <div className="space-y-2">
@@ -984,6 +1001,66 @@ export default function SensorDetailPage() {
         </div>
 
         <div className="geo-card p-5">
+          {/* 날짜 선택 + 출력/QR 버튼 */}
+          <div className="mb-4 flex flex-wrap items-center gap-2 border-b border-line pb-4">
+            <div className="flex gap-1">
+              {[
+                { label: '오늘',  days: 1  },
+                { label: '7일',   days: 7  },
+                { label: '30일',  days: 30 },
+                { label: '90일',  days: 90 },
+              ].map(p => (
+                <button key={p.label} onClick={() => setPreset(p.days)}
+                  className={[
+                    'rounded-md px-2.5 py-1 font-mono text-[11px] font-medium transition-all border',
+                    dateFrom === new Date(new Date().setDate(new Date().getDate() - p.days + 1)).toISOString().slice(0,10) && dateTo === today
+                      ? 'border-brand/40 bg-brand/10 text-brand'
+                      : 'border-line text-ink-muted hover:border-line-strong hover:text-ink-sub',
+                  ].join(' ')}>
+                  {p.label}
+                </button>
+              ))}
+            </div>
+
+            <span className="text-ink-muted">|</span>
+
+            <div className="flex items-center gap-1.5 rounded-lg border border-line bg-surface-card px-3 py-1 shadow-card">
+              <span className="font-mono text-[10px] text-ink-muted">시작</span>
+              <input type="date" value={dateFrom} max={today}
+                onChange={e => { setDateFrom(e.target.value); setTablePage(1) }}
+                className="font-mono text-xs text-ink outline-none bg-transparent" />
+            </div>
+            <span className="font-mono text-xs text-ink-muted">~</span>
+            <div className={[
+              'flex items-center gap-1.5 rounded-lg border px-3 py-1 shadow-card',
+              !isValidRange ? 'border-sensor-dangerborder bg-sensor-dangerbg' : 'border-line bg-surface-card',
+            ].join(' ')}>
+              <span className="font-mono text-[10px] text-ink-muted">종료</span>
+              <input type="date" value={dateTo} min={dateFrom} max={today}
+                onChange={e => { setDateTo(e.target.value); setTablePage(1) }}
+                className="font-mono text-xs text-ink outline-none bg-transparent" />
+            </div>
+
+            {isValidRange && (
+              <span className="rounded-full border border-line bg-surface-subtle px-2.5 py-1 font-mono text-[11px] text-ink-muted">
+                {dayCount}일 · {readings.length}개 포인트
+              </span>
+            )}
+            {!isValidRange && (
+              <span className="font-mono text-[11px] text-sensor-dangertext">종료일이 시작일보다 앞설 수 없습니다.</span>
+            )}
+
+            <div className="ml-auto flex items-center gap-2">
+              <button onClick={() => { setPrintConfig(c => ({ ...c, dateFrom, dateTo })); setPrintOpen(true) }}
+                className="flex items-center gap-1.5 rounded-lg border border-line bg-surface-card px-4 py-1.5 font-mono text-sm text-ink-sub shadow-card transition-colors hover:border-brand/40 hover:bg-brand/10 hover:text-brand">
+                🖨 출력
+              </button>
+              <button onClick={() => setQrOpen(true)}
+                className="flex items-center gap-1.5 rounded-lg border border-line bg-surface-card px-4 py-1.5 font-mono text-sm text-ink-sub shadow-card transition-colors hover:border-brand/40 hover:bg-brand/10 hover:text-brand">
+                ⊞ QR
+              </button>
+            </div>
+          </div>
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-sm font-semibold text-ink">
@@ -1002,7 +1079,7 @@ export default function SensorDetailPage() {
                   <div className="flex gap-1 rounded-lg border border-line bg-surface-subtle p-1">
                     {(['1', '2', '3'] as const).map(d => (
                       <button key={d} onClick={() => setDepthLabel(d)}
-                        className={['rounded-md px-3 py-1 font-mono text-[11px] font-medium transition-all',
+                        className={['rounded-md px-4 py-1.5 font-mono text-[13px] font-medium transition-all',
                           depthLabel === d ? 'bg-surface-card text-brand shadow-card' : 'text-ink-muted hover:text-ink-sub'].join(' ')}>
                         {d}번
                       </button>

@@ -22,9 +22,9 @@ interface SiteWithStatus extends Site {
 }
 
 type SiteForm = {
-  name: string; location: string; description: string; managers: string[]; selectedSensors: number[]
+  name: string; location: string; description: string; managers: string[]; selectedSensors: number[]; floor_plan_url?: string
 }
-const emptyForm: SiteForm = { name: '', location: '', description: '', managers: [], selectedSensors: [] }
+const emptyForm: SiteForm = { name: '', location: '', description: '', managers: [], selectedSensors: [], floor_plan_url: '' }
 
 const inputCls = 'w-full rounded-lg border border-line bg-surface-subtle px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-ink-muted focus:border-brand/50 focus:ring-2 focus:ring-brand/10'
 const labelCls = 'mb-1.5 block font-mono text-[10px] font-semibold uppercase tracking-wider text-ink-muted'
@@ -127,6 +127,57 @@ function SiteModal({ mode, form, onChange, onSubmit, onClose, users, sensors, si
             )}
             {form.managers.length === 0 && <p className="mt-1.5 font-mono text-[10px] text-ink-muted">담당자를 선택하지 않으면 미배정으로 등록됩니다.</p>}
           </div>
+          {/* 평면도 업로드 */}
+          <div>
+            <label className={labelCls}>현장 평면도</label>
+            <div className="rounded-xl border border-line overflow-hidden">
+              {form.floor_plan_url ? (
+                <div className="relative">
+                  <img
+                    src={`${process.env.NEXT_PUBLIC_API_URL}${form.floor_plan_url}`}
+                    alt="평면도"
+                    className="w-full object-contain max-h-48"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => onChange({ ...form, floor_plan_url: '' })}
+                    className="absolute top-2 right-2 rounded-full bg-ink/50 px-2 py-1 font-mono text-[10px] text-white hover:bg-ink/70"
+                  >
+                    ✕ 제거
+                  </button>
+                </div>
+              ) : (
+                <label className="flex cursor-pointer flex-col items-center justify-center gap-2 bg-surface-subtle py-6 hover:bg-surface-muted transition-colors">
+                  <span className="text-2xl">🗺</span>
+                  <span className="font-mono text-[11px] text-ink-muted">평면도 이미지 업로드</span>
+                  <span className="font-mono text-[10px] text-ink-muted">PNG, JPG, PDF</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+                      const formData = new FormData()
+                      formData.append('file', file)
+                      try {
+                        const token = localStorage.getItem('token')
+                        const res = await fetch(
+                          `${process.env.NEXT_PUBLIC_API_URL}/api/files/upload`,
+                          { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData }
+                        )
+                        const data = await res.json()
+                        if (data.success) {
+                          onChange({ ...form, floor_plan_url: `/uploads/${data.file.filename}` })
+                        }
+                      } catch { alert('업로드 실패') }
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+          </div>
+
           {/* 센서 선택 */}
           <div>
             <div className="mb-2 flex items-center justify-between">
@@ -348,13 +399,13 @@ export default function SitesPage() {
   const openAdd  = () => { setForm(emptyForm); setAddOpen(true) }
   const openEdit = (site: any) => {
     const currentSensors = sensors.filter((s: any) => s.site_code === site.site_code).map((s: any) => s.id)
-    setForm({ name: site.name, location: site.location || '', description: site.description || '', managers: site.managers || [], selectedSensors: currentSensors })
+    setForm({ name: site.name, location: site.location || '', description: site.description || '', managers: site.managers || [], selectedSensors: currentSensors, floor_plan_url: site.floor_plan_url || '' })
     setEditTarget(site)
   }
 
   const handleAdd = async () => {
     try {
-      const result = await siteApi.create({ name: form.name, location: form.location, description: form.description, managers: form.managers })
+      const result = await siteApi.create({ name: form.name, location: form.location, description: form.description, managers: form.managers, floor_plan_url: form.floor_plan_url })
       // 선택된 센서들을 새 현장으로 변경
       if (form.selectedSensors.length > 0) {
         await Promise.all(form.selectedSensors.map((sensorId: number) =>
@@ -373,7 +424,7 @@ export default function SitesPage() {
   const handleEdit = async () => {
     if (!editTarget) return
     try {
-      await siteApi.update(editTarget.id, { name: form.name, location: form.location, description: form.description, managers: form.managers })
+      await siteApi.update(editTarget.id, { name: form.name, location: form.location, description: form.description, managers: form.managers, floor_plan_url: form.floor_plan_url })
       // 센서 소속 현장 변경
       // 선택된 센서 → 현재 현장으로 변경
       await Promise.all(form.selectedSensors.map((sensorId: number) =>
