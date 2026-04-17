@@ -898,7 +898,7 @@ export default function SensorDetailPage() {
               return floorPlanUrl ? (
                 <div className="rounded-xl border border-line overflow-hidden bg-surface-subtle">
                   <img
-                    src={`${apiBase}${floorPlanUrl}`}
+                    src={floorPlanUrl}
                     alt="계측계획 평면도"
                     className="w-full object-contain"
                     style={{ maxHeight: '400px' }}
@@ -920,7 +920,6 @@ export default function SensorDetailPage() {
                           formData.append('file', file)
                           try {
                             const token = localStorage.getItem('gm_token')
-                            const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://yuhyun-sensor-monitoring-back.onrender.com'
                             const res = await fetch(
                               `${apiBase}/api/sensors/${sensor.id}/floor-plan`,
                               { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData }
