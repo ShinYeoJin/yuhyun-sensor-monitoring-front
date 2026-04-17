@@ -312,7 +312,10 @@ export default function SensorDetailPage() {
 
   useEffect(() => {
     if (!id) return
-    sensorApi.getMeasurements(Number(id), { limit: 2000 }).then((data: any[]) => {
+    sensorApi.getMeasurements(Number(id), {
+      limit: 2000,
+      depthLabel: sensor?.nameAbbr === '80053' ? depthLabel : undefined,
+    }).then((data: any[]) => {
       if (data.length > 0) {
         const oldest = [...data].sort((a: any, b: any) =>
           new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime()
@@ -324,7 +327,7 @@ export default function SensorDetailPage() {
         })
       }
     }).catch(() => {})
-  }, [id])
+  }, [id, depthLabel, sensor?.nameAbbr])
 
   const [qrOpen,    setQrOpen]    = useState(false)
   const [tablePage, setTablePage] = useState(1)
