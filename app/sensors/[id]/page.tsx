@@ -276,7 +276,6 @@ export default function SensorDetailPage() {
   const [dateFrom, setDateFrom] = useState(today)
   const [dateTo,   setDateTo]   = useState(today)
   const [chartMode, setChartMode] = useState<'hourly' | 'daily'>('hourly')
-  const [unit80053, setUnit80053] = useState<'m' | 'psi'>('m')
   const [depthLabel, setDepthLabel] = useState<'1' | '2' | '3'>('1')
   const [calcMode, setCalcMode] = useState<'poly' | 'linear'>('linear')
 
@@ -298,7 +297,6 @@ export default function SensorDetailPage() {
     }).catch(() => {})
   }, [id, sensor?.unit, dateFrom, dateTo, depthLabel, calcMode])
 
-  // 초기측정값: 전체 기간 기준 최초 수신값 (날짜 범위와 무관)
   const [globalInitReading, setGlobalInitReading] = useState<any>(null)
 
   useEffect(() => {
@@ -640,13 +638,11 @@ export default function SensorDetailPage() {
       new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     )
 
-    // 1차 관리기준 값 계산
+    // 1차 관리기준 값
     const level1Lower = sensor.criteria?.level1Lower !== '' && sensor.criteria?.level1Lower != null
       ? parseFloat(sensor.criteria.level1Lower) : null
     const level1Upper = sensor.criteria?.level1Upper !== '' && sensor.criteria?.level1Upper != null
       ? parseFloat(sensor.criteria.level1Upper) : null
-    const refVal = (level1Lower !== null && !isNaN(level1Lower)) ? level1Lower
-      : (level1Upper !== null && !isNaN(level1Upper)) ? level1Upper : null
 
     if (chartData.length > 0) {
       const chartX = 15, chartY = currentY, chartW = pageWidth - 30, chartH = 50
@@ -655,11 +651,16 @@ export default function SensorDetailPage() {
       doc.rect(chartX, chartY, chartW, chartH)
 
       const values = chartData.map((r: any) => parseFloat(r.value))
-      const candidates = refVal !== null ? [...values, refVal] : values
-      const minVal = Math.min(...candidates), maxVal = Math.max(...candidates)
+      const refVals = [
+        ...(level1Lower !== null && !isNaN(level1Lower) ? [level1Lower] : []),
+        ...(level1Upper !== null && !isNaN(level1Upper) ? [level1Upper] : []),
+      ]
+      const allVals = [...values, ...refVals]
+      const minVal = Math.min(...allVals), maxVal = Math.max(...allVals)
       const padding = (maxVal - minVal) * 0.1 || 1
       const yMin = minVal - padding, yMax = maxVal + padding, range = yMax - yMin
 
+      // 격자선
       doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.2)
       for (let g = 1; g <= 3; g++) {
         const gy = chartY + (chartH / 4) * g
@@ -671,16 +672,32 @@ export default function SensorDetailPage() {
       doc.text(yMax.toFixed(2), chartX - 1, chartY + 2, { align: 'right' })
       doc.text(yMin.toFixed(2), chartX - 1, chartY + chartH + 1, { align: 'right' })
 
-      // 1차 관리기준선
-      if (refVal !== null) {
-        const refY = chartY + chartH - ((refVal - yMin) / range) * chartH
-        doc.setDrawColor(255, 0, 0); doc.setLineWidth(0.4)
-        let x = chartX
-        while (x < chartX + chartW) {
-          doc.line(x, refY, Math.min(x + 3, chartX + chartW), refY); x += 5
+      // 1차 하한선 (빨간색)
+      if (level1Lower !== null && !isNaN(level1Lower)) {
+        const refY = chartY + chartH - ((level1Lower - yMin) / range) * chartH
+        if (refY >= chartY && refY <= chartY + chartH) {
+          doc.setDrawColor(192, 0, 0); doc.setLineWidth(0.4)
+          let x = chartX
+          while (x < chartX + chartW) {
+            doc.line(x, refY, Math.min(x + 3, chartX + chartW), refY); x += 5
+          }
+          doc.setFontSize(5); doc.setTextColor(192, 0, 0)
+          doc.text('1차 하한기준', chartX + chartW - 1, refY - 1, { align: 'right' })
         }
-        doc.setFontSize(5); doc.setTextColor(255, 0, 0)
-        doc.text('1차 관리기준', chartX + chartW - 1, refY - 1, { align: 'right' })
+      }
+
+      // 1차 상한선 (주황색)
+      if (level1Upper !== null && !isNaN(level1Upper)) {
+        const refY = chartY + chartH - ((level1Upper - yMin) / range) * chartH
+        if (refY >= chartY && refY <= chartY + chartH) {
+          doc.setDrawColor(224, 112, 0); doc.setLineWidth(0.4)
+          let x = chartX
+          while (x < chartX + chartW) {
+            doc.line(x, refY, Math.min(x + 3, chartX + chartW), refY); x += 5
+          }
+          doc.setFontSize(5); doc.setTextColor(224, 112, 0)
+          doc.text('1차 상한기준', chartX + chartW - 1, refY - 1, { align: 'right' })
+        }
       }
 
       // 데이터 선
@@ -708,26 +725,36 @@ export default function SensorDetailPage() {
       const centerX = chartX + chartW / 2
       doc.setFontSize(7)
 
-      const leftLegendX = centerX - 35
+      // 센서명 범례
+      const leftLegendX = centerX - 50
       doc.setDrawColor(34, 150, 100); doc.setLineWidth(0.8)
       doc.line(leftLegendX, legendY, leftLegendX + 8, legendY)
       doc.setTextColor(34, 150, 100)
       doc.text(`── ${sensor.manageNo || sensor.name}`, leftLegendX + 10, legendY + 0.5)
 
-      if (refVal !== null) {
-        const rightLegendX = centerX + 5
-        doc.setDrawColor(255, 0, 0); doc.setLineWidth(0.6)
-        let lx = rightLegendX
-        while (lx < rightLegendX + 8) {
-          doc.line(lx, legendY, Math.min(lx + 3, rightLegendX + 8), legendY); lx += 5
-        }
-        doc.setTextColor(255, 0, 0)
-        doc.text('- - - 1차 관리기준', rightLegendX + 10, legendY + 0.5)
+      // 1차 하한 범례
+      if (level1Lower !== null && !isNaN(level1Lower)) {
+        const lx1 = centerX - 5
+        doc.setDrawColor(192, 0, 0); doc.setLineWidth(0.6)
+        let lx = lx1
+        while (lx < lx1 + 8) { doc.line(lx, legendY, Math.min(lx + 3, lx1 + 8), legendY); lx += 5 }
+        doc.setTextColor(192, 0, 0)
+        doc.text('1차 하한기준', lx1 + 10, legendY + 0.5)
+      }
+
+      // 1차 상한 범례
+      if (level1Upper !== null && !isNaN(level1Upper)) {
+        const lx2 = centerX + 35
+        doc.setDrawColor(224, 112, 0); doc.setLineWidth(0.6)
+        let lx = lx2
+        while (lx < lx2 + 8) { doc.line(lx, legendY, Math.min(lx + 3, lx2 + 8), legendY); lx += 5 }
+        doc.setTextColor(224, 112, 0)
+        doc.text('1차 상한기준', lx2 + 10, legendY + 0.5)
       }
       doc.setTextColor(0, 0, 0)
-    }  // ← if (chartData.length > 0) 닫는 중괄호
+    }
 
-    // PDF 표 — dailyReadings 기반 직접 계산 (엑셀과 동일 소스)
+    // PDF 표
     const pdfSortedRows = [...dailyReadings].sort((a: any, b: any) =>
       new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     )
@@ -788,7 +815,6 @@ export default function SensorDetailPage() {
   return (
     <div className="flex-1 overflow-y-auto bg-surface-page">
 
-      {/* 헤더 */}
       <div className="sticky top-0 z-10 border-b border-line bg-surface-card/90 px-6 py-3 backdrop-blur-md">
         <div className="flex items-center gap-3">
           <Link href="/sensors" className="text-sm text-ink-muted transition-colors hover:text-ink">← 센서 목록</Link>
@@ -828,25 +854,18 @@ export default function SensorDetailPage() {
             <h2 className="mb-4 text-sm font-semibold text-ink">센서 정보</h2>
             <dl className="space-y-3 text-sm">
               {[
-                { label: '관리번호',     value: sensor.manageNo    || '—' },
-                { label: '센서명',       value: sensor.name },
-                { label: '영문명',       value: sensor.nameEn      || '—' },
-                { label: '약어',         value: sensor.nameAbbr    || '—' },
-                { label: '관련분야',     value: sensor.field },
-                { label: '구간-그룹',    value: sensor.group       || '없음' },
-                { label: '측정방법',     value: sensor.measureMethod },
-                { label: '계산식',       value: sensor.formula },
-                { label: '현장',         value: sensor.siteName },
-                { label: '설치 위치',    value: sensor.location.description || '—' },
-                { label: '설치일',       value: sensor.installDate || '—' },
-                { label: '측정단위',     value: sensor.unit ? `${sensor.unit} (${sensor.unitName || '—'})` : '—' },
-                { label: '측정주기',     value: sensor.operation?.measureCycle || '—' },
-                { label: '측정 후 동작', value: sensor.operation?.actionAfterMeasure || '—' },
-                { label: '측정 전 동작', value: sensor.operation?.actionBeforeMeasure || '—' },
-                { label: '1차 상한',     value: sensor.criteria?.level1Upper ? `${sensor.criteria.level1Upper} ${sensor.criteria.criteriaUnit}` : '—' },
-                { label: '1차 하한',     value: sensor.criteria?.level1Lower ? `${sensor.criteria.level1Lower} ${sensor.criteria.criteriaUnit}` : '—' },
-                { label: '2차 상한',     value: sensor.criteria?.level2Upper ? `${sensor.criteria.level2Upper} ${sensor.criteria.criteriaUnit}` : '—' },
-                { label: '2차 하한',     value: sensor.criteria?.level2Lower ? `${sensor.criteria.level2Lower} ${sensor.criteria.criteriaUnit}` : '—' },
+                { label: '관리번호',  value: sensor.manageNo || '—' },
+                { label: '센서명',    value: sensor.name },
+                { label: '현장',      value: sensor.siteName || '—' },
+                { label: '설치 위치', value: sensor.location.description || '—' },
+                { label: '설치일',    value: sensor.installDate ? new Date(sensor.installDate).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '—' },
+                { label: '측정단위',  value: sensor.unit || '—' },
+                { label: '측정주기',  value: sensor.operation?.measureCycle || '—' },
+                { label: '계산식',    value: sensor.formula || '—' },
+                { label: '1차 상한',  value: sensor.criteria?.level1Upper ? `${sensor.criteria.level1Upper} ${sensor.criteria.criteriaUnit || ''}`.trim() : '—' },
+                { label: '1차 하한',  value: sensor.criteria?.level1Lower ? `${sensor.criteria.level1Lower} ${sensor.criteria.criteriaUnit || ''}`.trim() : '—' },
+                { label: '2차 상한',  value: sensor.criteria?.level2Upper ? `${sensor.criteria.level2Upper} ${sensor.criteria.criteriaUnit || ''}`.trim() : '—' },
+                { label: '2차 하한',  value: sensor.criteria?.level2Lower ? `${sensor.criteria.level2Lower} ${sensor.criteria.criteriaUnit || ''}`.trim() : '—' },
                 ...(!isMultiMonitor ? [{ label: '마지막 수신', value: `${formatTimestamp(sensor.lastUpdated)} (${getRelativeTime(sensor.lastUpdated)})` }] : []),
               ].map(item => (
                 <div key={item.label} className="flex items-start gap-3">
@@ -854,10 +873,37 @@ export default function SensorDetailPage() {
                   <dd className="font-medium text-ink break-all">{item.value}</dd>
                 </div>
               ))}
+
+              {/* 계산식 상수값 표시 */}
+              {sensor.formulaParams && Object.values(sensor.formulaParams).some((v: any) => v) && (
+                <div className="mt-2 rounded-lg border border-line bg-surface-subtle px-3 py-2.5">
+                  <p className="mb-2 font-mono text-[10px] font-semibold uppercase tracking-wider text-ink-muted">계산식 상수값</p>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                    {[
+                      { key: 'A', val: sensor.formulaParams.coeffA },
+                      { key: 'B', val: sensor.formulaParams.coeffB },
+                      { key: 'C', val: sensor.formulaParams.coeffC },
+                      { key: 'D', val: sensor.formulaParams.coeffD },
+                      { key: 'E', val: sensor.formulaParams.coeffE },
+                      { key: 'I (초기값)', val: sensor.formulaParams.initVal },
+                      { key: 'Tc (현재온도)', val: sensor.formulaParams.currentTemp },
+                      { key: 'Tco (온도계수)', val: sensor.formulaParams.tempCoeff },
+                      { key: 'Ti (초기온도)', val: sensor.formulaParams.initTemp },
+                      { key: 'R (외부참조)', val: sensor.formulaParams.extRef },
+                    ].filter(item => item.val).map(item => (
+                      <div key={item.key} className="flex items-center gap-2">
+                        <span className="font-mono text-[10px] text-ink-muted w-24 shrink-0">{item.key}</span>
+                        <span className="font-mono text-[11px] font-medium text-ink">{item.val}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {(sensor.criteria?.noAlarm || sensor.criteria?.noSms) && (
                 <div className="flex gap-2 pt-1">
                   {sensor.criteria.noAlarm && <span className="rounded-full border border-sensor-warningborder bg-sensor-warningbg px-2.5 py-0.5 font-mono text-[11px] text-sensor-warningtext">알람 미적용</span>}
-                  {sensor.criteria.noSms   && <span className="rounded-full border border-alarm-infoborder   bg-alarm-infobg   px-2.5 py-0.5 font-mono text-[11px] text-alarm-infotext">No SMS</span>}
+                  {sensor.criteria.noSms   && <span className="rounded-full border border-alarm-infoborder bg-alarm-infobg px-2.5 py-0.5 font-mono text-[11px] text-alarm-infotext">No SMS</span>}
                 </div>
               )}
             </dl>
@@ -921,8 +967,9 @@ export default function SensorDetailPage() {
                           formData.append('file', file)
                           try {
                             const token = localStorage.getItem('gm_token')
+                            const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://yuhyun-sensor-monitoring-back.onrender.com'
                             const res = await fetch(
-                              `${process.env.NEXT_PUBLIC_API_URL || 'https://yuhyun-sensor-monitoring-back.onrender.com'}/api/sensors/${sensor.id}/floor-plan`,
+                              `${apiBase}/api/sensors/${sensor.id}/floor-plan`,
                               { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData }
                             )
                             const data = await res.json()
@@ -1003,6 +1050,7 @@ export default function SensorDetailPage() {
               </button>
             </div>
           </div>
+
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-sm font-semibold text-ink">
