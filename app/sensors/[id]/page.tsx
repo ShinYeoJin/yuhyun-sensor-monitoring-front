@@ -319,6 +319,7 @@ export default function SensorDetailPage() {
         )[0]
         setGlobalInitReading({
           value: oldest.value,
+          linear_value: oldest.linear_value ?? oldest.value,
           timestamp: oldest.measured_at,
         })
       }
@@ -1137,10 +1138,19 @@ export default function SensorDetailPage() {
 
           {/* 계측 현황 요약 */}
           <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-xl border border-line bg-surface-subtle py-3 px-2 text-center">
-              <p className="font-mono text-[10px] text-ink-muted">현재 측정값</p>
+          <div className="rounded-xl border border-line bg-surface-subtle py-3 px-2 text-center">
+              <p className="font-mono text-[10px] text-ink-muted">
+                {sensor.nameAbbr === '80053' ? '기간 내 최신값' : '현재 측정값'}
+              </p>
               <p className={`mt-1 font-mono text-lg font-semibold ${valueColorClass}`}>
-                {sensor.status === 'offline' ? '—' : sensor.currentValue}
+                {sensor.status === 'offline' ? '—'
+                  : measurements.length > 0 && sensor.nameAbbr === '80053'
+                    ? parseFloat(String(
+                        calcMode === 'linear'
+                          ? (measurements[0].linear_value ?? measurements[0].value)
+                          : measurements[0].value
+                      )).toFixed(2)
+                    : sensor.currentValue}
                 <span className="ml-1 text-xs font-normal text-ink-muted">{sensor.unit}</span>
               </p>
             </div>
@@ -1148,7 +1158,11 @@ export default function SensorDetailPage() {
               <div className="rounded-xl border border-line bg-surface-subtle py-3 px-2 text-center">
                 <p className="font-mono text-[10px] text-ink-muted">초기측정값</p>
                 <p className="mt-1 font-mono text-lg font-semibold text-ink">
-                  {parseFloat(String(globalInitReading.value)).toFixed(2)}
+                  {parseFloat(String(
+                    sensor.nameAbbr === '80053' && calcMode === 'linear'
+                      ? (globalInitReading.linear_value ?? globalInitReading.value)
+                      : globalInitReading.value
+                  )).toFixed(2)}
                   <span className="ml-1 text-xs font-normal text-ink-muted">{sensor.unit}</span>
                 </p>
                 <p className="font-mono text-[9px] text-ink-muted">
