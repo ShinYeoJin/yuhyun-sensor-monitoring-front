@@ -862,141 +862,83 @@ export default function SensorDetailPage() {
           </div>
 
           <div className="geo-card p-5">
-            <h2 className="mb-4 text-sm font-semibold text-ink">계측 현황</h2>
-            <div className="mb-5 rounded-xl border border-line bg-surface-subtle py-5 text-center">
-              <p className="font-mono text-xs uppercase tracking-widest text-ink-muted">
-                {isToday ? '현재 측정값' : `${dateFrom} ~ ${dateTo} 기준`}
-              </p>
-              <p className={`mt-1 font-mono text-5xl font-light leading-none tracking-tight ${valueColorClass}`}>
-                {sensor.status === 'offline' ? '—' : sensor.currentValue}
-                <span className="ml-2 text-xl font-normal text-ink-muted">{sensor.unit}</span>
-              </p>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-ink">계측계획 평면도</h2>
+              {!isMultiMonitor && (
+                <label className="cursor-pointer rounded-md border border-line bg-surface-card px-2.5 py-1 font-mono text-[10px] text-ink-muted transition-colors hover:border-brand/40 hover:text-brand">
+                  📎 {sensor.floor_plan_url || sensor.site_floor_plan_url ? '변경' : '업로드'}
+                  <input type="file" accept="image/jpeg,image/png,image/gif,image/webp,application/pdf" className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+                      const formData = new FormData()
+                      formData.append('file', file)
+                      try {
+                        const token = localStorage.getItem('gm_token')
+                        const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://yuhyun-sensor-monitoring-back.onrender.com'
+                        const res = await fetch(
+                          `${apiBase}/api/sensors/${sensor.id}/floor-plan`,
+                          { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData }
+                        )
+                        const data = await res.json()
+                        if (data.success) {
+                          setSensor((prev: any) => ({ ...prev, floor_plan_url: data.floor_plan_url }))
+                        } else {
+                          alert('업로드 실패: ' + (data.error || '알 수 없는 오류'))
+                        }
+                      } catch { alert('업로드 중 오류가 발생했습니다.') }
+                    }}
+                  />
+                </label>
+              )}
             </div>
-
-            {globalInitReading && (
-              <div className="mb-4 rounded-lg border border-line bg-surface-subtle px-4 py-2.5 text-center">
-                <p className="font-mono text-[10px] text-ink-muted">초기측정값 (최초 수신)</p>
-                <p className="mt-0.5 font-mono text-sm font-semibold text-ink">
-                  {parseFloat(String(globalInitReading.value)).toFixed(2)} {sensor.unit}
-                  <span className="ml-2 font-normal text-[11px] text-ink-muted">
-                    · {new Date(globalInitReading.timestamp).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })}
-                    {' '}{new Date(globalInitReading.timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                </p>
-              </div>
-            )}
-
-            {/* 평면도 — 센서 개별 > 현장 공통 > 없음 순 */}
             {(() => {
               const floorPlanUrl = sensor.floor_plan_url || sensor.site_floor_plan_url || null
-              return (
-                <div className="mb-4 rounded-xl border border-line overflow-hidden">
-                  <div className="flex items-center justify-between bg-surface-subtle px-4 py-2 border-b border-line">
-                    <p className="font-mono text-[11px] font-semibold text-ink-muted uppercase tracking-wide">계측계획 평면도</p>
-                    {!isMultiMonitor && (
-                      <label className="cursor-pointer rounded-md border border-line bg-surface-card px-2.5 py-1 font-mono text-[10px] text-ink-muted transition-colors hover:border-brand/40 hover:text-brand">
-                        📎 변경
-                        <input type="file" accept="image/*" className="hidden"
-                          onChange={async (e) => {
-                            const file = e.target.files?.[0]
-                            if (!file) return
-                            const formData = new FormData()
-                            formData.append('file', file)
-                            try {
-                              const token = localStorage.getItem('token')
-                              const res = await fetch(
-                                `${process.env.NEXT_PUBLIC_API_URL}/api/sensors/${sensor.id}/floor-plan`,
-                                { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData }
-                              )
-                              const data = await res.json()
-                              if (data.success) {
-                                setSensor((prev: any) => ({ ...prev, floor_plan_url: data.floor_plan_url }))
-                              }
-                            } catch { alert('업로드 실패') }
-                          }}
-                        />
-                      </label>
-                    )}
-                  </div>
-                  <div className="relative w-full bg-surface-subtle" style={{ paddingBottom: '60%' }}>
-                    {floorPlanUrl ? (
-                      <img
-                        src={`${process.env.NEXT_PUBLIC_API_URL}${floorPlanUrl}`}
-                        alt="계측계획 평면도"
-                        className="absolute inset-0 w-full h-full object-contain"
+              const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://yuhyun-sensor-monitoring-back.onrender.com'
+              return floorPlanUrl ? (
+                <div className="rounded-xl border border-line overflow-hidden bg-surface-subtle">
+                  <img
+                    src={`${apiBase}${floorPlanUrl}`}
+                    alt="계측계획 평면도"
+                    className="w-full object-contain"
+                    style={{ maxHeight: '400px' }}
+                  />
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-line bg-surface-subtle flex flex-col items-center justify-center gap-3 py-16">
+                  <span className="text-4xl">🗺</span>
+                  <p className="font-mono text-sm text-ink-muted">평면도 이미지 준비 중</p>
+                  <p className="font-mono text-[10px] text-ink-muted">PNG, JPG, PDF 업로드 가능</p>
+                  {!isMultiMonitor && (
+                    <label className="cursor-pointer rounded-lg border border-brand/40 bg-brand/10 px-4 py-2 font-mono text-[11px] text-brand transition-colors hover:bg-brand/20">
+                      📎 평면도 업로드
+                      <input type="file" accept="image/jpeg,image/png,image/gif,image/webp,application/pdf" className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0]
+                          if (!file) return
+                          const formData = new FormData()
+                          formData.append('file', file)
+                          try {
+                            const token = localStorage.getItem('gm_token')
+                            const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://yuhyun-sensor-monitoring-back.onrender.com'
+                            const res = await fetch(
+                              `${apiBase}/api/sensors/${sensor.id}/floor-plan`,
+                              { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData }
+                            )
+                            const data = await res.json()
+                            if (data.success) {
+                              setSensor((prev: any) => ({ ...prev, floor_plan_url: data.floor_plan_url }))
+                            } else {
+                              alert('업로드 실패: ' + (data.error || '알 수 없는 오류'))
+                            }
+                          } catch { alert('업로드 중 오류가 발생했습니다.') }
+                        }}
                       />
-                    ) : (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-                        <p className="font-mono text-xs text-ink-muted">평면도 이미지 준비 중</p>
-                        {!isMultiMonitor && (
-                          <label className="cursor-pointer rounded-lg border border-brand/40 bg-brand/10 px-3 py-1.5 font-mono text-[11px] text-brand transition-colors hover:bg-brand/20">
-                            📎 평면도 업로드
-                            <input type="file" accept="image/*" className="hidden"
-                              onChange={async (e) => {
-                                const file = e.target.files?.[0]
-                                if (!file) return
-                                const formData = new FormData()
-                                formData.append('file', file)
-                                try {
-                                  const token = localStorage.getItem('token')
-                                  const res = await fetch(
-                                    `${process.env.NEXT_PUBLIC_API_URL}/api/sensors/${sensor.id}/floor-plan`,
-                                    { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData }
-                                  )
-                                  const data = await res.json()
-                                  if (data.success) {
-                                    setSensor((prev: any) => ({ ...prev, floor_plan_url: data.floor_plan_url }))
-                                  }
-                                } catch { alert('업로드 실패') }
-                              }}
-                            />
-                          </label>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                    </label>
+                  )}
                 </div>
               )
             })()}
-
-            {sensor.status !== 'offline' && (
-              <div className="space-y-2">
-                <div className="flex justify-between font-mono text-[10px] text-ink-muted">
-                  <span>0 {sensor.unit}</span><span>{maxScale} {sensor.unit}</span>
-                </div>
-                <div className="relative h-4 overflow-hidden rounded-full bg-surface-muted">
-                  <div className="absolute top-0 h-full bg-sensor-warning/20"
-                    style={{ left: `${(thresholdWarning / maxScale) * 100}%`, width: `${((thresholdDanger - thresholdWarning) / maxScale) * 100}%` }} />
-                  <div className="absolute top-0 h-full bg-sensor-danger/20"
-                    style={{ left: `${(thresholdDanger / maxScale) * 100}%`, right: 0 }} />
-                  <div className={['absolute top-0 h-full w-1 rounded-full shadow-sm transition-all duration-500',
-                    overThreshold ? 'bg-sensor-danger' : nearThreshold ? 'bg-sensor-warning' : 'bg-sensor-normal'].join(' ')}
-                    style={{ left: `${Math.min((sensor.currentValue / maxScale) * 100, 97)}%` }} />
-                </div>
-                <div className="flex justify-between font-mono text-[10px]">
-                  <span className="text-sensor-warningtext">주의: {thresholdWarning} {sensor.unit}</span>
-                  <span className="text-sensor-dangertext">위험: {thresholdDanger} {sensor.unit}</span>
-                </div>
-              </div>
-            )}
-
-            {measurements.length > 0 && sensor.status !== 'offline' && (
-              <div className="mt-4 grid grid-cols-3 gap-3 border-t border-line pt-4">
-                {[
-                  { label: '최솟값', value: Math.min(...measurements.map((r: any) => parseFloat(r.value))).toFixed(1), color: 'text-sensor-normal' },
-                  { label: '평균값', value: (measurements.reduce((s: number, r: any) => s + parseFloat(r.value), 0) / measurements.length).toFixed(1), color: 'text-ink' },
-                  { label: '최댓값', value: Math.max(...measurements.map((r: any) => parseFloat(r.value))).toFixed(1),
-                    color: sensor.status === 'danger' ? 'text-sensor-danger' : sensor.status === 'warning' ? 'text-sensor-warning' : 'text-ink' },
-                ].map(stat => (
-                  <div key={stat.label} className="rounded-lg bg-surface-subtle px-3 py-2.5 text-center">
-                    <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">{stat.label}</p>
-                    <p className={`mt-1 font-mono text-lg font-medium ${stat.color}`}>
-                      {stat.value}<span className="ml-1 text-xs font-normal text-ink-muted">{sensor.unit}</span>
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         </div>
 
@@ -1133,6 +1075,67 @@ export default function SensorDetailPage() {
               </div>
             </div>
           </div>
+
+          {/* 계측 현황 요약 */}
+          <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="rounded-xl border border-line bg-surface-subtle py-3 px-2 text-center">
+              <p className="font-mono text-[10px] text-ink-muted">현재 측정값</p>
+              <p className={`mt-1 font-mono text-lg font-semibold ${valueColorClass}`}>
+                {sensor.status === 'offline' ? '—' : sensor.currentValue}
+                <span className="ml-1 text-xs font-normal text-ink-muted">{sensor.unit}</span>
+              </p>
+            </div>
+            {globalInitReading && (
+              <div className="rounded-xl border border-line bg-surface-subtle py-3 px-2 text-center">
+                <p className="font-mono text-[10px] text-ink-muted">초기측정값</p>
+                <p className="mt-1 font-mono text-lg font-semibold text-ink">
+                  {parseFloat(String(globalInitReading.value)).toFixed(2)}
+                  <span className="ml-1 text-xs font-normal text-ink-muted">{sensor.unit}</span>
+                </p>
+                <p className="font-mono text-[9px] text-ink-muted">
+                  {new Date(globalInitReading.timestamp).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })}
+                  {' '}{new Date(globalInitReading.timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </div>
+            )}
+            {measurements.length > 0 && sensor.status !== 'offline' && (
+              <>
+                <div className="rounded-xl border border-line bg-surface-subtle py-3 px-2 text-center">
+                  <p className="font-mono text-[10px] text-ink-muted">최솟값</p>
+                  <p className="mt-1 font-mono text-lg font-semibold text-sensor-normal">
+                    {Math.min(...measurements.map((r: any) => parseFloat(r.value))).toFixed(2)}
+                    <span className="ml-1 text-xs font-normal text-ink-muted">{sensor.unit}</span>
+                  </p>
+                </div>
+                <div className="rounded-xl border border-line bg-surface-subtle py-3 px-2 text-center">
+                  <p className="font-mono text-[10px] text-ink-muted">최댓값</p>
+                  <p className={`mt-1 font-mono text-lg font-semibold ${sensor.status === 'danger' ? 'text-sensor-danger' : sensor.status === 'warning' ? 'text-sensor-warning' : 'text-ink'}`}>
+                    {Math.max(...measurements.map((r: any) => parseFloat(r.value))).toFixed(2)}
+                    <span className="ml-1 text-xs font-normal text-ink-muted">{sensor.unit}</span>
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* 게이지 */}
+          {sensor.status !== 'offline' && (
+            <div className="mb-4 space-y-1.5">
+              <div className="relative h-3 overflow-hidden rounded-full bg-surface-muted">
+                <div className="absolute top-0 h-full bg-sensor-warning/20"
+                  style={{ left: `${(thresholdWarning / maxScale) * 100}%`, width: `${((thresholdDanger - thresholdWarning) / maxScale) * 100}%` }} />
+                <div className="absolute top-0 h-full bg-sensor-danger/20"
+                  style={{ left: `${(thresholdDanger / maxScale) * 100}%`, right: 0 }} />
+                <div className={['absolute top-0 h-full w-1 rounded-full shadow-sm transition-all duration-500',
+                  overThreshold ? 'bg-sensor-danger' : nearThreshold ? 'bg-sensor-warning' : 'bg-sensor-normal'].join(' ')}
+                  style={{ left: `${Math.min((sensor.currentValue / maxScale) * 100, 97)}%` }} />
+              </div>
+              <div className="flex justify-between font-mono text-[10px]">
+                <span className="text-sensor-warningtext">주의: {thresholdWarning} {sensor.unit}</span>
+                <span className="text-sensor-dangertext">위험: {thresholdDanger} {sensor.unit}</span>
+              </div>
+            </div>
+          )}
 
           {(chartMode === 'hourly' ? measurements : dailyReadings).length > 0 ? (
             <div key={`${dateFrom}-${dateTo}-${chartMode}`} className="animate-fade-in-up" ref={chartRef}>
