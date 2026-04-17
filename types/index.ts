@@ -48,6 +48,7 @@ export interface FormulaParams {
   coeffC:     string   // C계수
   coeffD:     string   // D계수
   coeffE:     string   // E계수
+  coeffG:     string   // G계수 (Linear)
   initVal:    string   // 초기값(I)
   currentTemp: string  // 현재 온도(Tc)
   tempCoeff:  string   // 온도계수(Tco)

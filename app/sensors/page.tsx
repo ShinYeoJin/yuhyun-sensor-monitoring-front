@@ -68,7 +68,7 @@ const emptyForm: SensorForm = {
   description: '', combination: '', decimalPoint: '', pointerInfo: '', remark: '',
   threshold: { normalMax: '', warningMax: '', dangerMin: '' },
   operation: { measureCycle: '01:00', actionAfterMeasure: '저장송신', actionBeforeMeasure: '자동' },
-  formulaParams: { coeffA: '', coeffB: '', coeffC: '', coeffD: '', coeffE: '', initVal: '', currentTemp: '', tempCoeff: '', initTemp: '', extRef: '' },
+  formulaParams: { coeffA: '', coeffB: '', coeffC: '', coeffD: '', coeffE: '', coeffG: '', initVal: '', currentTemp: '', tempCoeff: '', initTemp: '', extRef: '' },
   criteria: { level1Upper: '', level1Lower: '', level2Upper: '', level2Lower: '', criteriaUnit: '', criteriaUnitName: '', noAlarm: false, noSms: false },
   siteId: '', siteName: '', installDate: '', location: { lat: 0, lng: 0, description: '' },
 }
@@ -327,7 +327,7 @@ function SensorModal({ mode, form, onChange, onSubmit, onClose, formulas, sites 
               {[
                 { key: 'coeffA', label: 'A 계수' }, { key: 'coeffB', label: 'B 계수' },
                 { key: 'coeffC', label: 'C 계수' }, { key: 'coeffD', label: 'D 계수' },
-                { key: 'coeffE', label: 'E 계수' },
+                { key: 'coeffE', label: 'E 계수' }, { key: 'coeffG', label: 'G 계수 (Linear)' },
               ].map(({ key, label }) => (
                 <div key={key}>
                   <label className={labelCls}>{label}</label>
@@ -680,8 +680,7 @@ export default function SensorsPage() {
             dangerMin: s.threshold_danger_min ?? '',
           },
           operation: { measureCycle: '01:00', actionAfterMeasure: '저장송신', actionBeforeMeasure: '자동' },
-          formulaParams: { coeffA: '', coeffB: '', coeffC: '', coeffD: '', coeffE: '', initVal: '', currentTemp: '', tempCoeff: '', initTemp: '', extRef: '' },
-          criteria: {
+          formulaParams: { coeffA: '', coeffB: '', coeffC: '', coeffD: '', coeffE: '', coeffG: '', initVal: '', currentTemp: '', tempCoeff: '', initTemp: '', extRef: '' },          criteria: {
             level1Upper: s.level1_upper ?? '',
             level1Lower: s.level1_lower ?? '',
             level2Upper: s.level2_upper ?? '',
@@ -813,6 +812,7 @@ export default function SensorsPage() {
           coeffC: form.formulaParams.coeffC,
           coeffD: form.formulaParams.coeffD,
           coeffE: form.formulaParams.coeffE,
+          coeffG: form.formulaParams.coeffG,
           initVal: form.formulaParams.initVal,
           currentTemp: form.formulaParams.currentTemp,
           tempCoeff: form.formulaParams.tempCoeff,
