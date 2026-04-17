@@ -6,7 +6,7 @@ const defaultOperation: OperationSettings = {
   measureCycle: '01:00', actionAfterMeasure: '저장송신', actionBeforeMeasure: '자동',
 }
 const defaultFormulaParams: FormulaParams = {
-  coeffA: '', coeffB: '', coeffC: '', coeffD: '', coeffE: '',
+  coeffA: '', coeffB: '', coeffC: '', coeffD: '', coeffE: '', coeffG: '',
   initVal: '', currentTemp: '', tempCoeff: '', initTemp: '', extRef: '',
 }
 const defaultCriteria: ManagementCriteria = {
