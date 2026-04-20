@@ -43,13 +43,15 @@ export default function QRSensorPage() {
   useEffect(() => {
     if (!id || !sensor || sensor.sensorCode !== '80053') return
     Promise.all(['1', '2', '3'].map(depth =>
-      sensorApi.getMeasurements(Number(id), { limit: 1, depthLabel: depth })
+      sensorApi.getMeasurements(Number(id), { limit: 2000, depthLabel: depth })
         .then((data: any[]) => {
           if (data.length === 0) return [depth, null]
+          // ASC 정렬이므로 마지막이 최신값
+          const latest = data[data.length - 1]
           const corr = (sensor.correctionParams || {})[depth] ?? 0
           return [depth, {
-            poly: parseFloat((parseFloat(data[0].value) + corr).toFixed(2)),
-            linear: parseFloat((parseFloat(data[0].linear_value ?? data[0].value) + corr).toFixed(2)),
+            poly: parseFloat((parseFloat(latest.value) + corr).toFixed(2)),
+            linear: parseFloat((parseFloat(latest.linear_value ?? latest.value) + corr).toFixed(2)),
           }]
         })
         .catch(() => [depth, null])
