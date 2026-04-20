@@ -1106,7 +1106,7 @@ export default function SensorDetailPage() {
                   <div className="flex gap-1 rounded-lg border border-line bg-surface-subtle p-1">
                     {(['1', '2', '3'] as const).map(d => (
                       <button key={d} onClick={() => setDepthLabel(d)}
-                        className={['rounded-md px-4 py-2 font-mono text-sm font-medium transition-all',
+                        className={['rounded-md px-3 py-1.5 font-mono text-[13px] font-medium transition-all',
                           depthLabel === d ? 'bg-surface-card text-brand shadow-card' : 'text-ink-muted hover:text-ink-sub'].join(' ')}>
                         {d}번 수위계
                       </button>
@@ -1116,7 +1116,7 @@ export default function SensorDetailPage() {
                   <div className="flex gap-1 rounded-lg border border-line bg-surface-subtle p-1">
                     {(['linear', 'poly'] as const).map(mode => (
                       <button key={mode} onClick={() => setCalcMode(mode)}
-                        className={['rounded-md px-4 py-2 font-mono text-sm font-medium transition-all',
+                        className={['rounded-md px-3 py-1.5 font-mono text-[13px] font-medium transition-all',
                           calcMode === mode ? 'bg-surface-card text-brand shadow-card' : 'text-ink-muted hover:text-ink-sub'].join(' ')}>
                         {mode === 'poly' ? 'Polynomial' : 'Linear (메인)'}
                       </button>
@@ -1128,7 +1128,7 @@ export default function SensorDetailPage() {
               <div className="flex gap-1 rounded-lg border border-line bg-surface-subtle p-1">
                 {(['hourly', 'daily'] as const).map(mode => (
                   <button key={mode} onClick={() => setChartMode(mode)}
-                    className={['rounded-md px-4 py-2 font-mono text-sm font-medium transition-all',
+                    className={['rounded-md px-3 py-1.5 font-mono text-[13px] font-medium transition-all',
                       chartMode === mode ? 'bg-surface-card text-brand shadow-card' : 'text-ink-muted hover:text-ink-sub'].join(' ')}>
                     {mode === 'hourly' ? '시간별' : '일별'}
                   </button>
@@ -1144,7 +1144,7 @@ export default function SensorDetailPage() {
                     setDateFrom(newFrom.toISOString().slice(0, 10))
                     setDateTo(newTo.toISOString().slice(0, 10))
                   }}
-                  className="rounded-md px-3 py-2 font-mono text-sm text-ink-muted border border-line transition-colors hover:bg-surface-subtle hover:text-ink">
+                  className="rounded-md px-2.5 py-1.5 font-mono text-sm text-ink-muted border border-line transition-colors hover:bg-surface-subtle hover:text-ink">
                   ← 이전
                 </button>
                 <button
@@ -1157,7 +1157,7 @@ export default function SensorDetailPage() {
                     setDateFrom(newFrom.toISOString().slice(0, 10))
                     setDateTo(capTo)
                   }}
-                  className="rounded-md px-3 py-2 font-mono text-sm text-ink-muted border border-line transition-colors hover:bg-surface-subtle hover:text-ink disabled:opacity-30 disabled:cursor-not-allowed">
+                  className="rounded-md px-2.5 py-1.5 font-mono text-sm text-ink-muted border border-line transition-colors hover:bg-surface-subtle hover:text-ink disabled:opacity-30 disabled:cursor-not-allowed">
                   다음 →
                 </button>
               </div>
@@ -1171,7 +1171,7 @@ export default function SensorDetailPage() {
                   type="number"
                   step="0.01"
                   placeholder="0.00"
-                  value={correctionInput[depthLabel] ?? (correctionParams[depthLabel] !== undefined ? String(correctionParams[depthLabel]) : '')}
+                  value={correctionInput[depthLabel] ?? (correctionParams[depthLabel] !== undefined && correctionParams[depthLabel] !== 0 ? String(correctionParams[depthLabel]) : '')}
                   onChange={e => setCorrectionInput(prev => ({ ...prev, [depthLabel]: e.target.value }))}
                   className="w-24 rounded border border-line bg-surface-card px-2 py-1.5 font-mono text-sm text-ink text-right focus:outline-none focus:ring-1 focus:ring-brand/40"
                 />
@@ -1189,7 +1189,7 @@ export default function SensorDetailPage() {
                     } catch { /* toast 필요시 추가 */ }
                     finally { setCorrectionSaving(false) }
                   }}
-                  className="rounded-md bg-brand px-4 py-1.5 font-mono text-sm text-white disabled:opacity-50">
+                  className="rounded-md bg-brand px-3 py-1.5 font-mono text-[13px] text-white disabled:opacity-50">
                   {correctionSaving ? '저장 중…' : '적용'}
                 </button>
               </div>
