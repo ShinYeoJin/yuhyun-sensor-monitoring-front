@@ -77,9 +77,9 @@ const INTERVAL_OPTIONS = [
   '2일 간격','3일 간격','4일 간격','5일 간격','6일 간격','7일 간격',
 ]
 
-function PrintModal({ sensor, config, onChange, onPrint, onExcel, onPdf, onClose }: {
+function PrintModal({ sensor, config, onChange, onExcel, onPdf, onClose }: {
   sensor: UnifiedSensor; config: PrintConfig
-  onChange: (c: PrintConfig) => void; onPrint: () => void
+  onChange: (c: PrintConfig) => void
   onExcel: () => void; onPdf: () => void; onClose: () => void
 }) {
   const set = (key: keyof PrintConfig, val: string) => onChange({ ...config, [key]: val })
@@ -201,9 +201,8 @@ function PrintModal({ sensor, config, onChange, onPrint, onExcel, onPdf, onClose
 
         <div className="flex gap-2 border-t border-line px-6 py-4">
           <button onClick={onClose} className="flex-1 rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-sub transition-colors hover:border-line-strong hover:text-ink">취소</button>
-          <button onClick={onExcel} className="flex-1 rounded-lg bg-sensor-normal px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90">📊 엑셀</button>
-          <button onClick={onPdf} className="flex-1 rounded-lg bg-sensor-warning px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90">📄 PDF</button>
-          <button onClick={onPrint} className="flex-1 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-hover">🖨 인쇄</button>
+          <button onClick={onExcel} className="flex-1 rounded-lg bg-sensor-normal px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90">📊 Excel 다운로드</button>
+          <button onClick={onPdf} className="flex-1 rounded-lg bg-sensor-warning px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90">📄 PDF 다운로드</button>
         </div>
       </div>
     </div>
@@ -1077,7 +1076,7 @@ export default function SensorDetailPage() {
             <div className="ml-auto flex items-center gap-2">
               <button onClick={() => { setPrintConfig(c => ({ ...c, dateFrom, dateTo })); setPrintOpen(true) }}
                 className="flex items-center gap-1.5 rounded-lg border border-line bg-surface-card px-4 py-1.5 font-mono text-sm text-ink-sub shadow-card transition-colors hover:border-brand/40 hover:bg-brand/10 hover:text-brand">
-                🖨 출력
+                📊 Excel / PDF
               </button>
               <button onClick={() => setQrOpen(true)}
                 className="flex items-center gap-1.5 rounded-lg border border-line bg-surface-card px-4 py-1.5 font-mono text-sm text-ink-sub shadow-card transition-colors hover:border-brand/40 hover:bg-brand/10 hover:text-brand">
@@ -1448,7 +1447,7 @@ export default function SensorDetailPage() {
 
       {printOpen && (
         <PrintModal sensor={sensor} config={printConfig} onChange={setPrintConfig}
-          onPrint={handlePrint} onExcel={() => { setPrintOpen(false); handleExcelDownload() }}
+          onExcel={() => { setPrintOpen(false); handleExcelDownload() }}
           onPdf={() => { setPrintOpen(false); handlePdfDownload() }}
           onClose={() => setPrintOpen(false)} />
       )}
