@@ -885,10 +885,16 @@ export default function SensorDetailPage() {
                 { label: '측정주기',  value: sensor.operation?.measureCycle || '—' },
                 { label: '계산식',    value: sensor.formula || '—' },
                 { label: '1차 상한',  value: sensor.nameAbbr === '80053' && globalInitReading
-                  ? `${(parseFloat(String(calcMode === 'linear' ? (globalInitReading.linear_value ?? globalInitReading.value) : globalInitReading.value)) + 4).toFixed(2)} ${sensor.unit || ''}`.trim()
+                  ? (() => {
+                      const init = parseFloat(String(calcMode === 'linear' ? (globalInitReading.linear_value ?? globalInitReading.value) : globalInitReading.value))
+                      return `${(init + 4).toFixed(2)} ${sensor.unit || ''} (초기값 ${init.toFixed(2)} + 4${sensor.unit || ''})`.trim()
+                    })()
                   : sensor.criteria?.level1Upper ? `${sensor.criteria.level1Upper} ${sensor.criteria.criteriaUnit || ''}`.trim() : '—' },
                 { label: '1차 하한',  value: sensor.nameAbbr === '80053' && globalInitReading
-                  ? `${(parseFloat(String(calcMode === 'linear' ? (globalInitReading.linear_value ?? globalInitReading.value) : globalInitReading.value)) - 4).toFixed(2)} ${sensor.unit || ''}`.trim()
+                  ? (() => {
+                      const init = parseFloat(String(calcMode === 'linear' ? (globalInitReading.linear_value ?? globalInitReading.value) : globalInitReading.value))
+                      return `${(init - 4).toFixed(2)} ${sensor.unit || ''} (초기값 ${init.toFixed(2)} - 4${sensor.unit || ''})`.trim()
+                    })()
                   : sensor.criteria?.level1Lower ? `${sensor.criteria.level1Lower} ${sensor.criteria.criteriaUnit || ''}`.trim() : '—' },
                 { label: '2차 상한',  value: sensor.criteria?.level2Upper ? `${sensor.criteria.level2Upper} ${sensor.criteria.criteriaUnit || ''}`.trim() : '—' },
                 { label: '2차 하한',  value: sensor.criteria?.level2Lower ? `${sensor.criteria.level2Lower} ${sensor.criteria.criteriaUnit || ''}`.trim() : '—' },
