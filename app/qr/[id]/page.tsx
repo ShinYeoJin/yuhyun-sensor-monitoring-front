@@ -27,6 +27,8 @@ export default function QRSensorPage() {
         locationDesc: data.location_desc || '',
         status: data.status || 'offline',
         currentValue: data.current_value ? parseFloat(data.current_value) : 0,
+        correctionParams: data.correction_params || {},
+        formulaParams: data.formula_params || {},
         lastUpdated: data.last_measured || new Date().toISOString(),
         thresholdNormalMax: data.threshold_normal_max,
         thresholdWarningMax: data.threshold_warning_max,
@@ -35,6 +37,26 @@ export default function QRSensorPage() {
     }).catch(() => setSensor(null))
     .finally(() => setLoading(false))
   }, [id])
+
+  const [latestValues, setLatestValues] = useState<Record<string, { poly: number, linear: number } | null>>({})
+
+  useEffect(() => {
+    if (!id || !sensor || sensor.sensorCode !== '80053') return
+    Promise.all(['1', '2', '3'].map(depth =>
+      sensorApi.getMeasurements(Number(id), { limit: 1, depthLabel: depth })
+        .then((data: any[]) => {
+          if (data.length === 0) return [depth, null]
+          const corr = (sensor.correctionParams || {})[depth] ?? 0
+          return [depth, {
+            poly: parseFloat((parseFloat(data[0].value) + corr).toFixed(2)),
+            linear: parseFloat((parseFloat(data[0].linear_value ?? data[0].value) + corr).toFixed(2)),
+          }]
+        })
+        .catch(() => [depth, null])
+    )).then(results => {
+      setLatestValues(Object.fromEntries(results))
+    })
+  }, [id, sensor])
 
   if (loading) return (
     <div className="flex min-h-screen items-center justify-center">
@@ -97,6 +119,39 @@ export default function QRSensorPage() {
                   <p className="font-mono text-4xl font-light text-ink-muted">—</p>
                   <p className="mt-1 font-mono text-xs text-ink-muted">오프라인 상태</p>
                 </>
+              ) : sensor.sensorCode === '80053' ? (
+                <div className="space-y-3 px-4">
+                  {(['1', '2', '3'] as const).map(depth => {
+                    const val = latestValues[depth]
+                    return (
+                      <div key={depth} className="rounded-lg border border-line bg-surface-card px-3 py-2">
+                        <p className="font-mono text-[10px] text-ink-muted mb-1">{depth}번 수위계</p>
+                        {val ? (
+                          <div className="flex justify-around">
+                            <div>
+                              <p className={`font-mono text-xl font-semibold ${valueCls}`}>
+                                {val.linear}
+                                <span className="ml-1 text-xs font-normal text-ink-muted">{sensor.unit}</span>
+                              </p>
+                              <p className="font-mono text-[9px] text-ink-muted">Linear (메인)</p>
+                            </div>
+                            <div className="w-px bg-line" />
+                            <div>
+                              <p className="font-mono text-xl font-semibold text-ink">
+                                {val.poly}
+                                <span className="ml-1 text-xs font-normal text-ink-muted">{sensor.unit}</span>
+                              </p>
+                              <p className="font-mono text-[9px] text-ink-muted">Polynomial</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="font-mono text-sm text-ink-muted">데이터 없음</p>
+                        )}
+                      </div>
+                    )
+                  })}
+                  <p className="font-mono text-[9px] text-ink-muted">보정값 적용된 최신 측정값</p>
+                </div>
               ) : (
                 <>
                   <p className={`font-mono text-5xl font-light leading-none ${valueCls}`}>
