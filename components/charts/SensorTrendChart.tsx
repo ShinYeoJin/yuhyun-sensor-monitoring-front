@@ -141,7 +141,17 @@ export function SensorTrendChart({ sensor, readings, hideXAxis = false , initVal
               stroke="#C0392B"
               strokeDasharray="6 3"
               strokeWidth={1.5}
-              label={{ value: '1차 하한', position: 'insideTopLeft', fontSize: 9, fill: '#C0392B' }}
+              label={({ viewBox }: any) => (
+                <text
+                  x={viewBox.x + 6}
+                  y={viewBox.y - 4}
+                  fill="#C0392B"
+                  fontSize={9}
+                  fontFamily="DM Mono, monospace"
+                >
+                  1차 하한기준 ({refLine})
+                </text>
+              )}
             />
           )}
           {refLine2 !== null && (
@@ -150,7 +160,17 @@ export function SensorTrendChart({ sensor, readings, hideXAxis = false , initVal
               stroke="#E07000"
               strokeDasharray="6 3"
               strokeWidth={1.5}
-              label={{ value: '1차 상한', position: 'insideBottomLeft', fontSize: 9, fill: '#E07000' }}
+              label={({ viewBox }: any) => (
+                <text
+                  x={viewBox.x + 6}
+                  y={viewBox.y + 12}
+                  fill="#E07000"
+                  fontSize={9}
+                  fontFamily="DM Mono, monospace"
+                >
+                  1차 상한기준 ({refLine2})
+                </text>
+              )}
             />
           )}
 
