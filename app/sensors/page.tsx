@@ -841,19 +841,6 @@ export default function SensorsPage() {
         criteria_unit_name: form.criteria.criteriaUnitName || null,
         install_date: form.installDate || null,
         location_desc: form.location.description || null,
-        formula_params: {
-          coeffA: form.formulaParams.coeffA,
-          coeffB: form.formulaParams.coeffB,
-          coeffC: form.formulaParams.coeffC,
-          coeffD: form.formulaParams.coeffD,
-          coeffE: form.formulaParams.coeffE,
-          coeffG: (form.formulaParams as any).coeffG || '',
-          initVal: form.formulaParams.initVal,
-          currentTemp: form.formulaParams.currentTemp,
-          tempCoeff: form.formulaParams.tempCoeff,
-          initTemp: form.formulaParams.initTemp,
-          extRef: form.formulaParams.extRef,
-        },
       })
       
       await sensorApi.updateThreshold(Number(editTarget.id), {
