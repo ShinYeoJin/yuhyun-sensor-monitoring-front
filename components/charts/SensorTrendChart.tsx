@@ -141,7 +141,7 @@ export function SensorTrendChart({ sensor, readings, hideXAxis = false , initVal
               stroke="#C0392B"
               strokeDasharray="6 3"
               strokeWidth={1.5}
-              label={{ value: '1차 하한', position: 'insideTopRight', fontSize: 9, fill: '#C0392B' }}
+              label={{ value: '1차 하한', position: 'insideTopLeft', fontSize: 9, fill: '#C0392B' }}
             />
           )}
           {refLine2 !== null && (
@@ -150,7 +150,7 @@ export function SensorTrendChart({ sensor, readings, hideXAxis = false , initVal
               stroke="#E07000"
               strokeDasharray="6 3"
               strokeWidth={1.5}
-              label={{ value: '1차 상한', position: 'insideBottomRight', fontSize: 9, fill: '#E07000' }}
+              label={{ value: '1차 상한', position: 'insideBottomLeft', fontSize: 9, fill: '#E07000' }}
             />
           )}
 

@@ -306,7 +306,7 @@ export default function SensorDetailPage() {
       const corr = correctionParams[depthLabel] ?? 0
       const mapped = data.map((m: any) => ({
         timestamp: m.measured_at,
-        value: (calcMode === 'poly' ? parseFloat(m.value) : parseFloat(m.linear_value ?? m.value)) + corr,
+        value: parseFloat(((calcMode === 'poly' ? parseFloat(m.value) : parseFloat(m.linear_value ?? m.value)) + corr).toFixed(4)),
         unit: sensor?.unit || '',
         status: 'normal',
       }))
