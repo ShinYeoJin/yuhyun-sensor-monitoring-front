@@ -462,7 +462,8 @@ export default function SensorDetailPage() {
       } catch { managerText = managerUsernames.join(', ') }
     }
 
-    const sortedRows = [...dailyReadings].sort((a: any, b: any) =>
+    const excelSourceRows = dateFrom === dateTo ? measurements : dailyReadings
+    const sortedRows = [...excelSourceRows].sort((a: any, b: any) =>
       new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     )
     const initValue = globalInitReading ? parseFloat(String(
@@ -796,7 +797,7 @@ export default function SensorDetailPage() {
     }
 
     // PDF 표
-    const pdfSourceRows = chartMode === 'hourly' ? measurements : dailyReadings
+    const pdfSourceRows = dateFrom === dateTo ? measurements : dailyReadings
     const pdfSortedRows = [...pdfSourceRows].sort((a: any, b: any) =>
       new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     )
