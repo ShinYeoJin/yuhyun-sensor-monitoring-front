@@ -1084,7 +1084,7 @@ export default function SensorDetailPage() {
             </div>
           </div>
 
-          <div className="mb-4 flex flex-col gap-3">
+          <div className="mb-4 flex flex-col gap-2">
             {/* 제목 */}
             <div>
               <h2 className="text-sm font-semibold text-ink">
@@ -1098,103 +1098,102 @@ export default function SensorDetailPage() {
               </p>
             </div>
 
-            {/* 버튼 영역 — 전체 가운데 정렬 */}
-            <div className="flex flex-col items-center gap-3">
+            {/* 버튼 1줄 */}
+            <div className="flex flex-wrap items-center gap-2">
               {sensor.nameAbbr === '80053' && (
                 <>
-                  {/* depth 선택 */}
-                  <div className="flex gap-2 rounded-lg border border-line bg-surface-subtle p-1">
+                  {/* depth 버튼 */}
+                  <div className="flex gap-1 rounded-lg border border-line bg-surface-subtle p-1">
                     {(['1', '2', '3'] as const).map(d => (
                       <button key={d} onClick={() => setDepthLabel(d)}
-                        className={['rounded-md px-6 py-2 font-mono text-sm font-medium transition-all',
+                        className={['rounded-md px-4 py-2 font-mono text-sm font-medium transition-all',
                           depthLabel === d ? 'bg-surface-card text-brand shadow-card' : 'text-ink-muted hover:text-ink-sub'].join(' ')}>
                         {d}번 수위계
                       </button>
                     ))}
                   </div>
-
-                  {/* 계산식 선택 */}
-                  <div className="flex gap-2 rounded-lg border border-line bg-surface-subtle p-1">
+                  {/* Linear/Poly 버튼 */}
+                  <div className="flex gap-1 rounded-lg border border-line bg-surface-subtle p-1">
                     {(['linear', 'poly'] as const).map(mode => (
                       <button key={mode} onClick={() => setCalcMode(mode)}
-                        className={['rounded-md px-6 py-2 font-mono text-sm font-medium transition-all',
+                        className={['rounded-md px-4 py-2 font-mono text-sm font-medium transition-all',
                           calcMode === mode ? 'bg-surface-card text-brand shadow-card' : 'text-ink-muted hover:text-ink-sub'].join(' ')}>
                         {mode === 'poly' ? 'Polynomial' : 'Linear (메인)'}
                       </button>
                     ))}
                   </div>
-
-                  {/* 보정값 입력 */}
-                  <div className="flex items-center gap-2 rounded-lg border border-line bg-surface-subtle px-4 py-2">
-                    <span className="font-mono text-sm text-ink-muted shrink-0">보정값 ({depthLabel}번)</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={correctionInput[depthLabel] ?? (correctionParams[depthLabel] !== undefined ? String(correctionParams[depthLabel]) : '')}
-                      onChange={e => setCorrectionInput(prev => ({ ...prev, [depthLabel]: e.target.value }))}
-                      className="w-24 rounded border border-line bg-surface-card px-2 py-1 font-mono text-sm text-ink text-right focus:outline-none focus:ring-1 focus:ring-brand/40"
-                    />
-                    <span className="font-mono text-sm text-ink-muted">{sensor.unit}</span>
-                    <button
-                      disabled={correctionSaving}
-                      onClick={async () => {
-                        const val = parseFloat(correctionInput[depthLabel] ?? '0') || 0
-                        const next = { ...correctionParams, [depthLabel]: val }
-                        setCorrectionSaving(true)
-                        try {
-                          await sensorApi.updateInfo(Number(id), { correction_params: next })
-                          setCorrectionParams(next)
-                          setCorrectionInput(prev => ({ ...prev, [depthLabel]: String(val) }))
-                        } catch { /* toast 필요시 추가 */ }
-                        finally { setCorrectionSaving(false) }
-                      }}
-                      className="rounded-md bg-brand px-4 py-1.5 font-mono text-sm text-white disabled:opacity-50">
-                      {correctionSaving ? '저장 중…' : '적용'}
-                    </button>
-                  </div>
                 </>
               )}
-
-              {/* 시간별/일별 + 이전/다음 */}
-              <div className="flex items-center gap-3">
-                <div className="flex gap-2 rounded-lg border border-line bg-surface-subtle p-1">
-                  {(['hourly', 'daily'] as const).map(mode => (
-                    <button key={mode} onClick={() => setChartMode(mode)}
-                      className={['rounded-md px-5 py-2 font-mono text-sm font-medium transition-all',
-                        chartMode === mode ? 'bg-surface-card text-brand shadow-card' : 'text-ink-muted hover:text-ink-sub'].join(' ')}>
-                      {mode === 'hourly' ? '시간별' : '일별'}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => {
-                      const diff = dateDiffDays(dateFrom, dateTo)
-                      const newTo   = new Date(dateFrom); newTo.setDate(newTo.getDate() - 1)
-                      const newFrom = new Date(newTo);    newFrom.setDate(newFrom.getDate() - diff)
-                      setDateFrom(newFrom.toISOString().slice(0, 10))
-                      setDateTo(newTo.toISOString().slice(0, 10))
-                    }}
-                    className="rounded-md px-3 py-2 font-mono text-sm text-ink-muted border border-line transition-colors hover:bg-surface-subtle hover:text-ink">
-                    ← 이전
+              {/* 시간별/일별 버튼 */}
+              <div className="flex gap-1 rounded-lg border border-line bg-surface-subtle p-1">
+                {(['hourly', 'daily'] as const).map(mode => (
+                  <button key={mode} onClick={() => setChartMode(mode)}
+                    className={['rounded-md px-4 py-2 font-mono text-sm font-medium transition-all',
+                      chartMode === mode ? 'bg-surface-card text-brand shadow-card' : 'text-ink-muted hover:text-ink-sub'].join(' ')}>
+                    {mode === 'hourly' ? '시간별' : '일별'}
                   </button>
-                  <button
-                    disabled={dateTo >= today}
-                    onClick={() => {
-                      const diff = dateDiffDays(dateFrom, dateTo)
-                      const newFrom = new Date(dateTo); newFrom.setDate(newFrom.getDate() + 1)
-                      const newTo   = new Date(newFrom); newTo.setDate(newTo.getDate() + diff)
-                      const capTo = newTo.toISOString().slice(0, 10) > today ? today : newTo.toISOString().slice(0, 10)
-                      setDateFrom(newFrom.toISOString().slice(0, 10))
-                      setDateTo(capTo)
-                    }}
-                    className="rounded-md px-3 py-2 font-mono text-sm text-ink-muted border border-line transition-colors hover:bg-surface-subtle hover:text-ink disabled:opacity-30 disabled:cursor-not-allowed">
-                    다음 →
-                  </button>
-                </div>
+                ))}
+              </div>
+              {/* 이전/다음 버튼 */}
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => {
+                    const diff = dateDiffDays(dateFrom, dateTo)
+                    const newTo   = new Date(dateFrom); newTo.setDate(newTo.getDate() - 1)
+                    const newFrom = new Date(newTo);    newFrom.setDate(newFrom.getDate() - diff)
+                    setDateFrom(newFrom.toISOString().slice(0, 10))
+                    setDateTo(newTo.toISOString().slice(0, 10))
+                  }}
+                  className="rounded-md px-3 py-2 font-mono text-sm text-ink-muted border border-line transition-colors hover:bg-surface-subtle hover:text-ink">
+                  ← 이전
+                </button>
+                <button
+                  disabled={dateTo >= today}
+                  onClick={() => {
+                    const diff = dateDiffDays(dateFrom, dateTo)
+                    const newFrom = new Date(dateTo); newFrom.setDate(newFrom.getDate() + 1)
+                    const newTo   = new Date(newFrom); newTo.setDate(newTo.getDate() + diff)
+                    const capTo = newTo.toISOString().slice(0, 10) > today ? today : newTo.toISOString().slice(0, 10)
+                    setDateFrom(newFrom.toISOString().slice(0, 10))
+                    setDateTo(capTo)
+                  }}
+                  className="rounded-md px-3 py-2 font-mono text-sm text-ink-muted border border-line transition-colors hover:bg-surface-subtle hover:text-ink disabled:opacity-30 disabled:cursor-not-allowed">
+                  다음 →
+                </button>
               </div>
             </div>
+
+            {/* 보정값 — 별도 줄 */}
+            {sensor.nameAbbr === '80053' && (
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-sm text-ink-muted shrink-0">보정값 ({depthLabel}번 수위계)</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={correctionInput[depthLabel] ?? (correctionParams[depthLabel] !== undefined ? String(correctionParams[depthLabel]) : '')}
+                  onChange={e => setCorrectionInput(prev => ({ ...prev, [depthLabel]: e.target.value }))}
+                  className="w-24 rounded border border-line bg-surface-card px-2 py-1.5 font-mono text-sm text-ink text-right focus:outline-none focus:ring-1 focus:ring-brand/40"
+                />
+                <span className="font-mono text-sm text-ink-muted">{sensor.unit}</span>
+                <button
+                  disabled={correctionSaving}
+                  onClick={async () => {
+                    const val = parseFloat(correctionInput[depthLabel] ?? '0') || 0
+                    const next = { ...correctionParams, [depthLabel]: val }
+                    setCorrectionSaving(true)
+                    try {
+                      await sensorApi.updateInfo(Number(id), { correction_params: next })
+                      setCorrectionParams(next)
+                      setCorrectionInput(prev => ({ ...prev, [depthLabel]: String(val) }))
+                    } catch { /* toast 필요시 추가 */ }
+                    finally { setCorrectionSaving(false) }
+                  }}
+                  className="rounded-md bg-brand px-4 py-1.5 font-mono text-sm text-white disabled:opacity-50">
+                  {correctionSaving ? '저장 중…' : '적용'}
+                </button>
+              </div>
+            )}
           </div>
 
           {/* 계측 현황 요약 */}
