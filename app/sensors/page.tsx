@@ -184,7 +184,7 @@ function SensorModal({ mode, form, onChange, onSubmit, onClose, formulas, sites 
   onChange: (f: SensorForm) => void; onSubmit: () => void; onClose: () => void
   formulas: any[]; sites: any[]
 }) {
-  const isValid = form.name.trim() !== '' && form.siteId !== ''
+  const isValid = form.name.trim() !== ''
   const set = (key: keyof SensorForm, val: string) => onChange({ ...form, [key]: val })
 
   return (
@@ -841,7 +841,21 @@ export default function SensorsPage() {
         criteria_unit_name: form.criteria.criteriaUnitName || null,
         install_date: form.installDate || null,
         location_desc: form.location.description || null,
+        formula_params: {
+          coeffA: form.formulaParams.coeffA,
+          coeffB: form.formulaParams.coeffB,
+          coeffC: form.formulaParams.coeffC,
+          coeffD: form.formulaParams.coeffD,
+          coeffE: form.formulaParams.coeffE,
+          coeffG: (form.formulaParams as any).coeffG || '',
+          initVal: form.formulaParams.initVal,
+          currentTemp: form.formulaParams.currentTemp,
+          tempCoeff: form.formulaParams.tempCoeff,
+          initTemp: form.formulaParams.initTemp,
+          extRef: form.formulaParams.extRef,
+        },
       })
+      
       await sensorApi.updateThreshold(Number(editTarget.id), {
         threshold_normal_max: form.threshold.normalMax !== '' ? form.threshold.normalMax : null,
         threshold_warning_max: form.threshold.warningMax !== '' ? form.threshold.warningMax : null,
