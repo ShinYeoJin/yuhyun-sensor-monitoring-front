@@ -733,6 +733,19 @@ export default function SensorsPage() {
           warningMax: fresh.threshold_warning_max ?? '',
           dangerMin: fresh.threshold_danger_min ?? '',
         },
+        formulaParams: (fresh as any).formula_params ? {
+          coeffA: (fresh as any).formula_params.coeffA || '',
+          coeffB: (fresh as any).formula_params.coeffB || '',
+          coeffC: (fresh as any).formula_params.coeffC || '',
+          coeffD: (fresh as any).formula_params.coeffD || '',
+          coeffE: (fresh as any).formula_params.coeffE || '',
+          coeffG: (fresh as any).formula_params.coeffG || '',
+          initVal: (fresh as any).formula_params.initVal || '',
+          currentTemp: (fresh as any).formula_params.currentTemp || '',
+          tempCoeff: (fresh as any).formula_params.tempCoeff || '',
+          initTemp: (fresh as any).formula_params.initTemp || '',
+          extRef: (fresh as any).formula_params.extRef || '',
+        } : { coeffA: '', coeffB: '', coeffC: '', coeffD: '', coeffE: '', coeffG: '', initVal: '', currentTemp: '', tempCoeff: '', initTemp: '', extRef: '' },
       }
       setForm({
         manageNo: freshSensor.manageNo ?? '', field: freshSensor.field, measureMethod: freshSensor.measureMethod,
