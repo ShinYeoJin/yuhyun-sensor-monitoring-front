@@ -281,11 +281,13 @@ export default function SensorDetailPage() {
         site_floor_plan_url: data.site_floor_plan_url || null,
         readings: [],
       })
+      setSensorCode(data.sensor_code || '')
       setCorrectionParams(data.correction_params || {})
     }).catch(() => setSensor(null))
     .finally(() => setLoading(false))
   }, [id])
 
+  const [sensorCode, setSensorCode] = useState<string>('')
   const [dateFrom, setDateFrom] = useState(today)
   const [dateTo,   setDateTo]   = useState(today)
   const [chartMode, setChartMode] = useState<'hourly' | 'daily'>('hourly')
@@ -296,31 +298,31 @@ export default function SensorDetailPage() {
   const [correctionSaving, setCorrectionSaving] = useState(false)
 
   useEffect(() => {
-    if (!id || !sensor) return  // ← sensor 로드 전 실행 방지
+    if (!id || !sensorCode) return
     sensorApi.getMeasurements(Number(id), {
       from: dateFrom,
       to: dateTo,
       limit: 2000,
-      depthLabel: sensor.nameAbbr === '80053' ? depthLabel : undefined,
+      depthLabel: sensorCode === '80053' ? depthLabel : undefined,
     }).then((data: any[]) => {
       const corr = correctionParams[depthLabel] ?? 0
       const mapped = data.map((m: any) => ({
         timestamp: m.measured_at,
         value: parseFloat(((calcMode === 'poly' ? parseFloat(m.value) : parseFloat(m.linear_value ?? m.value)) + corr).toFixed(4)),
-        unit: sensor.unit || '',
+        unit: sensor?.unit || '',
         status: 'normal',
       }))
       setMeasurements(mapped.reverse())
     }).catch(() => {})
-  }, [id, sensor, dateFrom, dateTo, depthLabel, calcMode, correctionParams])
+  }, [id, sensorCode, dateFrom, dateTo, depthLabel, calcMode, correctionParams])
 
   const [globalInitReading, setGlobalInitReading] = useState<any>(null)
 
   useEffect(() => {
-    if (!id || !sensor) return  // ← sensor 로드 전 실행 방지
+    if (!id || !sensorCode) return
     sensorApi.getMeasurements(Number(id), {
       limit: 2000,
-      depthLabel: sensor.nameAbbr === '80053' ? depthLabel : undefined,
+      depthLabel: sensorCode === '80053' ? depthLabel : undefined,
     }).then((data: any[]) => {
       if (data.length > 0) {
         const oldest = [...data].sort((a: any, b: any) =>
@@ -328,13 +330,13 @@ export default function SensorDetailPage() {
         )[0]
         const corr = correctionParams[depthLabel] ?? 0
         setGlobalInitReading({
-          value: parseFloat(oldest.value) + corr,           // poly값
-          linear_value: parseFloat(oldest.linear_value ?? oldest.value) + corr,  // linear값
+          value: parseFloat(oldest.value) + corr,
+          linear_value: parseFloat(oldest.linear_value ?? oldest.value) + corr,
           timestamp: oldest.measured_at,
         })
       }
     }).catch(() => {})
-  }, [id, depthLabel, sensor, correctionParams])
+  }, [id, sensorCode, depthLabel, correctionParams])
 
   const [qrOpen,    setQrOpen]    = useState(false)
   const [tablePage, setTablePage] = useState(1)
