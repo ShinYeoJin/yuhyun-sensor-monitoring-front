@@ -535,17 +535,23 @@ export default function SensorDetailPage() {
     }
 
     const legendRow = CR_END + 1
-    ws2.mergeCells(legendRow, 1, legendRow, 3)
+    ws2.mergeCells(legendRow, 1, legendRow, 2)
     const lgLine = ws2.getCell(legendRow, 1)
     lgLine.value = '── ' + (sensor.manageNo || sensor.name)
     lgLine.font = { name: '맑은 고딕', size: 9, color: { argb: 'FF2F5496' } }
     lgLine.alignment = { horizontal: 'center', vertical: 'middle' }
 
-    ws2.mergeCells(legendRow, 4, legendRow, 6)
-    const lgRef = ws2.getCell(legendRow, 4)
-    lgRef.value = '- - - 1차 관리기준'
-    lgRef.font = { name: '맑은 고딕', size: 9, color: { argb: 'FFC00000' } }
-    lgRef.alignment = { horizontal: 'center', vertical: 'middle' }
+    ws2.mergeCells(legendRow, 3, legendRow, 4)
+    const lgLower = ws2.getCell(legendRow, 3)
+    lgLower.value = '- - - 1차 하한기준'
+    lgLower.font = { name: '맑은 고딕', size: 9, color: { argb: 'FFC00000' } }
+    lgLower.alignment = { horizontal: 'center', vertical: 'middle' }
+
+    ws2.mergeCells(legendRow, 5, legendRow, 6)
+    const lgUpper = ws2.getCell(legendRow, 5)
+    lgUpper.value = '- - - 1차 상한기준'
+    lgUpper.font = { name: '맑은 고딕', size: 9, color: { argb: 'FFE07000' } }
+    lgUpper.alignment = { horizontal: 'center', vertical: 'middle' }
 
     const H1 = CR_END + 3, H2 = CR_END + 4, H3 = CR_END + 5
     const mhdr = (r1: number, c1: number, r2: number, c2: number, val: string, sz = 9, bg = DARK) => {
