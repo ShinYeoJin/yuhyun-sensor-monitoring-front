@@ -296,31 +296,31 @@ export default function SensorDetailPage() {
   const [correctionSaving, setCorrectionSaving] = useState(false)
 
   useEffect(() => {
-    if (!id) return
+    if (!id || !sensor) return  // ← sensor 로드 전 실행 방지
     sensorApi.getMeasurements(Number(id), {
       from: dateFrom,
       to: dateTo,
       limit: 2000,
-      depthLabel: sensor?.nameAbbr === '80053' ? depthLabel : undefined,
+      depthLabel: sensor.nameAbbr === '80053' ? depthLabel : undefined,
     }).then((data: any[]) => {
       const corr = correctionParams[depthLabel] ?? 0
       const mapped = data.map((m: any) => ({
         timestamp: m.measured_at,
         value: parseFloat(((calcMode === 'poly' ? parseFloat(m.value) : parseFloat(m.linear_value ?? m.value)) + corr).toFixed(4)),
-        unit: sensor?.unit || '',
+        unit: sensor.unit || '',
         status: 'normal',
       }))
       setMeasurements(mapped.reverse())
     }).catch(() => {})
-  }, [id, sensor?.nameAbbr, sensor?.unit, dateFrom, dateTo, depthLabel, calcMode, correctionParams])
+  }, [id, sensor, dateFrom, dateTo, depthLabel, calcMode, correctionParams])
 
   const [globalInitReading, setGlobalInitReading] = useState<any>(null)
 
   useEffect(() => {
-    if (!id) return
+    if (!id || !sensor) return  // ← sensor 로드 전 실행 방지
     sensorApi.getMeasurements(Number(id), {
       limit: 2000,
-      depthLabel: sensor?.nameAbbr === '80053' ? depthLabel : undefined,
+      depthLabel: sensor.nameAbbr === '80053' ? depthLabel : undefined,
     }).then((data: any[]) => {
       if (data.length > 0) {
         const oldest = [...data].sort((a: any, b: any) =>
@@ -334,7 +334,7 @@ export default function SensorDetailPage() {
         })
       }
     }).catch(() => {})
-  }, [id, depthLabel, sensor?.nameAbbr, correctionParams])
+  }, [id, depthLabel, sensor, correctionParams])
 
   const [qrOpen,    setQrOpen]    = useState(false)
   const [tablePage, setTablePage] = useState(1)
