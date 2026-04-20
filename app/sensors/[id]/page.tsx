@@ -465,8 +465,14 @@ export default function SensorDetailPage() {
     const sortedRows = [...dailyReadings].sort((a: any, b: any) =>
       new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     )
-    const initValue = sortedRows.length > 0 ? parseFloat(String(sortedRows[0].value)) : 0
-    const initDate  = sortedRows.length > 0 ? new Date(sortedRows[0].timestamp) : new Date()
+    const initValue = globalInitReading ? parseFloat(String(
+      sensorCode === '80053' && calcMode === 'linear'
+        ? (globalInitReading.linear_value ?? globalInitReading.value)
+        : globalInitReading.value
+    )) : (sortedRows.length > 0 ? parseFloat(String(sortedRows[0].value)) : 0)
+    const initDate  = globalInitReading
+      ? new Date(globalInitReading.timestamp)
+      : (sortedRows.length > 0 ? new Date(sortedRows[0].timestamp) : new Date())
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ExcelJSModule = await import('exceljs') as any
@@ -661,11 +667,23 @@ export default function SensorDetailPage() {
       new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     )
 
-    // 1차 관리기준 값
-    const level1Lower = sensor.criteria?.level1Lower !== '' && sensor.criteria?.level1Lower != null
-      ? parseFloat(sensor.criteria.level1Lower) : null
-    const level1Upper = sensor.criteria?.level1Upper !== '' && sensor.criteria?.level1Upper != null
-      ? parseFloat(sensor.criteria.level1Upper) : null
+    // 1차 관리기준 값 (80053은 globalInitReading ± 4)
+    let level1Lower: number | null = null
+    let level1Upper: number | null = null
+    if (sensorCode === '80053' && globalInitReading) {
+      const initVal = parseFloat(String(
+        calcMode === 'linear'
+          ? (globalInitReading.linear_value ?? globalInitReading.value)
+          : globalInitReading.value
+      ))
+      level1Lower = parseFloat((initVal - 4).toFixed(2))
+      level1Upper = parseFloat((initVal + 4).toFixed(2))
+    } else {
+      level1Lower = sensor.criteria?.level1Lower !== '' && sensor.criteria?.level1Lower != null
+        ? parseFloat(sensor.criteria.level1Lower) : null
+      level1Upper = sensor.criteria?.level1Upper !== '' && sensor.criteria?.level1Upper != null
+        ? parseFloat(sensor.criteria.level1Upper) : null
+    }
 
     if (chartData.length > 0) {
       const chartX = 15, chartY = currentY, chartW = pageWidth - 30, chartH = 50
@@ -778,11 +796,20 @@ export default function SensorDetailPage() {
     }
 
     // PDF 표
-    const pdfSortedRows = [...dailyReadings].sort((a: any, b: any) =>
+    const pdfSourceRows = chartMode === 'hourly' ? measurements : dailyReadings
+    const pdfSortedRows = [...pdfSourceRows].sort((a: any, b: any) =>
       new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     )
-    const pdfInitVal  = pdfSortedRows.length > 0 ? parseFloat(parseFloat(String(pdfSortedRows[0].value)).toFixed(2)) : 0
-    const pdfInitDate = pdfSortedRows.length > 0 ? new Date(pdfSortedRows[0].timestamp) : new Date()
+    const pdfInitVal  = globalInitReading
+      ? parseFloat(String(
+          sensorCode === '80053' && calcMode === 'linear'
+            ? (globalInitReading.linear_value ?? globalInitReading.value)
+            : globalInitReading.value
+        ))
+      : (pdfSortedRows.length > 0 ? parseFloat(parseFloat(String(pdfSortedRows[0].value)).toFixed(2)) : 0)
+    const pdfInitDate = globalInitReading
+      ? new Date(globalInitReading.timestamp)
+      : (pdfSortedRows.length > 0 ? new Date(pdfSortedRows[0].timestamp) : new Date())
 
     const tableStartY = currentY + 65
     autoTable(doc, {
