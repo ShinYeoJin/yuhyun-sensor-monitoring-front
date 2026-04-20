@@ -312,7 +312,7 @@ export default function SensorDetailPage() {
       }))
       setMeasurements(mapped.reverse())
     }).catch(() => {})
-  }, [id, sensor?.unit, dateFrom, dateTo, depthLabel, calcMode, correctionParams])
+  }, [id, sensor?.nameAbbr, sensor?.unit, dateFrom, dateTo, depthLabel, calcMode, correctionParams])
 
   const [globalInitReading, setGlobalInitReading] = useState<any>(null)
 
@@ -328,8 +328,8 @@ export default function SensorDetailPage() {
         )[0]
         const corr = correctionParams[depthLabel] ?? 0
         setGlobalInitReading({
-          value: parseFloat(oldest.value) + corr,
-          linear_value: parseFloat(oldest.linear_value ?? oldest.value) + corr,
+          value: parseFloat(oldest.value) + corr,           // poly값
+          linear_value: parseFloat(oldest.linear_value ?? oldest.value) + corr,  // linear값
           timestamp: oldest.measured_at,
         })
       }
