@@ -872,7 +872,7 @@ export default function SensorDetailPage() {
   return (
     <div className="flex-1 overflow-y-auto bg-surface-page">
 
-      <div className="sticky top-0 z-10 border-b border-line bg-surface-card/90 px-6 py-3 backdrop-blur-md">
+      <div className="sticky top-0 z-10 border-b border-line bg-surface-card/90 px-3 py-3 sm:px-6 backdrop-blur-md">    
         <div className="flex items-center gap-3">
           <Link href="/sensors" className="text-sm text-ink-muted transition-colors hover:text-ink">← 센서 목록</Link>
           <span className="text-line-strong">/</span>
@@ -884,7 +884,7 @@ export default function SensorDetailPage() {
 
       <div ref={printRef} style={{ display: 'none' }} />
 
-      <div className="space-y-5 p-6">
+      <div className="space-y-5 p-3 sm:p-6">
 
         {sensor.status === 'danger' && (
           <div className="rounded-xl border border-sensor-dangerborder bg-sensor-dangerbg px-5 py-4 danger-flash">
@@ -1107,13 +1107,13 @@ export default function SensorDetailPage() {
               <span className="font-mono text-[11px] text-sensor-dangertext">종료일이 시작일보다 앞설 수 없습니다.</span>
             )}
 
-            <div className="ml-auto flex items-center gap-2">
+            <div className="ml-auto flex items-center gap-2 sm:gap-3">
               <button onClick={() => { setPrintConfig(c => ({ ...c, dateFrom, dateTo })); setPrintOpen(true) }}
-                className="flex items-center gap-1.5 rounded-lg border border-line bg-surface-card px-4 py-1.5 font-mono text-sm text-ink-sub shadow-card transition-colors hover:border-brand/40 hover:bg-brand/10 hover:text-brand">
-                📊 Excel / PDF
+                className="flex items-center gap-1.5 rounded-lg border border-line bg-surface-card px-3 py-1.5 font-mono text-xs sm:text-sm sm:px-4 text-ink-sub shadow-card transition-colors hover:border-brand/40 hover:bg-brand/10 hover:text-brand">
+                📊 <span className="hidden sm:inline">Excel / </span>PDF
               </button>
               <button onClick={() => setQrOpen(true)}
-                className="flex items-center gap-1.5 rounded-lg border border-line bg-surface-card px-4 py-1.5 font-mono text-sm text-ink-sub shadow-card transition-colors hover:border-brand/40 hover:bg-brand/10 hover:text-brand">
+                className="flex items-center gap-1.5 rounded-lg border border-line bg-surface-card px-3 py-1.5 font-mono text-xs sm:text-sm sm:px-4 text-ink-sub shadow-card transition-colors hover:border-brand/40 hover:bg-brand/10 hover:text-brand">
                 ⊞ QR
               </button>
             </div>
@@ -1200,8 +1200,8 @@ export default function SensorDetailPage() {
 
             {/* 보정값 — 별도 줄 */}
             {sensor.nameAbbr === '80053' && (
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-sm text-ink-muted shrink-0">보정값 ({depthLabel}번 수위계)</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-mono text-xs sm:text-sm text-ink-muted shrink-0">보정값 ({depthLabel}번 수위계)</span>
                 <input
                   type="number"
                   step="0.01"
@@ -1210,7 +1210,7 @@ export default function SensorDetailPage() {
                   onChange={e => setCorrectionInput(prev => ({ ...prev, [depthLabel]: e.target.value }))}
                   className="w-24 rounded border border-line bg-surface-card px-2 py-1.5 font-mono text-sm text-ink text-right focus:outline-none focus:ring-1 focus:ring-brand/40"
                 />
-                <span className="font-mono text-sm text-ink-muted">{sensor.unit}</span>
+                <span className="w-20 sm:w-24 rounded border border-line bg-surface-card px-2 py-1.5 font-mono text-sm text-ink text-right focus:outline-none focus:ring-1 focus:ring-brand/40">{sensor.unit}</span>
                 <button
                   disabled={correctionSaving}
                   onClick={async () => {
@@ -1237,7 +1237,7 @@ export default function SensorDetailPage() {
               <p className="font-mono text-[10px] text-ink-muted">
                 {sensor.nameAbbr === '80053' ? '기간 내 최신값' : '현재 측정값'}
               </p>
-              <p className={`mt-1 font-mono text-lg font-semibold ${valueColorClass}`}>
+              <p className={`mt-1 font-mono text-base sm:text-lg font-semibold ${valueColorClass}`}>
                 {sensor.status === 'offline' ? '—'
                   : measurements.length > 0 && sensor.nameAbbr === '80053'
                   ? parseFloat(String(measurements[0].value)).toFixed(2)
@@ -1388,10 +1388,10 @@ export default function SensorDetailPage() {
                       <tr className="border-b border-line bg-surface-subtle">
                         {chartMode === 'hourly'
                           ? ['날짜', '시각', '측정값', '상태'].map(h => (
-                              <th key={h} className="px-4 py-2.5 text-left font-mono text-[10px] font-semibold uppercase tracking-wide text-ink-muted">{h}</th>
+                              <th key={h} className="px-2 sm:px-4 py-2.5 text-left font-mono text-[10px] font-semibold uppercase tracking-wide text-ink-muted">{h}</th>
                             ))
                           : ['측정일', '경과일', `지하수위 G.L(${sensor.unit})`, '전측정대비', '초기치대비', '비고'].map(h => (
-                              <th key={h} className="px-4 py-2.5 text-left font-mono text-[10px] font-semibold uppercase tracking-wide text-ink-muted">{h}</th>
+                              <th key={h} className="px-2 sm:px-4 py-2.5 text-left font-mono text-[10px] font-semibold uppercase tracking-wide text-ink-muted">{h}</th>
                             ))
                         }
                       </tr>
@@ -1406,10 +1406,10 @@ export default function SensorDetailPage() {
                           <tr key={i} className={`transition-colors hover:bg-surface-subtle ${rowCls}`}>
                             {chartMode === 'hourly' ? (
                               <>
-                                <td className="px-4 py-2 font-mono text-xs text-ink-muted whitespace-nowrap">
+                                <td className="px-2 sm:px-4 py-2 font-mono text-xs text-ink-muted whitespace-nowrap">
                                   {dt.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })}
                                 </td>
-                                <td className="px-4 py-2 font-mono text-xs text-ink-muted whitespace-nowrap">
+                                <td className="px-2 sm:px-4 py-2 font-mono text-xs text-ink-muted whitespace-nowrap">
                                   {dt.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
                                 </td>
                                 <td className={`px-4 py-2 font-mono text-sm font-medium ${
