@@ -39,9 +39,10 @@ interface Props {
   sensor: any
   readings?: SensorReading[]
   hideXAxis?: boolean
+  initValue?: number
 }
 
-export function SensorTrendChart({ sensor, readings, hideXAxis = false }: Props) {
+export function SensorTrendChart({ sensor, readings, hideXAxis = false , initValue }: Props) {
   const source = readings ?? sensor.readings ?? []
 
   const sortedSource = [...source].sort((a, b) =>
@@ -66,9 +67,12 @@ export function SensorTrendChart({ sensor, readings, hideXAxis = false }: Props)
     ? parseFloat(sensor.criteria.level1Lower) : null
   const level1Upper = sensor.criteria?.level1Upper !== '' && sensor.criteria?.level1Upper != null
     ? parseFloat(sensor.criteria.level1Upper) : null
-  // 둘 다 있으면 둘 다 표시, 하나만 있으면 그것만 표시
-  const refLine  = (level1Lower !== null && !isNaN(level1Lower)) ? level1Lower : null
-  const refLine2 = (level1Upper !== null && !isNaN(level1Upper)) ? level1Upper : null
+  const refLine  = sensor.nameAbbr === '80053' && initValue !== undefined
+    ? parseFloat((initValue - 4).toFixed(2))
+    : (level1Lower !== null && !isNaN(level1Lower)) ? level1Lower : null
+  const refLine2 = sensor.nameAbbr === '80053' && initValue !== undefined
+    ? parseFloat((initValue + 4).toFixed(2))
+    : (level1Upper !== null && !isNaN(level1Upper)) ? level1Upper : null
 
   // x축 틱: 최대 8개
   const tickCount = Math.min(8, data.length)

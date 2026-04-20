@@ -56,6 +56,7 @@ export const sensorApi = {
     install_date?: string | null;
     location_desc?: string | null;
     formula_params?: Record<string, string> | null;
+    correction_params?: Record<string, number> | null;
   }) =>
   request(`/api/sensors/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   updateThreshold: (id: number, body: { threshold_normal_max: any; threshold_warning_max: any; threshold_danger_min: any }) =>

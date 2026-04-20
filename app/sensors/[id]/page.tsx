@@ -281,6 +281,7 @@ export default function SensorDetailPage() {
         site_floor_plan_url: data.site_floor_plan_url || null,
         readings: [],
       })
+      setCorrectionParams(data.correction_params || {})
     }).catch(() => setSensor(null))
     .finally(() => setLoading(false))
   }, [id])
@@ -290,6 +291,9 @@ export default function SensorDetailPage() {
   const [chartMode, setChartMode] = useState<'hourly' | 'daily'>('hourly')
   const [depthLabel, setDepthLabel] = useState<'1' | '2' | '3'>('1')
   const [calcMode, setCalcMode] = useState<'poly' | 'linear'>('linear')
+  const [correctionParams, setCorrectionParams] = useState<Record<string, number>>({})
+  const [correctionInput, setCorrectionInput] = useState<Record<string, string>>({})
+  const [correctionSaving, setCorrectionSaving] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -299,15 +303,16 @@ export default function SensorDetailPage() {
       limit: 2000,
       depthLabel: sensor?.nameAbbr === '80053' ? depthLabel : undefined,
     }).then((data: any[]) => {
+      const corr = correctionParams[depthLabel] ?? 0
       const mapped = data.map((m: any) => ({
         timestamp: m.measured_at,
-        value: calcMode === 'poly' ? parseFloat(m.value) : parseFloat(m.linear_value ?? m.value),
+        value: (calcMode === 'poly' ? parseFloat(m.value) : parseFloat(m.linear_value ?? m.value)) + corr,
         unit: sensor?.unit || '',
         status: 'normal',
       }))
       setMeasurements(mapped.reverse())
     }).catch(() => {})
-  }, [id, sensor?.unit, dateFrom, dateTo, depthLabel, calcMode])
+  }, [id, sensor?.unit, dateFrom, dateTo, depthLabel, calcMode, correctionParams])
 
   const [globalInitReading, setGlobalInitReading] = useState<any>(null)
 
@@ -321,14 +326,15 @@ export default function SensorDetailPage() {
         const oldest = [...data].sort((a: any, b: any) =>
           new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime()
         )[0]
+        const corr = correctionParams[depthLabel] ?? 0
         setGlobalInitReading({
-          value: oldest.value,
-          linear_value: oldest.linear_value ?? oldest.value,
+          value: parseFloat(oldest.value) + corr,
+          linear_value: parseFloat(oldest.linear_value ?? oldest.value) + corr,
           timestamp: oldest.measured_at,
         })
       }
     }).catch(() => {})
-  }, [id, depthLabel, sensor?.nameAbbr])
+  }, [id, depthLabel, sensor?.nameAbbr, correctionParams])
 
   const [qrOpen,    setQrOpen]    = useState(false)
   const [tablePage, setTablePage] = useState(1)
@@ -878,8 +884,12 @@ export default function SensorDetailPage() {
                 { label: '측정단위',  value: sensor.unit || '—' },
                 { label: '측정주기',  value: sensor.operation?.measureCycle || '—' },
                 { label: '계산식',    value: sensor.formula || '—' },
-                { label: '1차 상한',  value: sensor.criteria?.level1Upper ? `${sensor.criteria.level1Upper} ${sensor.criteria.criteriaUnit || ''}`.trim() : '—' },
-                { label: '1차 하한',  value: sensor.criteria?.level1Lower ? `${sensor.criteria.level1Lower} ${sensor.criteria.criteriaUnit || ''}`.trim() : '—' },
+                { label: '1차 상한',  value: sensor.nameAbbr === '80053' && globalInitReading
+                  ? `${(parseFloat(String(calcMode === 'linear' ? (globalInitReading.linear_value ?? globalInitReading.value) : globalInitReading.value)) + 4).toFixed(2)} ${sensor.unit || ''}`.trim()
+                  : sensor.criteria?.level1Upper ? `${sensor.criteria.level1Upper} ${sensor.criteria.criteriaUnit || ''}`.trim() : '—' },
+                { label: '1차 하한',  value: sensor.nameAbbr === '80053' && globalInitReading
+                  ? `${(parseFloat(String(calcMode === 'linear' ? (globalInitReading.linear_value ?? globalInitReading.value) : globalInitReading.value)) - 4).toFixed(2)} ${sensor.unit || ''}`.trim()
+                  : sensor.criteria?.level1Lower ? `${sensor.criteria.level1Lower} ${sensor.criteria.criteriaUnit || ''}`.trim() : '—' },
                 { label: '2차 상한',  value: sensor.criteria?.level2Upper ? `${sensor.criteria.level2Upper} ${sensor.criteria.criteriaUnit || ''}`.trim() : '—' },
                 { label: '2차 하한',  value: sensor.criteria?.level2Lower ? `${sensor.criteria.level2Lower} ${sensor.criteria.criteriaUnit || ''}`.trim() : '—' },
                 ...(!isMultiMonitor ? [{ label: '마지막 수신', value: `${formatTimestamp(sensor.lastUpdated)} (${getRelativeTime(sensor.lastUpdated)})` }] : []),
@@ -1080,9 +1090,11 @@ export default function SensorDetailPage() {
                   : '날짜 범위를 확인해 주세요.'}
               </p>
             </div>
+            
             <div className="flex flex-wrap items-center gap-2">
               {sensor.nameAbbr === '80053' && (
                 <>
+                {/* depth 버튼 */}
                   <div className="flex gap-1 rounded-lg border border-line bg-surface-subtle p-1">
                     {(['1', '2', '3'] as const).map(d => (
                       <button key={d} onClick={() => setDepthLabel(d)}
@@ -1092,6 +1104,7 @@ export default function SensorDetailPage() {
                       </button>
                     ))}
                   </div>
+                  {/* Poly/Linear 버튼 */}
                   <div className="flex gap-1 rounded-lg border border-line bg-surface-subtle p-1">
                     {(['poly', 'linear'] as const).map(mode => (
                       <button key={mode} onClick={() => setCalcMode(mode)}
@@ -1100,6 +1113,35 @@ export default function SensorDetailPage() {
                         {mode === 'poly' ? 'Poly' : 'Linear'}
                       </button>
                     ))}
+                  </div>
+                  {/* 보정값 입력 */}
+                  <div className="flex items-center gap-1.5 rounded-lg border border-line bg-surface-subtle px-2 py-1">
+                    <span className="font-mono text-[10px] text-ink-muted shrink-0">보정값({depthLabel}번)</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={correctionInput[depthLabel] ?? (correctionParams[depthLabel] !== undefined ? String(correctionParams[depthLabel]) : '')}
+                      onChange={e => setCorrectionInput(prev => ({ ...prev, [depthLabel]: e.target.value }))}
+                      className="w-20 rounded border border-line bg-surface-card px-1.5 py-0.5 font-mono text-[11px] text-ink text-right focus:outline-none focus:ring-1 focus:ring-brand/40"
+                    />
+                    <span className="font-mono text-[10px] text-ink-muted">{sensor.unit}</span>
+                    <button
+                      disabled={correctionSaving}
+                      onClick={async () => {
+                        const val = parseFloat(correctionInput[depthLabel] ?? '0') || 0
+                        const next = { ...correctionParams, [depthLabel]: val }
+                        setCorrectionSaving(true)
+                        try {
+                          await sensorApi.updateInfo(Number(id), { correction_params: next })
+                          setCorrectionParams(next)
+                          setCorrectionInput(prev => ({ ...prev, [depthLabel]: String(val) }))
+                        } catch { /* toast 필요시 추가 */ }
+                        finally { setCorrectionSaving(false) }
+                      }}
+                      className="rounded-md bg-brand px-2 py-0.5 font-mono text-[10px] text-white disabled:opacity-50">
+                      {correctionSaving ? '…' : '적용'}
+                    </button>
                   </div>
                 </>
               )}
@@ -1150,11 +1192,7 @@ export default function SensorDetailPage() {
               <p className={`mt-1 font-mono text-lg font-semibold ${valueColorClass}`}>
                 {sensor.status === 'offline' ? '—'
                   : measurements.length > 0 && sensor.nameAbbr === '80053'
-                    ? parseFloat(String(
-                        calcMode === 'linear'
-                          ? (measurements[0].linear_value ?? measurements[0].value)
-                          : measurements[0].value
-                      )).toFixed(2)
+                  ? parseFloat(String(measurements[0].value)).toFixed(2)
                     : sensor.currentValue}
                 <span className="ml-1 text-xs font-normal text-ink-muted">{sensor.unit}</span>
               </p>
@@ -1222,7 +1260,15 @@ export default function SensorDetailPage() {
                   ※ depth_label {depthLabel}번 기준 데이터입니다. ({calcMode === 'poly' ? 'Polynomial' : 'Linear'} 계산값)
                 </p>
               )}
-              <SensorTrendChart sensor={sensor} readings={chartMode === 'hourly' ? measurements : dailyReadings} />
+              <SensorTrendChart
+                sensor={sensor}
+                readings={chartMode === 'hourly' ? measurements : dailyReadings}
+                initValue={globalInitReading
+                  ? parseFloat(String(calcMode === 'linear'
+                    ? (globalInitReading.linear_value ?? globalInitReading.value)
+                    : globalInitReading.value))
+                  : undefined}
+              />
             </div>
           ) : (
             <div className="flex h-[220px] items-center justify-center rounded-xl bg-surface-subtle">
