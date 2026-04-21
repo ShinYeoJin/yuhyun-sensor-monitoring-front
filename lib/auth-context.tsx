@@ -32,14 +32,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null)
 
   useEffect(() => {
-    try {
-      const storedUser  = localStorage.getItem('gm_user')
-      const storedToken = localStorage.getItem('gm_token')
-      if (storedUser && storedToken) {
-        setUser(JSON.parse(storedUser))
-        setToken(storedToken)
+    const verify = async () => {
+      try {
+        const storedUser  = localStorage.getItem('gm_user')
+        const storedToken = localStorage.getItem('gm_token')
+        if (storedUser && storedToken) {
+          // 토큰 유효성 서버에서 검증
+          const me = await authApi.me()
+          const u: AuthUser = {
+            userId: String(me.id),
+            name:   me.username,
+            role:   me.role,
+            email:  me.email,
+          }
+          setUser(u)
+          setToken(storedToken)
+          localStorage.setItem('gm_user', JSON.stringify(u))
+        }
+      } catch {
+        // 토큰 만료 또는 유효하지 않으면 삭제 후 로그인 페이지로
+        localStorage.removeItem('gm_token')
+        localStorage.removeItem('gm_user')
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/qr')) {
+          window.location.href = '/login?expired=true'
+        }
       }
-    } catch {}
+    }
+    verify()
   }, [])
 
   const login = async (email: string, password: string) => {
