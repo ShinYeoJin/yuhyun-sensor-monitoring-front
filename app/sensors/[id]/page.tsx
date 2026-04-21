@@ -1009,11 +1009,14 @@ export default function SensorDetailPage() {
               )}
             </div>
             {(() => {
-              const floorPlanUrl = sensor.floor_plan_url || sensor.site_floor_plan_url || null
-              return floorPlanUrl ? (
+              const hasFloorPlan = !!(sensor.floor_plan_url || sensor.site_floor_plan_url)
+              const floorPlanImageUrl = hasFloorPlan
+                ? `${process.env.NEXT_PUBLIC_API_URL || 'https://yuhyun-sensor-monitoring-back.onrender.com'}/api/sensors/${sensor.id}/floor-plan-image`
+                : null
+              return floorPlanImageUrl ? (
                 <div className="rounded-xl border border-line overflow-hidden bg-surface-subtle">
                   <img
-                    src={floorPlanUrl}
+                    src={floorPlanImageUrl}
                     alt="계측계획 평면도"
                     className="w-full object-contain"
                     style={{ maxHeight: '400px' }}
@@ -1025,7 +1028,7 @@ export default function SensorDetailPage() {
                         parent.innerHTML = `
                           <div style="padding:32px;text-align:center;">
                             <p style="font-size:13px;color:#888;margin-bottom:8px;">⚠ 평면도를 불러올 수 없습니다.</p>
-                            <a href="${floorPlanUrl}" target="_blank" style="font-size:12px;color:#4f6ef7;text-decoration:underline;">새 탭에서 열기</a>
+                            <a href="${floorPlanImageUrl}" target="_blank" style="font-size:12px;color:#4f6ef7;text-decoration:underline;">새 탭에서 열기</a>
                           </div>`
                       }
                     }}
