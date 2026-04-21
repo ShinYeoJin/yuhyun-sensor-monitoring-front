@@ -1222,7 +1222,7 @@ export default function SensorDetailPage() {
                   onChange={e => setCorrectionInput(prev => ({ ...prev, [depthLabel]: e.target.value }))}
                   className="w-24 rounded border border-line bg-surface-card px-2 py-1.5 font-mono text-sm text-ink text-right focus:outline-none focus:ring-1 focus:ring-brand/40"
                 />
-                <span className="font-mono text-xs sm:text-sm text-ink-muted shrink-0">보정값 ({depthLabel}번 수위계) ({sensor.unit})</span>
+                <span className="font-mono text-xs sm:text-sm text-ink-muted shrink-0">{sensor.unit}</span>
                 <button
                   disabled={correctionSaving}
                   onClick={async () => {
