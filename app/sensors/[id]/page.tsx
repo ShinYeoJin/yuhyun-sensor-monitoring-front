@@ -1212,15 +1212,23 @@ export default function SensorDetailPage() {
                   type="number"
                   step="0.01"
                   placeholder="0.00"
+                  min="-100"
+                  max="100"
                   value={correctionInput[depthLabel] ?? (correctionParams[depthLabel] !== undefined && correctionParams[depthLabel] !== 0 ? String(correctionParams[depthLabel]) : '')}
                   onChange={e => setCorrectionInput(prev => ({ ...prev, [depthLabel]: e.target.value }))}
+                  onWheel={e => e.currentTarget.blur()}
                   className="w-24 rounded border border-line bg-surface-card px-2 py-1.5 font-mono text-sm text-ink text-right focus:outline-none focus:ring-1 focus:ring-brand/40"
                 />
                 <span className="font-mono text-xs sm:text-sm text-ink-muted shrink-0">{sensor.unit}</span>
                 <button
                   disabled={correctionSaving}
                   onClick={async () => {
-                    const val = parseFloat(correctionInput[depthLabel] ?? '0') || 0
+                    const inputStr = correctionInput[depthLabel] ?? ''
+                    const val = inputStr === '' ? 0 : parseFloat(inputStr)
+                    if (isNaN(val) || val < -100 || val > 100) {
+                      alert('보정값은 -100 ~ 100 사이의 숫자만 입력 가능합니다.')
+                      return
+                    }
                     const next = { ...correctionParams, [depthLabel]: val }
                     setCorrectionSaving(true)
                     try {
