@@ -276,8 +276,8 @@ export default function SensorDetailPage() {
         batteryLevel: 100,
         lastUpdated: data.last_measured || new Date().toISOString(),
         site_managers: data.site_managers || '[]',
-        floor_plan_url: data.floor_plan_url || null,
-        site_floor_plan_url: data.site_floor_plan_url || null,
+        floor_plan_url: data.has_floor_plan ? 'exists' : null,
+        site_floor_plan_url: data.has_site_floor_plan ? 'exists' : null,
         readings: [],
       })
       setSensorCode(data.sensor_code || '')
@@ -998,7 +998,7 @@ export default function SensorDetailPage() {
                         )
                         const data = await res.json()
                         if (data.success) {
-                          setSensor((prev: any) => ({ ...prev, floor_plan_url: data.floor_plan_url }))
+                          setSensor((prev: any) => ({ ...prev, floor_plan_url: 'exists' }))
                         } else {
                           alert('업로드 실패: ' + (data.error || '알 수 없는 오류'))
                         }
