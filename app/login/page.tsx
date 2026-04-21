@@ -1,12 +1,22 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { authApi } from '@/lib/api'
 
 type Mode = 'login' | 'signup'
+
+function ExpiredNotice({ setError }: { setError: (msg: string) => void }) {
+  const searchParams = useSearchParams()
+  useEffect(() => {
+    if (searchParams.get('expired') === 'true') {
+      setError('세션이 만료되었습니다. 다시 로그인해 주세요.')
+    }
+  }, [searchParams, setError])
+  return null
+}
 
 export default function LoginPage() {
   const router  = useRouter()
@@ -21,13 +31,6 @@ export default function LoginPage() {
   const [error,    setError]    = useState('')
   const [success,  setSuccess]  = useState('')
   const [loading,  setLoading]  = useState(false)
-
-  const searchParams = useSearchParams()
-  useEffect(() => {
-    if (searchParams.get('expired') === 'true') {
-      setError('세션이 만료되었습니다. 다시 로그인해 주세요.')
-    }
-  }, [searchParams])
 
   const inputCls = 'w-full rounded-xl border border-line bg-surface-subtle px-4 py-2.5 text-sm text-ink outline-none transition-colors placeholder:text-ink-muted focus:border-brand/50 focus:ring-2 focus:ring-brand/10'
 
@@ -73,6 +76,9 @@ export default function LoginPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-surface-page p-4">
+      <Suspense fallback={null}>
+        <ExpiredNotice setError={setError} />
+      </Suspense>
       <div className="w-full max-w-sm space-y-5">
         <div className="text-center">
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-brand font-mono text-lg font-medium text-white shadow-cardhover">
