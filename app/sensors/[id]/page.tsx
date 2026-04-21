@@ -1011,13 +1011,13 @@ export default function SensorDetailPage() {
             {(() => {
               const hasFloorPlan = !!(sensor.floor_plan_url || sensor.site_floor_plan_url)
               const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://yuhyun-sensor-monitoring-back.onrender.com'
-              const floorPlanImageUrl = hasFloorPlan
+              const floorPlanUrl = hasFloorPlan
                 ? `${API_BASE}/api/sensors/${sensor.id}/floor-plan-image`
                 : null
-              return floorPlanImageUrl ? (
+              return floorPlanUrl ? (
                 <div className="rounded-xl border border-line overflow-hidden bg-surface-subtle">
                   <img
-                    src={floorPlanImageUrl}
+                    src={floorPlanUrl}
                     alt="계측계획 평면도"
                     className="w-full object-contain"
                     style={{ maxHeight: '400px' }}
