@@ -10,7 +10,18 @@ async function request(path: string, options: RequestInit = {}) {
 
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers })
   const data = await res.json()
-  if (!res.ok) throw new Error(data.error || '요청 실패')
+  if (!res.ok) {
+    if (res.status === 401) {
+      // 토큰 만료 또는 인증 실패 → 토큰 삭제 후 로그인 페이지로 이동
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('gm_token')
+        localStorage.removeItem('gm_user')
+        window.location.href = '/login?expired=true'
+      }
+      throw new Error('세션이 만료되었습니다.')
+    }
+    throw new Error(data.error || '요청 실패')
+  }
   return data
 }
 

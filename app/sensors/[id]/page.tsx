@@ -1017,6 +1017,18 @@ export default function SensorDetailPage() {
                     alt="계측계획 평면도"
                     className="w-full object-contain"
                     style={{ maxHeight: '400px' }}
+                    onError={(e) => {
+                      const target = e.currentTarget
+                      target.style.display = 'none'
+                      const parent = target.parentElement
+                      if (parent) {
+                        parent.innerHTML = `
+                          <div style="padding:32px;text-align:center;">
+                            <p style="font-size:13px;color:#888;margin-bottom:8px;">⚠ 평면도를 불러올 수 없습니다.</p>
+                            <a href="${floorPlanUrl}" target="_blank" style="font-size:12px;color:#4f6ef7;text-decoration:underline;">새 탭에서 열기</a>
+                          </div>`
+                      }
+                    }}
                   />
                 </div>
               ) : (
@@ -1210,7 +1222,7 @@ export default function SensorDetailPage() {
                   onChange={e => setCorrectionInput(prev => ({ ...prev, [depthLabel]: e.target.value }))}
                   className="w-24 rounded border border-line bg-surface-card px-2 py-1.5 font-mono text-sm text-ink text-right focus:outline-none focus:ring-1 focus:ring-brand/40"
                 />
-                <span className="w-20 sm:w-24 rounded border border-line bg-surface-card px-2 py-1.5 font-mono text-sm text-ink text-right focus:outline-none focus:ring-1 focus:ring-brand/40">{sensor.unit}</span>
+                <span className="font-mono text-xs sm:text-sm text-ink-muted shrink-0">보정값 ({depthLabel}번 수위계) ({sensor.unit})</span>
                 <button
                   disabled={correctionSaving}
                   onClick={async () => {
