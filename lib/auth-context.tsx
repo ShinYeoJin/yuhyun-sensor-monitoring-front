@@ -14,22 +14,26 @@ export interface AuthUser {
 interface AuthContextValue {
   user:    AuthUser | null
   token:   string | null
+  loading: boolean
   login:   (email: string, password: string) => Promise<void>
   logout:  () => void
 }
 
+
 // ─── Context ──────────────────────────────────────────────────────────────────
 const AuthContext = createContext<AuthContextValue>({
-  user:   null,
-  token:  null,
-  login:  async () => {},
-  logout: () => {},
+  user:    null,
+  token:   null,
+  loading: true,
+  login:   async () => {},
+  logout:  () => {},
 })
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user,  setUser]  = useState<AuthUser | null>(null)
-  const [token, setToken] = useState<string | null>(null)
+  const [user,    setUser]    = useState<AuthUser | null>(null)
+  const [token,   setToken]   = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const verify = async () => {
@@ -37,7 +41,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const storedUser  = localStorage.getItem('gm_user')
         const storedToken = localStorage.getItem('gm_token')
         if (storedUser && storedToken) {
-          // 토큰 유효성 서버에서 검증
           const me = await authApi.me()
           const u: AuthUser = {
             userId: String(me.id),
@@ -50,12 +53,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           localStorage.setItem('gm_user', JSON.stringify(u))
         }
       } catch {
-        // 토큰 만료 또는 유효하지 않으면 삭제 후 로그인 페이지로
         localStorage.removeItem('gm_token')
         localStorage.removeItem('gm_user')
-        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/qr')) {
+        if (
+          typeof window !== 'undefined' &&
+          !window.location.pathname.startsWith('/login') &&
+          !window.location.pathname.startsWith('/qr')
+        ) {
           window.location.href = '/login?expired=true'
         }
+      } finally {
+        setLoading(false)
       }
     }
     verify()
@@ -87,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   )

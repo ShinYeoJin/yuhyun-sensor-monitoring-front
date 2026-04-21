@@ -5,11 +5,12 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 
 export default function SensorDetailLayout({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
   const router = useRouter()
   const [checking, setChecking] = useState(true)
 
   useEffect(() => {
+    if (loading) return  // 토큰 검증 완료 전엔 대기
     const timer = setTimeout(() => {
       setChecking(false)
       if (!user) {
@@ -17,7 +18,7 @@ export default function SensorDetailLayout({ children }: { children: React.React
       }
     }, 300)
     return () => clearTimeout(timer)
-  }, [user, router])
+  }, [user, router, loading])
 
   if (checking) return (
     <div className="flex h-screen items-center justify-center bg-surface-page">
