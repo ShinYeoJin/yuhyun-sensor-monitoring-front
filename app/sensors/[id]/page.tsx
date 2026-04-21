@@ -1010,8 +1010,9 @@ export default function SensorDetailPage() {
             </div>
             {(() => {
               const hasFloorPlan = !!(sensor.floor_plan_url || sensor.site_floor_plan_url)
+              const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://yuhyun-sensor-monitoring-back.onrender.com'
               const floorPlanImageUrl = hasFloorPlan
-                ? `${process.env.NEXT_PUBLIC_API_URL || 'https://yuhyun-sensor-monitoring-back.onrender.com'}/api/sensors/${sensor.id}/floor-plan-image`
+                ? `${API_BASE}/api/sensors/${sensor.id}/floor-plan-image`
                 : null
               return floorPlanImageUrl ? (
                 <div className="rounded-xl border border-line overflow-hidden bg-surface-subtle">
@@ -1020,18 +1021,6 @@ export default function SensorDetailPage() {
                     alt="계측계획 평면도"
                     className="w-full object-contain"
                     style={{ maxHeight: '400px' }}
-                    onError={(e) => {
-                      const target = e.currentTarget
-                      target.style.display = 'none'
-                      const parent = target.parentElement
-                      if (parent) {
-                        parent.innerHTML = `
-                          <div style="padding:32px;text-align:center;">
-                            <p style="font-size:13px;color:#888;margin-bottom:8px;">⚠ 평면도를 불러올 수 없습니다.</p>
-                            <a href="${floorPlanImageUrl}" target="_blank" style="font-size:12px;color:#4f6ef7;text-decoration:underline;">새 탭에서 열기</a>
-                          </div>`
-                      }
-                    }}
                   />
                 </div>
               ) : (
@@ -1057,7 +1046,7 @@ export default function SensorDetailPage() {
                             )
                             const data = await res.json()
                             if (data.success) {
-                              setSensor((prev: any) => ({ ...prev, floor_plan_url: data.floor_plan_url }))
+                              setSensor((prev: any) => ({ ...prev, floor_plan_url: 'exists' }))
                             } else {
                               alert('업로드 실패: ' + (data.error || '알 수 없는 오류'))
                             }
