@@ -295,6 +295,7 @@ export default function SensorDetailPage() {
   const [correctionParams, setCorrectionParams] = useState<Record<string, number>>({})
   const [correctionInput, setCorrectionInput] = useState<Record<string, string>>({})
   const [correctionSaving, setCorrectionSaving] = useState(false)
+  const [floorPlanTimestamp, setFloorPlanTimestamp] = useState<number>(Date.now())
 
   useEffect(() => {
     if (!id || !sensorCode) return
@@ -999,6 +1000,7 @@ export default function SensorDetailPage() {
                         const data = await res.json()
                         if (data.success) {
                           setSensor((prev: any) => ({ ...prev, floor_plan_url: 'exists' }))
+                          setFloorPlanTimestamp(Date.now())
                         } else {
                           alert('업로드 실패: ' + (data.error || '알 수 없는 오류'))
                         }
@@ -1012,7 +1014,7 @@ export default function SensorDetailPage() {
               const hasFloorPlan = !!(sensor.floor_plan_url || sensor.site_floor_plan_url)
               const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://yuhyun-sensor-monitoring-back.onrender.com'
               const floorPlanUrl = hasFloorPlan
-                ? `${API_BASE}/api/sensors/${sensor.id}/floor-plan-image`
+                ? `${API_BASE}/api/sensors/${sensor.id}/floor-plan-image?t=${floorPlanTimestamp}`
                 : null
               return floorPlanUrl ? (
                 <div className="rounded-xl border border-line overflow-hidden bg-surface-subtle">
