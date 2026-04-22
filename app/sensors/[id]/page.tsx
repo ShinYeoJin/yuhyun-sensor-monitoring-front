@@ -322,29 +322,41 @@ export default function SensorDetailPage() {
 
   // ─── 엑셀 ─────────────────────────────────────────────────────────────────
   const handleExcelDownload = async () => {
-    let chartBase64: string | null = null
+    let chartBase64: string | null | undefined = null
     if (chartRef.current) {
       try {
         const svgEl = chartRef.current.querySelector('svg')
-        if (svgEl) {
+        if (svgEl && svgEl.clientWidth > 0 && svgEl.clientHeight > 0) {
+          const scale = 2
+          const w = svgEl.clientWidth * scale
+          const h = svgEl.clientHeight * scale
           const svgData = new XMLSerializer().serializeToString(svgEl)
-          const svgUrl  = URL.createObjectURL(new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' }))
+          const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' })
+          const svgUrl = URL.createObjectURL(svgBlob)
           await new Promise<void>(resolve => {
-            const img = new Image(); const scale = 3
+            const img = new Image()
             img.onload = () => {
-              const canvas = document.createElement('canvas')
-              canvas.width = svgEl.clientWidth * scale; canvas.height = svgEl.clientHeight * scale
-              const ctx = canvas.getContext('2d')!
-              ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height)
-              ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-              chartBase64 = canvas.toDataURL('image/png', 1.0)
-              URL.revokeObjectURL(svgUrl); resolve()
+              try {
+                const canvas = document.createElement('canvas')
+                canvas.width = w; canvas.height = h
+                const ctx = canvas.getContext('2d')!
+                ctx.fillStyle = '#ffffff'
+                ctx.fillRect(0, 0, w, h)
+                ctx.drawImage(img, 0, 0, w, h)
+                const dataUrl = canvas.toDataURL('image/png')
+                // 유효한 base64 PNG인지 검증
+                if (dataUrl && dataUrl.startsWith('data:image/png;base64,') && dataUrl.length > 100) {
+                  chartBase64 = dataUrl
+                }
+              } catch { /* 캡처 실패 무시 */ }
+              URL.revokeObjectURL(svgUrl)
+              resolve()
             }
             img.onerror = () => { URL.revokeObjectURL(svgUrl); resolve() }
             img.src = svgUrl
           })
         }
-      } catch {}
+      } catch { chartBase64 = null }
     }
     const managerUsernames: string[] = (() => { try { return JSON.parse(sensor.site_managers || '[]') } catch { return [] } })()
     let managerText = '—'
@@ -388,8 +400,14 @@ export default function SensorDetailPage() {
       setC(4,l2,font(true,9,BLACK),fill(DARK),aln()); setC(5,v2,font(false,8,BLACK),fill(WHITE),aln('left'))
     })
     if (chartBase64) {
-      const imgId = wb2.addImage({ base64: (chartBase64 as string).split(',')[1], extension: 'png' })
-      ws2.addImage(imgId, { tl: { col:0, row:CR_START-1 } as any, br: { col:6, row:CR_END } as any, editAs:'oneCell' })
+      try {
+        const base64Str = chartBase64 as string
+        const b64data = base64Str.split(',')[1]
+        if (b64data && b64data.length > 0) {
+          const imgId = wb2.addImage({ base64: b64data, extension: 'png' })
+          ws2.addImage(imgId, { tl: { col:0, row:CR_START-1 } as any, br: { col:6, row:CR_END } as any, editAs:'oneCell' })
+        }
+      } catch { /* 이미지 추가 실패 시 그래프 없이 진행 */ }
     }
     const legendRow = CR_END+1
     ws2.mergeCells(legendRow,1,legendRow,2); const lgLine = ws2.getCell(legendRow,1)
@@ -447,7 +465,7 @@ export default function SensorDetailPage() {
     doc.setFontSize(16); doc.text('Water Level Meter Report',pageWidth/2,20,{align:'center'})
     autoTable(doc,{startY:28,head:[],body:[['현장명',sensor.siteName||'—','계측기 No.',sensor.manageNo||'—'],['설치현황',sensor.installDate?`설치일자 (${sensor.installDate.slice(0,10)})`:'—','초기측정일',pdfInitDate.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'})],['관리자',mt,'설치위치',sensor.location?.description||'—']],theme:'grid',styles:{fontSize:9,cellPadding:2,font:'NanumGothic'},columnStyles:{0:{fillColor:[240,240,240],cellWidth:25},1:{cellWidth:65},2:{fillColor:[240,240,240],cellWidth:25},3:{cellWidth:65}}})
     const cy=(doc as any).lastAutoTable.finalY+5
-    const chartData = [...(chartMode === 'hourly' ? measurements : dailyReadings.filter((r:any)=>r.value!==null))].sort((a:any,b:any)=>new Date(a.timestamp).getTime()-new Date(b.timestamp).getTime())
+    const chartData = [...(chartMode === 'hourly' ? measurementsWithGaps : dailyReadings)].sort((a:any,b:any)=>new Date(a.timestamp).getTime()-new Date(b.timestamp).getTime())
     if (chartData.length > 0) {
       const chartX = 20, chartY = cy, chartW = pageWidth - 30, chartH = 60
       const values = chartData.filter((r:any) => r.value !== null).map((r:any) => parseFloat(r.value))
