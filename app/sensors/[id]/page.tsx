@@ -352,7 +352,7 @@ export default function SensorDetailPage() {
       setC(4,l2,font(true,9,BLACK),fill(DARK),aln()); setC(5,v2,font(false,8,BLACK),fill(WHITE),aln('left'))
     })
     if (chartBase64) {
-      const imgId = wb2.addImage({ base64: chartBase64.split(',')[1], extension: 'png' })
+      const imgId = wb2.addImage({ base64: (chartBase64 as string).split(',')[1], extension: 'png' })
       ws2.addImage(imgId, { tl: { col:0, row:CR_START-1 } as any, br: { col:6, row:CR_END } as any, editAs:'oneCell' })
     }
     const legendRow = CR_END+1
