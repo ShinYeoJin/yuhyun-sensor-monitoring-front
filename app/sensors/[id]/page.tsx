@@ -740,7 +740,7 @@ export default function SensorDetailPage() {
           </div>
         </div>
       )}
-      {qrOpen&&<QRModal sensor={sensor} onClose={()=>setQrOpen(false)} />}
+      {qrOpen&&<QRModal sensorId={sensor.id} onClose={()=>setQrOpen(false)} />}
 
       {/* 아이콘 추가 모달 */}
       {showAddIcon&&(
