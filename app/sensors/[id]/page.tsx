@@ -350,7 +350,7 @@ export default function SensorDetailPage() {
         managerText = managerUsernames.map((u: string) => { const f = users.find((x: any) => x.username === u); return f ? `${f.username} (${f.role})` : u }).join(', ')
       } catch { managerText = managerUsernames.join(', ') }
     }
-    const excelSourceRows = dateFrom === dateTo ? measurements : dailyReadings
+    const excelSourceRows = chartMode === 'hourly' ? measurements : dailyReadings
     const sortedRows = [...excelSourceRows].sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
     const initDate = globalInitReading ? new Date(globalInitReading.timestamp) : (sortedRows.length > 0 ? new Date(sortedRows[0].timestamp) : new Date())
     const ExcelJSModule = await import('exceljs') as any
@@ -405,14 +405,22 @@ export default function SensorDetailPage() {
       const setD = (c:number,val:any,fnt:any,numFmt?:string) => { const cell=ws2.getCell(r,c); cell.value=val; cell.font=fnt; Object.assign(cell,base); if(numFmt) cell.numFmt=numFmt }
       const curDate=new Date(row.timestamp), curMid=new Date(curDate.getFullYear(),curDate.getMonth(),curDate.getDate()), initMid=new Date(initDate.getFullYear(),initDate.getMonth(),initDate.getDate())
       const elapsed=Math.round((curMid.getTime()-initMid.getTime())/86400000)
-      const curVal=parseFloat(parseFloat(String(row.value)).toFixed(2)), prevVal=i>0?parseFloat(parseFloat(String(sortedRows[i-1].value)).toFixed(2)):curVal
-      const prevDiff=parseFloat((curVal-prevVal).toFixed(2)), initDiff=parseFloat((curVal-parseFloat(initValue.toFixed(2))).toFixed(2))
-      setD(1,curDate.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'}),font(false,9,BLACK))
-      setD(2,elapsed,font(false,9,BLACK)); setD(3,curVal,font(false,9,BLACK),'0.00')
-      if(isFirst){setD(4,0,font(false,9,BLACK),'0.00');setD(5,0,font(false,9,BLACK),'0.00')}
-      else{setD(4,prevDiff,font(false,9,prevDiff<0?RED:BLUE),'+0.00;-0.00;0.00');setD(5,initDiff,font(false,9,initDiff<0?RED:BLUE),'+0.00;-0.00;0.00')}
       const dateKey=curDate.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'})
-      const note=remarks[dateKey]||(isFirst?'초기치':''); const cn=ws2.getCell(r,6); cn.value=note; cn.font=font(isFirst,9,isFirst?RED:BLACK); cn.fill=fill(isFirst?YELL:rf); cn.border=TB; cn.alignment=aln()
+      setD(1,curDate.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'}),font(false,9,BLACK))
+      if(row.value===null){
+        setD(2,'—',font(false,9,BLACK)); setD(3,'미수신',font(false,9,BLACK))
+        setD(4,'—',font(false,9,BLACK)); setD(5,'—',font(false,9,BLACK))
+        const cn=ws2.getCell(r,6); cn.value=''; cn.font=font(false,9,BLACK); cn.fill=fill(rf); cn.border=TB; cn.alignment=aln()
+      } else {
+        const curVal=parseFloat(parseFloat(String(row.value)).toFixed(2))
+        const prevValid=sortedRows.slice(0,i).reverse().find((x:any)=>x.value!==null)
+        const prevVal=prevValid?parseFloat(parseFloat(String(prevValid.value)).toFixed(2)):curVal
+        const prevDiff=parseFloat((curVal-prevVal).toFixed(2)), initDiff=parseFloat((curVal-parseFloat(initValue.toFixed(2))).toFixed(2))
+        setD(2,elapsed,font(false,9,BLACK)); setD(3,curVal,font(false,9,BLACK),'0.00')
+        if(isFirst){setD(4,0,font(false,9,BLACK),'0.00');setD(5,0,font(false,9,BLACK),'0.00')}
+        else{setD(4,prevDiff,font(false,9,prevDiff<0?RED:BLUE),'+0.00;-0.00;0.00');setD(5,initDiff,font(false,9,initDiff<0?RED:BLUE),'+0.00;-0.00;0.00')}
+        const note=remarks[dateKey]||(isFirst?'초기치':''); const cn=ws2.getCell(r,6); cn.value=note; cn.font=font(isFirst,9,isFirst?RED:BLACK); cn.fill=fill(isFirst?YELL:rf); cn.border=TB; cn.alignment=aln()
+      }
     })
     ws2.pageSetup.paperSize=9; ws2.pageSetup.orientation='portrait'; ws2.pageSetup.fitToPage=true; ws2.pageSetup.fitToWidth=1; ws2.pageSetup.fitToHeight=0
     const buf=await wb2.xlsx.writeBuffer(), blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}), url=URL.createObjectURL(blob), a=document.createElement('a')
@@ -481,19 +489,24 @@ export default function SensorDetailPage() {
       doc.text(`G.L(${sensor.unit})`, chartX+2, chartY+3)
       // 범례
       const legendY = chartY + chartH + 8
-      doc.setFontSize(6); doc.setDrawColor(34,150,100); doc.setLineWidth(0.8)
-      doc.line(chartX, legendY, chartX+8, legendY)
+      const centerX = chartX + chartW / 2
+      doc.setFontSize(6)
+      // 센서명 (가운데 기준 좌측)
+      doc.setDrawColor(34,150,100); doc.setLineWidth(0.8)
+      doc.line(centerX-50, legendY, centerX-42, legendY)
       doc.setTextColor(34,150,100)
-      doc.text(`── ${sensor.manageNo||sensor.name}`, chartX+10, legendY+0.5)
+      doc.text(`── ${sensor.manageNo||sensor.name}`, centerX-40, legendY+0.5)
+      // 1차 하한기준 (가운데)
       if(level1Lower!==null){
         doc.setDrawColor(192,0,0); doc.setLineWidth(0.6)
-        let lx=chartX+50; while(lx<chartX+58){doc.line(lx,legendY,Math.min(lx+3,chartX+58),legendY);lx+=5}
-        doc.setTextColor(192,0,0); doc.text('- - - 1차 하한기준', chartX+60, legendY+0.5)
+        let lx=centerX-5; while(lx<centerX+3){doc.line(lx,legendY,Math.min(lx+3,centerX+3),legendY);lx+=5}
+        doc.setTextColor(192,0,0); doc.text('- - - 1차 하한기준', centerX+5, legendY+0.5)
       }
+      // 1차 상한기준 (가운데 우측)
       if(level1Upper!==null){
         doc.setDrawColor(224,112,0); doc.setLineWidth(0.6)
-        let lx=chartX+105; while(lx<chartX+113){doc.line(lx,legendY,Math.min(lx+3,chartX+113),legendY);lx+=5}
-        doc.setTextColor(224,112,0); doc.text('- - - 1차 상한기준', chartX+115, legendY+0.5)
+        let lx=centerX+38; while(lx<centerX+46){doc.line(lx,legendY,Math.min(lx+3,centerX+46),legendY);lx+=5}
+        doc.setTextColor(224,112,0); doc.text('- - - 1차 상한기준', centerX+48, legendY+0.5)
       }
       doc.setTextColor(0,0,0)
     }
