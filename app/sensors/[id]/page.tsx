@@ -179,7 +179,7 @@ export default function SensorDetailPage() {
   const [sensorCode, setSensorCode] = useState<string>('')
   const [dateFrom, setDateFrom] = useState(today)
   const [dateTo,   setDateTo]   = useState(today)
-  const [selectedHour, setSelectedHour] = useState<string>('12:00')
+  const [selectedHour, setSelectedHour] = useState<number>(12)
   const [chartMode, setChartMode] = useState<'hourly' | 'daily'>('hourly')
   const [depthLabel, setDepthLabel] = useState<'1' | '2' | '3'>('1')
   const [calcMode,   setCalcMode]   = useState<'poly' | 'linear'>('linear')
@@ -198,8 +198,8 @@ export default function SensorDetailPage() {
   useEffect(() => {
     if (!id || !sensorCode) return
     sensorApi.getMeasurements(Number(id), {
-      from: chartMode === 'daily' ? `${dateFrom}T${selectedHour}` : dateFrom,
-      to:   chartMode === 'daily' ? `${dateTo}T${selectedHour}:59` : dateTo,
+      from: chartMode === 'daily' ? `${dateFrom}T${String(selectedHour).padStart(2,'0')}:00:00` : dateFrom,
+      to:   chartMode === 'daily' ? `${dateTo}T${String(selectedHour).padStart(2,'0')}:59:59` : dateTo,
       limit: 2000,
       depthLabel: sensorCode === '80053' ? depthLabel : undefined,
     }).then((data: any[]) => {
@@ -258,7 +258,7 @@ export default function SensorDetailPage() {
       return Array.from(map.values())
     }
     // 일별 모드: 선택한 시간(selectedHour)에 해당하는 데이터만
-    const targetHour = parseInt(selectedHour.split(':')[0])
+    const targetHour = selectedHour
     const dataMap = new Map<string, any>()
     measurements.forEach(m => {
       const t = new Date(m.timestamp)
@@ -429,7 +429,7 @@ export default function SensorDetailPage() {
     let mt='—'; if(managers.length>0){try{const u=await userApi.getList();mt=managers.map((m:string)=>{const f=u.find((x:any)=>x.username===m);return f?`${f.username} (${f.role})`:m}).join(', ')}catch{mt=managers.join(', ')}}
     const pdfSourceRows = chartMode === 'hourly'
       ? measurements
-      : dailyReadings.filter((r: any) => r.value !== null)
+      : dailyReadings
     const pdfSortedRows=[...pdfSourceRows].sort((a:any,b:any)=>new Date(a.timestamp).getTime()-new Date(b.timestamp).getTime())
     const pdfInitDate=globalInitReading?new Date(globalInitReading.timestamp):(pdfSortedRows.length>0?new Date(pdfSortedRows[0].timestamp):new Date())
     doc.setFontSize(16); doc.text('Water Level Meter Report',pageWidth/2,20,{align:'center'})
@@ -468,9 +468,45 @@ export default function SensorDetailPage() {
         const idx=Math.round((l/(lc-1||1))*(chartData.length-1)),x=chartX+(idx/(chartData.length-1||1))*chartW
         doc.text(new Date(chartData[idx].timestamp).toLocaleDateString('ko-KR',{month:'2-digit',day:'2-digit'}),x,chartY+chartH+4,{align:'center'})
       }
+      // Y축 레이블
+      doc.setFontSize(5); doc.setTextColor(120,120,120)
+      const ySteps = 4
+      for(let s=0;s<=ySteps;s++){
+        const yVal = yMax - (range/ySteps)*s
+        const yPos = chartY + (chartH/ySteps)*s
+        doc.text(yVal.toFixed(2), chartX-1, yPos+1, {align:'right'})
+      }
+      // Y축 제목
+      doc.setFontSize(5); doc.setTextColor(100,100,100)
+      doc.text(`G.L(${sensor.unit})`, chartX+2, chartY+3)
+      // 범례
+      const legendY = chartY + chartH + 8
+      doc.setFontSize(6); doc.setDrawColor(34,150,100); doc.setLineWidth(0.8)
+      doc.line(chartX, legendY, chartX+8, legendY)
+      doc.setTextColor(34,150,100)
+      doc.text(`── ${sensor.manageNo||sensor.name}`, chartX+10, legendY+0.5)
+      if(level1Lower!==null){
+        doc.setDrawColor(192,0,0); doc.setLineWidth(0.6)
+        let lx=chartX+50; while(lx<chartX+58){doc.line(lx,legendY,Math.min(lx+3,chartX+58),legendY);lx+=5}
+        doc.setTextColor(192,0,0); doc.text('- - - 1차 하한기준', chartX+60, legendY+0.5)
+      }
+      if(level1Upper!==null){
+        doc.setDrawColor(224,112,0); doc.setLineWidth(0.6)
+        let lx=chartX+105; while(lx<chartX+113){doc.line(lx,legendY,Math.min(lx+3,chartX+113),legendY);lx+=5}
+        doc.setTextColor(224,112,0); doc.text('- - - 1차 상한기준', chartX+115, legendY+0.5)
+      }
       doc.setTextColor(0,0,0)
     }
-    autoTable(doc,{startY:cy+58,head:[['측정일','경과일',`지하수위 G.L(${sensor.unit})`,'전측정대비','초기치대비','비고']],body:pdfSortedRows.map((r:any,i:number)=>{const cv=parseFloat(parseFloat(String(r.value)).toFixed(2)),pv=i>0?parseFloat(parseFloat(String(pdfSortedRows[i-1].value)).toFixed(2)):cv,pd=parseFloat((cv-pv).toFixed(2)),id_=parseFloat((cv-initValue).toFixed(2)),rd=new Date(r.timestamp),cm=new Date(rd.getFullYear(),rd.getMonth(),rd.getDate()),im=new Date(pdfInitDate.getFullYear(),pdfInitDate.getMonth(),pdfInitDate.getDate()),el=Math.round((cm.getTime()-im.getTime())/86400000),dk=rd.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'});return[dk,el,cv.toFixed(2),i===0?'0.00':(pd>0?`+${pd}`:String(pd)),i===0?'0.00':(id_>0?`+${id_}`:String(id_)),i===0?'초기치':(remarks[dk]||'')]}),theme:'grid',headStyles:{fillColor:[60,80,120],textColor:255,fontSize:8,font:'NanumGothic',fontStyle:'normal'},styles:{fontSize:8,cellPadding:2,font:'NanumGothic'}})
+    autoTable(doc,{startY:cy+65,head:[['측정일','경과일',`지하수위 G.L(${sensor.unit})`,'전측정대비','초기치대비','비고']],body:pdfSortedRows.map((r:any,i:number)=>{
+      const rd=new Date(r.timestamp),cm=new Date(rd.getFullYear(),rd.getMonth(),rd.getDate()),im=new Date(pdfInitDate.getFullYear(),pdfInitDate.getMonth(),pdfInitDate.getDate()),el=Math.round((cm.getTime()-im.getTime())/86400000),dk=rd.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'})
+      if(r.value===null) return[dk,'—','미수신','—','—','']
+      const cv=parseFloat(parseFloat(String(r.value)).toFixed(2))
+      const prevValid=pdfSortedRows.slice(0,i).reverse().find((x:any)=>x.value!==null)
+      const pv=prevValid?parseFloat(parseFloat(String(prevValid.value)).toFixed(2)):cv
+      const pd=parseFloat((cv-pv).toFixed(2)),id_=parseFloat((cv-initValue).toFixed(2))
+      const isFirst=pdfSortedRows.findIndex((x:any)=>x.value!==null)===i
+      return[dk,el,cv.toFixed(2),isFirst?'0.00':(pd>0?`+${pd}`:String(pd)),isFirst?'0.00':(id_>0?`+${id_}`:String(id_)),isFirst?'초기치':(remarks[dk]||'')]
+    }),theme:'grid',headStyles:{fillColor:[60,80,120],textColor:255,fontSize:8,font:'NanumGothic',fontStyle:'normal'},styles:{fontSize:8,cellPadding:2,font:'NanumGothic'}})
     doc.save(`${sensor.manageNo||sensor.name}_${dateFrom}_${dateTo}.pdf`)
   }
 
@@ -661,10 +697,15 @@ export default function SensorDetailPage() {
               {chartMode === 'daily' && (
                 <div className="flex items-center gap-1.5 mt-1">
                   <span className="font-mono text-[10px] text-ink-muted shrink-0">조회 시간</span>
-                  <input type="time" value={selectedHour} step="3600"
-                    onChange={e => setSelectedHour(e.target.value)}
-                    className="flex-1 rounded-md border border-line bg-surface-card px-2 py-1 font-mono text-[11px] text-ink focus:outline-none focus:ring-1 focus:ring-brand/40" />
-                  <span className="font-mono text-[10px] text-ink-muted shrink-0">시 데이터</span>
+                  <select value={selectedHour} onChange={e => setSelectedHour(Number(e.target.value))}
+                    className="flex-1 rounded-md border border-line bg-surface-card px-2 py-1 font-mono text-[11px] text-ink focus:outline-none focus:ring-1 focus:ring-brand/40">
+                    {Array.from({length:24},(_,i)=>(
+                      <option key={i} value={i}>
+                        {i < 12 ? `오전 ${i === 0 ? 12 : i}시` : `오후 ${i === 12 ? 12 : i-12}시`}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="font-mono text-[10px] text-ink-muted shrink-0">데이터</span>
                 </div>
               )}
             </div>
