@@ -322,14 +322,17 @@ export default function SensorDetailPage() {
 
   // ─── 엑셀 ─────────────────────────────────────────────────────────────────
   const handleExcelDownload = async () => {
-    let chartBase64: string | null | undefined = null
+    let chartBase64: string | null = null
     if (chartRef.current) {
       try {
-        const svgEl = chartRef.current.querySelector('svg')
-        if (svgEl && svgEl.clientWidth > 0 && svgEl.clientHeight > 0) {
+        // 가로 스크롤 컨테이너 안의 SVG를 찾음
+        const scrollContainer = chartRef.current.querySelector('[style*="overflow"]') || chartRef.current
+        const svgEl = scrollContainer.querySelector('svg') || chartRef.current.querySelector('svg')
+        if (svgEl) {
           const scale = 2
-          const w = svgEl.clientWidth * scale
-          const h = svgEl.clientHeight * scale
+          // scrollWidth로 실제 전체 너비 사용
+          const w = Math.max((svgEl as SVGSVGElement).scrollWidth || svgEl.clientWidth, svgEl.clientWidth) * scale || 800
+          const h = (svgEl.clientHeight || 200) * scale
           const svgData = new XMLSerializer().serializeToString(svgEl)
           const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' })
           const svgUrl = URL.createObjectURL(svgBlob)
@@ -344,11 +347,10 @@ export default function SensorDetailPage() {
                 ctx.fillRect(0, 0, w, h)
                 ctx.drawImage(img, 0, 0, w, h)
                 const dataUrl = canvas.toDataURL('image/png')
-                // 유효한 base64 PNG인지 검증
                 if (dataUrl && dataUrl.startsWith('data:image/png;base64,') && dataUrl.length > 100) {
                   chartBase64 = dataUrl
                 }
-              } catch { /* 캡처 실패 무시 */ }
+              } catch { }
               URL.revokeObjectURL(svgUrl)
               resolve()
             }
