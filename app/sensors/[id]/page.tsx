@@ -247,14 +247,45 @@ export default function SensorDetailPage() {
   }, [measurements, sensor?.unit, dateFrom, dateTo])
 
   const dailyReadings = useMemo(() => {
-    const map = new Map<string, any>()
-    const sorted = [...measurements].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-    sorted.forEach(m => {
-      const date = new Date(m.timestamp).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
-      map.set(date, m)
+    if (chartMode !== 'daily') {
+      // 시간별 모드: 날짜별 대표값 (기존 방식)
+      const map = new Map<string, any>()
+      const sorted = [...measurements].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+      sorted.forEach(m => {
+        const date = new Date(m.timestamp).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
+        map.set(date, m)
+      })
+      return Array.from(map.values())
+    }
+    // 일별 모드: 선택한 시간(selectedHour)에 해당하는 데이터만
+    const targetHour = parseInt(selectedHour.split(':')[0])
+    const dataMap = new Map<string, any>()
+    measurements.forEach(m => {
+      const t = new Date(m.timestamp)
+      if (t.getHours() === targetHour) {
+        const dateKey = t.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
+        dataMap.set(dateKey, m)
+      }
     })
-    return Array.from(map.values())
-  }, [measurements])
+    // 선택 날짜 범위 전체를 슬롯으로 생성 (없는 날짜는 미수신)
+    const slots: any[] = []
+    const from = new Date(dateFrom + 'T00:00:00')
+    const to   = new Date(dateTo   + 'T23:59:59')
+    let cur = new Date(from)
+    while (cur <= to) {
+      const dateKey = cur.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
+      if (dataMap.has(dateKey)) {
+        slots.push(dataMap.get(dateKey))
+      } else {
+        // 해당 날짜 selectedHour 시각으로 미수신 슬롯 생성
+        const gapTime = new Date(cur)
+        gapTime.setHours(targetHour, 0, 0, 0)
+        slots.push({ timestamp: gapTime.toISOString(), value: null, unit: sensor?.unit || '', status: 'gap' })
+      }
+      cur.setDate(cur.getDate() + 1)
+    }
+    return slots
+  }, [measurements, chartMode, selectedHour, dateFrom, dateTo, sensor?.unit])
 
   // ─── 1차 상하한 ───────────────────────────────────────────────────────────
   const { level1Upper, level1Lower } = useMemo(() => {
@@ -396,13 +427,50 @@ export default function SensorDetailPage() {
     const fb=btoa(bin); doc.addFileToVFS('NanumGothic.ttf',fb); doc.addFont('NanumGothic.ttf','NanumGothic','normal'); doc.addFont('NanumGothic.ttf','NanumGothic','bold'); doc.setFont('NanumGothic','normal')
     const managers=(() => { try{return JSON.parse((sensor as any).site_managers||'[]')}catch{return []} })()
     let mt='—'; if(managers.length>0){try{const u=await userApi.getList();mt=managers.map((m:string)=>{const f=u.find((x:any)=>x.username===m);return f?`${f.username} (${f.role})`:m}).join(', ')}catch{mt=managers.join(', ')}}
-    const pdfSourceRows=dateFrom===dateTo?measurements:dailyReadings
+    const pdfSourceRows = chartMode === 'hourly'
+      ? measurements
+      : dailyReadings.filter((r: any) => r.value !== null)
     const pdfSortedRows=[...pdfSourceRows].sort((a:any,b:any)=>new Date(a.timestamp).getTime()-new Date(b.timestamp).getTime())
     const pdfInitDate=globalInitReading?new Date(globalInitReading.timestamp):(pdfSortedRows.length>0?new Date(pdfSortedRows[0].timestamp):new Date())
     doc.setFontSize(16); doc.text('Water Level Meter Report',pageWidth/2,20,{align:'center'})
     autoTable(doc,{startY:28,head:[],body:[['현장명',sensor.siteName||'—','계측기 No.',sensor.manageNo||'—'],['설치현황',sensor.installDate?`설치일자 (${sensor.installDate.slice(0,10)})`:'—','초기측정일',pdfInitDate.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'})],['관리자',mt,'설치위치',sensor.location?.description||'—']],theme:'grid',styles:{fontSize:9,cellPadding:2,font:'NanumGothic'},columnStyles:{0:{fillColor:[240,240,240],cellWidth:25},1:{cellWidth:65},2:{fillColor:[240,240,240],cellWidth:25},3:{cellWidth:65}}})
     const cy=(doc as any).lastAutoTable.finalY+5
-    autoTable(doc,{startY:cy+55,head:[['측정일','경과일',`지하수위 G.L(${sensor.unit})`,'전측정대비','초기치대비','비고']],body:pdfSortedRows.map((r:any,i:number)=>{const cv=parseFloat(parseFloat(String(r.value)).toFixed(2)),pv=i>0?parseFloat(parseFloat(String(pdfSortedRows[i-1].value)).toFixed(2)):cv,pd=parseFloat((cv-pv).toFixed(2)),id_=parseFloat((cv-initValue).toFixed(2)),rd=new Date(r.timestamp),cm=new Date(rd.getFullYear(),rd.getMonth(),rd.getDate()),im=new Date(pdfInitDate.getFullYear(),pdfInitDate.getMonth(),pdfInitDate.getDate()),el=Math.round((cm.getTime()-im.getTime())/86400000),dk=rd.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'});return[dk,el,cv.toFixed(2),i===0?'0.00':(pd>0?`+${pd}`:String(pd)),i===0?'0.00':(id_>0?`+${id_}`:String(id_)),i===0?'초기치':(remarks[dk]||'')]}),theme:'grid',headStyles:{fillColor:[60,80,120],textColor:255,fontSize:8,font:'NanumGothic',fontStyle:'normal'},styles:{fontSize:8,cellPadding:2,font:'NanumGothic'}})
+    const chartData = [...(chartMode === 'hourly' ? measurements : dailyReadings.filter((r:any)=>r.value!==null))].sort((a:any,b:any)=>new Date(a.timestamp).getTime()-new Date(b.timestamp).getTime())
+    if (chartData.length > 0) {
+      const chartX=15, chartY=cy, chartW=pageWidth-30, chartH=50
+      doc.setDrawColor(180,180,180); doc.setLineWidth(0.3); doc.rect(chartX,chartY,chartW,chartH)
+      const values=chartData.map((r:any)=>parseFloat(r.value))
+      const refVals=[...(level1Lower!==null&&!isNaN(level1Lower as number)?[level1Lower as number]:[]),...(level1Upper!==null&&!isNaN(level1Upper as number)?[level1Upper as number]:[])]
+      const allVals=[...values,...refVals]
+      const minVal=Math.min(...allVals),maxVal=Math.max(...allVals)
+      const padding=(maxVal-minVal)*0.1||1
+      const yMin=minVal-padding,yMax=maxVal+padding,range=yMax-yMin
+      // 기준선
+      if (level1Lower!==null&&!isNaN(level1Lower as number)) {
+        const refY=chartY+chartH-((( level1Lower as number)-yMin)/range)*chartH
+        if(refY>=chartY&&refY<=chartY+chartH){doc.setDrawColor(192,0,0);doc.setLineWidth(0.4);let x=chartX;while(x<chartX+chartW){doc.line(x,refY,Math.min(x+3,chartX+chartW),refY);x+=5}doc.setFontSize(5);doc.setTextColor(192,0,0);doc.text(`1차 하한기준 (${level1Lower})`,chartX+chartW-1,refY-1,{align:'right'})}
+      }
+      if (level1Upper!==null&&!isNaN(level1Upper as number)) {
+        const refY=chartY+chartH-(((level1Upper as number)-yMin)/range)*chartH
+        if(refY>=chartY&&refY<=chartY+chartH){doc.setDrawColor(224,112,0);doc.setLineWidth(0.4);let x=chartX;while(x<chartX+chartW){doc.line(x,refY,Math.min(x+3,chartX+chartW),refY);x+=5}doc.setFontSize(5);doc.setTextColor(224,112,0);doc.text(`1차 상한기준 (${level1Upper})`,chartX+chartW-1,refY-1,{align:'right'})}
+      }
+      // 데이터 선
+      doc.setDrawColor(34,150,100);doc.setLineWidth(0.5);doc.setTextColor(0,0,0)
+      for(let i=1;i<chartData.length;i++){
+        const x1=chartX+((i-1)/(chartData.length-1))*chartW,x2=chartX+(i/(chartData.length-1))*chartW
+        const y1=chartY+chartH-((parseFloat(chartData[i-1].value)-yMin)/range)*chartH,y2=chartY+chartH-((parseFloat(chartData[i].value)-yMin)/range)*chartH
+        doc.line(x1,y1,x2,y2)
+      }
+      // x축 레이블
+      doc.setFontSize(5);doc.setTextColor(120,120,120)
+      const lc=Math.min(5,chartData.length)
+      for(let l=0;l<lc;l++){
+        const idx=Math.round((l/(lc-1||1))*(chartData.length-1)),x=chartX+(idx/(chartData.length-1||1))*chartW
+        doc.text(new Date(chartData[idx].timestamp).toLocaleDateString('ko-KR',{month:'2-digit',day:'2-digit'}),x,chartY+chartH+4,{align:'center'})
+      }
+      doc.setTextColor(0,0,0)
+    }
+    autoTable(doc,{startY:cy+58,head:[['측정일','경과일',`지하수위 G.L(${sensor.unit})`,'전측정대비','초기치대비','비고']],body:pdfSortedRows.map((r:any,i:number)=>{const cv=parseFloat(parseFloat(String(r.value)).toFixed(2)),pv=i>0?parseFloat(parseFloat(String(pdfSortedRows[i-1].value)).toFixed(2)):cv,pd=parseFloat((cv-pv).toFixed(2)),id_=parseFloat((cv-initValue).toFixed(2)),rd=new Date(r.timestamp),cm=new Date(rd.getFullYear(),rd.getMonth(),rd.getDate()),im=new Date(pdfInitDate.getFullYear(),pdfInitDate.getMonth(),pdfInitDate.getDate()),el=Math.round((cm.getTime()-im.getTime())/86400000),dk=rd.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'});return[dk,el,cv.toFixed(2),i===0?'0.00':(pd>0?`+${pd}`:String(pd)),i===0?'0.00':(id_>0?`+${id_}`:String(id_)),i===0?'초기치':(remarks[dk]||'')]}),theme:'grid',headStyles:{fillColor:[60,80,120],textColor:255,fontSize:8,font:'NanumGothic',fontStyle:'normal'},styles:{fontSize:8,cellPadding:2,font:'NanumGothic'}})
     doc.save(`${sensor.manageNo||sensor.name}_${dateFrom}_${dateTo}.pdf`)
   }
 
@@ -410,6 +478,7 @@ export default function SensorDetailPage() {
   const tableData = useMemo(() => {
     const source = chartMode === 'hourly' ? measurementsWithGaps : dailyReadings
     return [...source].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    // 일별 모드에서 미수신은 표시하되 실제 데이터만 카운트
   }, [chartMode, measurementsWithGaps, dailyReadings])
 
   const totalPages = Math.ceil(tableData.length / TABLE_PAGE_SIZE)
