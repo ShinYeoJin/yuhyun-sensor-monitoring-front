@@ -48,7 +48,7 @@ function SiteStatusBar({ normal, warning, danger, total }: { normal: number; war
   )
 }
 
-function SiteModal({ mode, form, onChange, onSubmit, onClose, users, sensors, siteCode }: {
+function SiteModal({ mode, form, onChange, onSubmit, onClose, users, sensors, siteCode, siteId }: {
   mode: 'add' | 'edit'; form: SiteForm
   onChange: (f: SiteForm) => void; onSubmit: () => void; onClose: () => void
   users: any[]; sensors: any[]; siteCode: string; siteId?: number
