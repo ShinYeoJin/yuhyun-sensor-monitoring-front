@@ -235,7 +235,9 @@ export default function SensorDetailPage() {
     })
     // 선택한 날짜 전체 범위 슬롯 생성
     const rangeFrom = new Date(dateFrom + 'T00:00:00')
-    const rangeTo   = new Date(dateTo   + 'T23:00:00')
+    const now = new Date()
+    const rangeEnd = new Date(dateTo + 'T23:00:00')
+    const rangeTo = rangeEnd > now ? new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours()) : rangeEnd
     const slots: any[] = []
     let cur = new Date(rangeFrom)
     while (cur <= rangeTo) {
@@ -270,7 +272,9 @@ export default function SensorDetailPage() {
     // 선택 날짜 범위 전체를 슬롯으로 생성 (없는 날짜는 미수신)
     const slots: any[] = []
     const from = new Date(dateFrom + 'T00:00:00')
-    const to   = new Date(dateTo   + 'T23:59:59')
+    const now2 = new Date()
+    const toEnd = new Date(dateTo + 'T23:59:59')
+    const to = toEnd > now2 ? now2 : toEnd
     let cur = new Date(from)
     while (cur <= to) {
       const dateKey = cur.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
