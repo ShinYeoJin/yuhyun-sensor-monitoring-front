@@ -482,7 +482,7 @@ export default function SensorDetailPage() {
     const wb2 = new ExcelJS.Workbook()
     const ws2 = wb2.addWorksheet(sensor.manageNo || sensor.name || '측정데이터')
 
-    const DARK = 'FFD9D9D9', MID = 'FFD9D9D9', WHITE = 'FFFFFFFF'
+    const DARK = 'FFF2F2F2', MID = 'FFF2F2F2', WHITE = 'FFFFFFFF'
     const BLACK = 'FF000000', RED = 'FFC00000', BLUE = 'FF2F5496'
     const YELL = 'FFFFF2CC', ALT = 'FFEEF4FB'
     const thin = { style: 'thin' as const, color: { argb: 'FF000000' } }
