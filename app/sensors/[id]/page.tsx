@@ -1,209 +1,37 @@
 'use client'
 
-import { useState, useMemo, useRef, useEffect } from 'react'
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
-import { formatTimestamp, getRelativeTime, getThresholds } from '@/lib/mock-data'
+import { getThresholds } from '@/lib/mock-data'
 import { sensorApi, userApi } from '@/lib/api'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { SensorTrendChart } from '@/components/charts/SensorTrendChart'
 import { QRModal } from '@/components/ui/QRModal'
 import Link from 'next/link'
-import type { SensorReading, UnifiedSensor } from '@/types'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import html2canvas from 'html2canvas'
 import { useAuth } from '@/lib/auth-context'
 
-function getReadingsByRange(
-  sensor: UnifiedSensor,
-  dateFrom: string,
-  dateTo: string
-): SensorReading[] {
-  const { thresholdWarning, thresholdDanger } = sensor ? getThresholds(sensor) : { thresholdWarning: 0, thresholdDanger: 0 }
-  const from = new Date(dateFrom + 'T00:00:00')
-  const to   = new Date(dateTo   + 'T23:59:59')
-  if (from > to) return []
-
-  const INTERVAL_MIN = 15
-  const dayDiff = Math.min(
-    Math.round((to.getTime() - from.getTime()) / 86400000) + 1,
-    30
-  )
-  const totalSlots = dayDiff * (24 * 60 / INTERVAL_MIN)
-
-  const readings: SensorReading[] = []
-  for (let slot = 0; slot < totalSlots; slot++) {
-    const date = new Date(from)
-    date.setMinutes(from.getMinutes() + slot * INTERVAL_MIN, 0, 0)
-    if (date > to) break
-
-    const progress = slot / (totalSlots - 1 || 1)
-    const trend =
-      sensor.status === 'danger'  ? progress * sensor.currentValue * 0.20 :
-      sensor.status === 'warning' ? progress * sensor.currentValue * 0.09 : 0
-    const noise = (Math.random() - 0.5) * sensor.currentValue * 0.05
-    const value = Math.max(0, Math.round((sensor.currentValue * 0.83 + trend + noise) * 100) / 100)
-
-    readings.push({
-      timestamp: date.toISOString(), value, unit: sensor.unit,
-      status: value >= thresholdDanger ? 'danger' : value >= thresholdWarning ? 'warning' : 'normal',
-    })
-  }
-  return readings
-}
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://yuhyun-sensor-monitoring-back.onrender.com'
 
 function dateDiffDays(from: string, to: string): number {
-  const a = new Date(from + 'T00:00:00')
-  const b = new Date(to   + 'T00:00:00')
+  const a = new Date(from + 'T00:00:00'), b = new Date(to + 'T00:00:00')
   return Math.round((b.getTime() - a.getTime()) / 86400000)
 }
 
-interface PrintConfig {
-  title:       string
-  range:       '현장총괄표' | '계측센서'
-  dateFrom:    string
-  dateTo:      string
-  printedAt:   string
-  outputScope: '모든 센서' | '지하수위계'
-  interval:    string
-  imgMargin:   string
-  footer:      string
-}
-
-const INTERVAL_OPTIONS = [
-  '모든데이터',
-  '1시간 간격','2시간 간격','3시간 간격','4시간 간격',
-  '5시간 간격','6시간 간격','12시간 간격','24시간 간격',
-  '2일 간격','3일 간격','4일 간격','5일 간격','6일 간격','7일 간격',
-]
-
-function PrintModal({ sensor, config, onChange, onExcel, onPdf, onClose }: {
-  sensor: UnifiedSensor; config: PrintConfig
-  onChange: (c: PrintConfig) => void
-  onExcel: () => void; onPdf: () => void; onClose: () => void
+// ─── 센서 아이콘 ─────────────────────────────────────────────────────────────
+function SensorIcon({ icon, isSelected, status, onMouseDown, onClick }: {
+  icon: { key: string; label: string; x: number; y: number }
+  isSelected: boolean; status: string
+  onMouseDown: (e: React.MouseEvent) => void; onClick: () => void
 }) {
-  const set = (key: keyof PrintConfig, val: string) => onChange({ ...config, [key]: val })
-  const inputCls = 'w-full rounded-lg border border-line bg-surface-subtle px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-brand/50 focus:ring-2 focus:ring-brand/10'
-  const labelCls = 'mb-1.5 block font-mono text-[10px] font-semibold uppercase tracking-wider text-ink-muted'
-
+  const color = status === 'danger' ? '#ef4444' : status === 'warning' ? '#f97316' : '#22c55e'
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 backdrop-blur-sm p-4" onClick={onClose}>
-      <div className="geo-card flex w-full max-w-xl animate-fade-in-up flex-col" style={{ maxHeight: '92vh' }}
-        onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between border-b border-line px-6 py-4">
-          <h2 className="text-sm font-semibold text-ink">출력 설정</h2>
-          <button onClick={onClose} className="rounded-md p-1 text-ink-muted transition-colors hover:bg-surface-subtle hover:text-ink">✕</button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-          <div>
-            <label className={labelCls}>총괄표 타이틀</label>
-            <input type="text" value={config.title} onChange={e => set('title', e.target.value)} className={inputCls} />
-          </div>
-          <div>
-            <label className={labelCls}>인쇄 범위</label>
-            <div className="grid grid-cols-2 gap-2">
-              {(['현장총괄표','계측센서'] as const).map(opt => (
-                <button key={opt} type="button" onClick={() => set('range', opt)}
-                  className={['rounded-lg border px-4 py-2.5 text-sm font-medium transition-all',
-                    config.range === opt ? 'border-brand/40 bg-brand/10 text-brand' : 'border-line bg-surface-card text-ink-sub hover:border-line-strong hover:bg-surface-subtle'].join(' ')}>
-                  {config.range === opt && <span className="mr-1.5">✓</span>}{opt}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label className={labelCls}>기간</label>
-            <div className="grid grid-cols-2 gap-3">
-              <div><p className="mb-1 font-mono text-[10px] text-ink-muted">시작일</p>
-                <input type="date" value={config.dateFrom} onChange={e => set('dateFrom', e.target.value)} className={inputCls} /></div>
-              <div><p className="mb-1 font-mono text-[10px] text-ink-muted">종료일</p>
-                <input type="date" value={config.dateTo} onChange={e => set('dateTo', e.target.value)} className={inputCls} /></div>
-            </div>
-          </div>
-          <div>
-            <label className={labelCls}>출력일시</label>
-            <input type="datetime-local" value={config.printedAt} onChange={e => set('printedAt', e.target.value)} className={inputCls} />
-          </div>
-          <div>
-            <label className={labelCls}>출력범위</label>
-            <div className="grid grid-cols-2 gap-2">
-              {(['모든 센서','지하수위계'] as const).map(opt => (
-                <button key={opt} type="button" onClick={() => set('outputScope', opt)}
-                  className={['rounded-lg border px-4 py-2 text-sm font-medium transition-all',
-                    config.outputScope === opt ? 'border-brand/40 bg-brand/10 text-brand' : 'border-line bg-surface-card text-ink-sub hover:border-line-strong hover:bg-surface-subtle'].join(' ')}>
-                  {config.outputScope === opt && <span className="mr-1.5">✓</span>}{opt}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label className={labelCls}>출력대상</label>
-            <select value={config.interval} onChange={e => set('interval', e.target.value)} className={inputCls}>
-              {INTERVAL_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-            </select>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelCls}>이미지 여백</label>
-              <input type="number" step="0.01" value={config.imgMargin} onChange={e => set('imgMargin', e.target.value)} placeholder="0.10" className={inputCls} />
-            </div>
-            <div>
-              <label className={labelCls}>바닥글 회사명</label>
-              <input type="text" value={config.footer} onChange={e => set('footer', e.target.value)} placeholder="회사명" className={inputCls} />
-            </div>
-          </div>
-          <div className="rounded-xl border border-line bg-surface-subtle p-4">
-            <p className="mb-3 font-mono text-[10px] font-semibold uppercase tracking-wider text-ink-muted">미리보기</p>
-            <div className="rounded-lg border border-line bg-surface-card p-4 text-xs">
-              <div className="border-b border-line pb-3 text-center">
-                <p className="text-base font-bold text-ink">{config.title || '(타이틀 없음)'}</p>
-                <p className="mt-0.5 font-mono text-[10px] text-ink-muted">
-                  {config.range} · {config.dateFrom || '—'} ~ {config.dateTo || '—'}
-                </p>
-              </div>
-              <table className="mt-2 w-full border-collapse text-[10px]">
-                <tbody>
-                  <tr>
-                    <td className="border border-line bg-surface-subtle px-2 py-1 font-semibold text-ink-muted w-16">현장명</td>
-                    <td className="border border-line px-2 py-1 text-ink">{sensor.siteName || '—'}</td>
-                    <td className="border border-line bg-surface-subtle px-2 py-1 font-semibold text-ink-muted w-20">계측기 No.</td>
-                    <td className="border border-line px-2 py-1 text-ink">{sensor.manageNo || '—'}</td>
-                  </tr>
-                  <tr>
-                    <td className="border border-line bg-surface-subtle px-2 py-1 font-semibold text-ink-muted">설치현황</td>
-                    <td className="border border-line px-2 py-1 text-ink">
-                      {sensor.installDate ? `설치일자 (${sensor.installDate.slice(0, 10)})` : '—'}
-                    </td>
-                    <td className="border border-line bg-surface-subtle px-2 py-1 font-semibold text-ink-muted">초기측정일</td>
-                    <td className="border border-line px-2 py-1 text-ink">{config.dateFrom || '—'}</td>
-                  </tr>
-                  <tr>
-                    <td className="border border-line bg-surface-subtle px-2 py-1 font-semibold text-ink-muted">관리자</td>
-                    <td className="border border-line px-2 py-1 text-ink">—</td>
-                    <td className="border border-line bg-surface-subtle px-2 py-1 font-semibold text-ink-muted">설치위치</td>
-                    <td className="border border-line px-2 py-1 text-ink">{sensor.location?.description || '—'}</td>
-                  </tr>
-                </tbody>
-              </table>
-              <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 font-mono text-[10px]">
-                <span className="text-ink-muted">출력기간</span>
-                <span className="text-ink">{config.dateFrom} ~ {config.dateTo}</span>
-                <span className="text-ink-muted">출력일시</span>
-                <span className="text-ink">{config.printedAt || '—'}</span>
-              </div>
-              <div className="mt-3 border-t border-line pt-2 text-center font-mono text-[10px] text-ink-muted">
-                {config.footer || '회사명'}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex gap-2 border-t border-line px-6 py-4">
-          <button onClick={onClose} className="flex-1 rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-sub transition-colors hover:border-line-strong hover:text-ink">취소</button>
-          <button onClick={onExcel} className="flex-1 rounded-lg bg-sensor-normal px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90">📊 Excel 다운로드</button>
-          <button onClick={onPdf} className="flex-1 rounded-lg bg-sensor-warning px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90">📄 PDF 다운로드</button>
-        </div>
+    <div onMouseDown={onMouseDown} onClick={onClick}
+      style={{ position: 'absolute', left: `${icon.x * 100}%`, top: `${icon.y * 100}%`, transform: 'translate(-50%, -50%)', zIndex: isSelected ? 20 : 10, cursor: 'grab', userSelect: 'none' }}>
+      <div style={{ background: color, border: isSelected ? '2px solid #fff' : '1.5px solid rgba(255,255,255,0.7)', borderRadius: 6, padding: '3px 8px', boxShadow: '0 2px 8px rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', gap: 5, minWidth: 70 }}>
+        <span style={{ width: 7, height: 7, borderRadius: '50%', background: status === 'danger' ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.8)', display: 'inline-block', animation: status === 'danger' ? 'pulse 1.2s infinite' : 'none' }} />
+        <span style={{ color: '#fff', fontSize: 11, fontWeight: 600, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{icon.label}</span>
       </div>
     </div>
   )
@@ -215,204 +43,248 @@ export default function SensorDetailPage() {
   const [sensor, setSensor] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [measurements, setMeasurements] = useState<any[]>([])
-
+  const { user } = useAuth()
+  const isMultiMonitor = user?.role === 'MultiMonitor'
   const today = new Date().toISOString().slice(0, 10)
 
   useEffect(() => {
     if (!id) return
     sensorApi.getById(Number(id)).then((data: any) => {
       setSensor({
-        id: String(data.id),
-        manageNo: data.manage_no || '',
-        name: data.name,
-        nameEn: '',
-        nameAbbr: data.sensor_code,
-        field: data.field || '공통',
-        measureMethod: '해당없음',
-        formula: data.formula || '(A*X+B)',
-        group: '',
-        unit: data.unit || '',
-        unitName: '',
-        description: data.location_desc || '',
-        combination: '',
-        decimalPoint: '2',
-        pointerInfo: '',
-        remark: '',
-        threshold: {
-          normalMax: data.threshold_normal_max ?? '',
-          warningMax: data.threshold_warning_max ?? '',
-          dangerMin: data.threshold_danger_min ?? '',
-        },
-        operation: { measureCycle: '01:00', actionAfterMeasure: '저장송신', actionBeforeMeasure: '자동' },
+        id: String(data.id), manageNo: data.manage_no || '', name: data.name, nameAbbr: data.sensor_code,
+        field: data.field || '공통', formula: data.formula || '', unit: data.unit || '',
+        threshold: { normalMax: data.threshold_normal_max ?? '', warningMax: data.threshold_warning_max ?? '', dangerMin: data.threshold_danger_min ?? '' },
         formulaParams: data.formula_params ? {
-          coeffA: data.formula_params.coeffA || '',
-          coeffB: data.formula_params.coeffB || '',
-          coeffC: data.formula_params.coeffC || '',
-          coeffD: data.formula_params.coeffD || '',
-          coeffE: data.formula_params.coeffE || '',
-          coeffG: data.formula_params.coeffG || '',
+          coeffA: data.formula_params.coeffA || '', coeffB: data.formula_params.coeffB || '',
+          coeffC: data.formula_params.coeffC || '', coeffG: data.formula_params.coeffG || '',
           initVal: data.formula_params.initVal || '',
-          currentTemp: data.formula_params.currentTemp || '',
-          tempCoeff: data.formula_params.tempCoeff || '',
-          initTemp: data.formula_params.initTemp || '',
-          extRef: data.formula_params.extRef || '',
-        } : { coeffA: '', coeffB: '', coeffC: '', coeffD: '', coeffE: '', initVal: '', currentTemp: '', tempCoeff: '', initTemp: '', extRef: '' },
+        } : { coeffA: '', coeffB: '', coeffC: '', coeffG: '', initVal: '' },
         criteria: {
-          level1Upper: data.level1_upper ?? '',
-          level1Lower: data.level1_lower ?? '',
-          level2Upper: data.level2_upper ?? '',
-          level2Lower: data.level2_lower ?? '',
-          criteriaUnit: data.criteria_unit ?? '',
-          criteriaUnitName: data.criteria_unit_name ?? '',
-          noAlarm: false,
-          noSms: false,
+          level1Upper: data.level1_upper ?? '', level1Lower: data.level1_lower ?? '',
+          level2Upper: data.level2_upper ?? '', level2Lower: data.level2_lower ?? '',
         },
-        siteId: data.site_code || '',
-        siteName: data.site_name || '',
-        installDate: data.install_date || '',
-        location: { lat: 0, lng: 0, description: data.location_desc || '' },
-        status: data.status || 'offline',
-        currentValue: data.current_value ? parseFloat(data.current_value) : 0,
-        batteryLevel: 100,
+        siteId: data.site_code || '', siteDbId: data.site_db_id || null, siteName: data.site_name || '',
+        installDate: data.install_date || '', location: { description: data.location_desc || '' },
+        status: data.status || 'offline', currentValue: data.current_value ? parseFloat(data.current_value) : 0,
         lastUpdated: data.last_measured || new Date().toISOString(),
         site_managers: data.site_managers || '[]',
         floor_plan_url: data.has_floor_plan ? 'exists' : null,
         site_floor_plan_url: data.has_site_floor_plan ? 'exists' : null,
-        readings: [],
+        sensor_positions: data.sensor_positions || {}, readings: [],
       })
       setSensorCode(data.sensor_code || '')
       setCorrectionParams(data.correction_params || {})
-    }).catch(() => setSensor(null))
-    .finally(() => setLoading(false))
+    }).catch(() => setSensor(null)).finally(() => setLoading(false))
   }, [id])
 
+  // ─── 현장 센서 목록 ────────────────────────────────────────────────────────
+  const [allSensors, setAllSensors] = useState<any[]>([])
+  useEffect(() => { sensorApi.getAll().then((d: any[]) => setAllSensors(d)).catch(() => {}) }, [])
+
+  // ─── 아이콘 상태 ───────────────────────────────────────────────────────────
+  const [icons, setIcons] = useState<{ key: string; label: string; x: number; y: number }[]>([])
+  const [floorPlanTimestamp, setFloorPlanTimestamp] = useState<number>(Date.now())
+  const floorPlanRef = useRef<HTMLDivElement>(null)
+  const draggingKey = useRef<string | null>(null)
+  const dragStart = useRef<{ mx: number; my: number; ix: number; iy: number } | null>(null)
+  const [showAddIcon, setShowAddIcon] = useState(false)
+  const [addIconSensor, setAddIconSensor] = useState<string>('')
+  const [addIconDepth, setAddIconDepth] = useState<string>('1')
+
+  useEffect(() => {
+    if (!sensor?.sensor_positions) return
+    const pos = sensor.sensor_positions
+    const loaded = Object.entries(pos).map(([key, val]: any) => ({ key, label: val.label || key, x: val.x, y: val.y }))
+    setIcons(loaded)
+  }, [sensor?.sensor_positions])
+
+  const saveIconPositions = useCallback(async (nextIcons: typeof icons) => {
+    if (!sensor?.siteDbId) return
+    const positions: Record<string, any> = {}
+    nextIcons.forEach(ic => { positions[ic.key] = { label: ic.label, x: ic.x, y: ic.y } })
+    await fetch(`${API_BASE}/api/sites/${sensor.siteDbId}/sensor-positions`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('gm_token')}` },
+      body: JSON.stringify({ positions }),
+    }).catch(() => {})
+  }, [sensor])
+
+  const handleIconMouseDown = useCallback((key: string, e: React.MouseEvent) => {
+    if (isMultiMonitor) return
+    e.preventDefault(); e.stopPropagation()
+    const icon = icons.find(i => i.key === key); if (!icon) return
+    draggingKey.current = key
+    dragStart.current = { mx: e.clientX, my: e.clientY, ix: icon.x, iy: icon.y }
+  }, [icons, isMultiMonitor])
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!draggingKey.current || !dragStart.current || !floorPlanRef.current) return
+      const rect = floorPlanRef.current.getBoundingClientRect()
+      const dx = (e.clientX - dragStart.current.mx) / rect.width
+      const dy = (e.clientY - dragStart.current.my) / rect.height
+      setIcons(prev => prev.map(i => i.key === draggingKey.current ? { ...i, x: Math.max(0, Math.min(1, dragStart.current!.ix + dx)), y: Math.max(0, Math.min(1, dragStart.current!.iy + dy)) } : i))
+    }
+    const onUp = () => {
+      if (!draggingKey.current) return
+      const key = draggingKey.current
+      draggingKey.current = null; dragStart.current = null
+      setIcons(prev => { saveIconPositions(prev); return prev })
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
+  }, [saveIconPositions])
+
+  const handleIconClick = useCallback((key: string) => {
+    if (draggingKey.current) return
+    const parts = key.split(':')
+    const clickedSensorId = parts[0]; const clickedDepth = parts[1] as '1' | '2' | '3' | undefined
+    if (clickedSensorId !== String(sensor?.id)) { window.location.href = `/sensors/${clickedSensorId}`; return }
+    if (clickedDepth) setDepthLabel(clickedDepth)
+  }, [sensor])
+
+  const handleAddIcon = async () => {
+    if (!addIconSensor) return
+    const s = allSensors.find((s: any) => String(s.id) === addIconSensor); if (!s) return
+    const is80053 = s.sensor_code === '80053'
+    const key = is80053 ? `${addIconSensor}:${addIconDepth}` : addIconSensor
+    const label = is80053 ? `${s.name || s.manage_no} ${addIconDepth}번` : (s.name || s.manage_no)
+    if (icons.find(i => i.key === key)) { setShowAddIcon(false); return }
+    const next = [...icons, { key, label, x: 0.5, y: 0.5 }]
+    setIcons(next); setShowAddIcon(false)
+    await saveIconPositions(next)
+  }
+
+  const handleDeleteIcon = async (key: string) => {
+    const next = icons.filter(i => i.key !== key)
+    setIcons(next); await saveIconPositions(next)
+  }
+
+  const iconStatuses = useMemo(() => {
+    const map: Record<string, string> = {}
+    icons.forEach(ic => {
+      const sid = ic.key.split(':')[0]
+      map[ic.key] = allSensors.find((s: any) => String(s.id) === sid)?.status || 'offline'
+    })
+    return map
+  }, [icons, allSensors])
+
+  const siteSensors = useMemo(() => {
+    if (!sensor?.siteId) return allSensors
+    return allSensors.filter((s: any) => s.site_code === sensor.siteId)
+  }, [allSensors, sensor?.siteId])
+
+  // ─── 상태 ─────────────────────────────────────────────────────────────────
   const [sensorCode, setSensorCode] = useState<string>('')
   const [dateFrom, setDateFrom] = useState(today)
   const [dateTo,   setDateTo]   = useState(today)
   const [chartMode, setChartMode] = useState<'hourly' | 'daily'>('hourly')
   const [depthLabel, setDepthLabel] = useState<'1' | '2' | '3'>('1')
-  const [calcMode, setCalcMode] = useState<'poly' | 'linear'>('linear')
+  const [calcMode,   setCalcMode]   = useState<'poly' | 'linear'>('linear')
   const [correctionParams, setCorrectionParams] = useState<Record<string, number>>({})
-  const [correctionInput, setCorrectionInput] = useState<Record<string, string>>({})
+  const [correctionInput,  setCorrectionInput]  = useState<Record<string, string>>({})
   const [correctionSaving, setCorrectionSaving] = useState(false)
-  const [floorPlanTimestamp, setFloorPlanTimestamp] = useState<number>(Date.now())
+  const [qrOpen, setQrOpen] = useState(false)
+  const [printOpen, setPrintOpen] = useState(false)
+  const [tablePage, setTablePage] = useState(1)
+  const [remarks, setRemarks] = useState<Record<string, string>>({})
+  const TABLE_PAGE_SIZE = 15
+  const chartRef = useRef<HTMLDivElement>(null)
+  const printRef = useRef<HTMLDivElement>(null)
 
+  // ─── 측정값 로딩 ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (!id || !sensorCode) return
     sensorApi.getMeasurements(Number(id), {
-      from: dateFrom,
-      to: dateTo,
-      limit: 2000,
+      from: dateFrom, to: dateTo, limit: 2000,
       depthLabel: sensorCode === '80053' ? depthLabel : undefined,
     }).then((data: any[]) => {
       const corr = correctionParams[depthLabel] ?? 0
       const mapped = data.map((m: any) => ({
         timestamp: m.measured_at,
         value: parseFloat(((calcMode === 'poly' ? parseFloat(m.value) : parseFloat(m.linear_value ?? m.value)) + corr).toFixed(4)),
-        unit: sensor?.unit || '',
-        status: 'normal',
+        unit: sensor?.unit || '', status: 'normal',
       }))
       setMeasurements(mapped.reverse())
     }).catch(() => {})
   }, [id, sensorCode, dateFrom, dateTo, depthLabel, calcMode, correctionParams])
 
   const [globalInitReading, setGlobalInitReading] = useState<any>(null)
-
   useEffect(() => {
     if (!id || !sensorCode) return
-    sensorApi.getMeasurements(Number(id), {
-      limit: 2000,
-      depthLabel: sensorCode === '80053' ? depthLabel : undefined,
-    }).then((data: any[]) => {
-      if (data.length > 0) {
-        const oldest = [...data].sort((a: any, b: any) =>
-          new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime()
-        )[0]
-        const corr = correctionParams[depthLabel] ?? 0
-        setGlobalInitReading({
-          value: parseFloat(oldest.value) + corr,
-          linear_value: parseFloat(oldest.linear_value ?? oldest.value) + corr,
-          timestamp: oldest.measured_at,
-        })
-      }
-    }).catch(() => {})
+    sensorApi.getMeasurements(Number(id), { limit: 2000, depthLabel: sensorCode === '80053' ? depthLabel : undefined })
+      .then((data: any[]) => {
+        if (data.length > 0) {
+          const oldest = [...data].sort((a: any, b: any) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime())[0]
+          const corr = correctionParams[depthLabel] ?? 0
+          setGlobalInitReading({ value: parseFloat(oldest.value) + corr, linear_value: parseFloat(oldest.linear_value ?? oldest.value) + corr, timestamp: oldest.measured_at })
+        }
+      }).catch(() => {})
   }, [id, sensorCode, depthLabel, correctionParams])
 
-  const [qrOpen,    setQrOpen]    = useState(false)
-  const [tablePage, setTablePage] = useState(1)
-  const [remarks,   setRemarks]   = useState<Record<string, string>>({})
-  const TABLE_PAGE_SIZE = 15
-  const [printOpen, setPrintOpen] = useState(false)
-  const printRef = useRef<HTMLDivElement>(null)
-  const chartRef = useRef<HTMLDivElement>(null)
-
-  const [printConfig, setPrintConfig] = useState<PrintConfig>({
-    title: '계측 모니터링 현황 보고서', range: '계측센서',
-    dateFrom: dateFrom, dateTo: dateTo,
-    printedAt: new Date().toISOString().slice(0, 16),
-    outputScope: '모든 센서', interval: '모든데이터',
-    imgMargin: '0.10', footer: '',
-  })
-
-  const isValidRange = !!sensor && dateFrom <= dateTo && dateTo <= today
-  const dayCount = isValidRange ? dateDiffDays(dateFrom, dateTo) + 1 : 0
-  const isToday  = dateFrom === today && dateTo === today
-  const readings = measurements
+  // ─── 데이터 공백 구간 처리 ────────────────────────────────────────────────
+  const measurementsWithGaps = useMemo(() => {
+    if (measurements.length === 0) return []
+    const sorted = [...measurements].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+    const dataMap = new Map<number, any>()
+    sorted.forEach(m => {
+      const t = new Date(m.timestamp)
+      dataMap.set(new Date(t.getFullYear(), t.getMonth(), t.getDate(), t.getHours()).getTime(), m)
+    })
+    const first = new Date(sorted[0].timestamp), last = new Date(sorted[sorted.length - 1].timestamp)
+    const slotFrom = new Date(first.getFullYear(), first.getMonth(), first.getDate(), first.getHours())
+    const slotTo   = new Date(last.getFullYear(), last.getMonth(), last.getDate(), last.getHours())
+    const slots: any[] = []
+    let cur = new Date(slotFrom)
+    while (cur <= slotTo) {
+      const key = cur.getTime()
+      slots.push(dataMap.has(key) ? dataMap.get(key) : { timestamp: cur.toISOString(), value: null, unit: sensor?.unit || '', status: 'gap' })
+      cur = new Date(cur.getTime() + 3600000)
+    }
+    return slots
+  }, [measurements, sensor?.unit])
 
   const dailyReadings = useMemo(() => {
     const map = new Map<string, any>()
-    const sorted = [...measurements].sort((a, b) =>
-      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-    )
+    const sorted = [...measurements].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
     sorted.forEach(m => {
-      const date = new Date(m.timestamp).toLocaleDateString('ko-KR', {
-        year: 'numeric', month: '2-digit', day: '2-digit'
-      })
+      const date = new Date(m.timestamp).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
       map.set(date, m)
     })
     return Array.from(map.values())
   }, [measurements])
 
-  const dailyTableData = useMemo(() => {
-    if (dailyReadings.length === 0) return []
-    const sorted = [...dailyReadings].sort((a, b) =>
-      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-    )
-    const firstValue = sorted[0].value
-    const firstDate  = new Date(sorted[0].timestamp)
-    return sorted.map((r, i) => {
-      const currentDate = new Date(r.timestamp)
-      const curMid   = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate())
-      const initMid  = new Date(firstDate.getFullYear(), firstDate.getMonth(), firstDate.getDate())
-      const elapsed  = Math.round((curMid.getTime() - initMid.getTime()) / 86400000)
-      const prevValue = i > 0 ? sorted[i - 1].value : r.value
-      const dateKey = currentDate.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
-      return {
-        ...r,
-        elapsed,
-        prevDiff: parseFloat((r.value - prevValue).toFixed(2)),
-        initDiff: parseFloat((r.value - firstValue).toFixed(2)),
-        dateKey,
-      }
-    })
-  }, [dailyReadings])
+  // ─── 1차 상하한 ───────────────────────────────────────────────────────────
+  const { level1Upper, level1Lower } = useMemo(() => {
+    if (sensorCode === '80053' && globalInitReading) {
+      const iv = parseFloat(String(calcMode === 'linear' ? (globalInitReading.linear_value ?? globalInitReading.value) : globalInitReading.value))
+      return { level1Upper: parseFloat((iv + 4).toFixed(2)), level1Lower: parseFloat((iv - 4).toFixed(2)) }
+    }
+    return {
+      level1Upper: sensor?.criteria?.level1Upper !== '' && sensor?.criteria?.level1Upper != null ? parseFloat(sensor.criteria.level1Upper) : null,
+      level1Lower: sensor?.criteria?.level1Lower !== '' && sensor?.criteria?.level1Lower != null ? parseFloat(sensor.criteria.level1Lower) : null,
+    }
+  }, [sensorCode, globalInitReading, calcMode, sensor])
 
-  const { user } = useAuth()
-  const isMultiMonitor = user?.role === 'MultiMonitor'
+  const initValue = useMemo(() => {
+    if (!globalInitReading) return 0
+    return parseFloat(String(sensorCode === '80053' && calcMode === 'linear' ? (globalInitReading.linear_value ?? globalInitReading.value) : globalInitReading.value))
+  }, [globalInitReading, sensorCode, calcMode])
+
+  const latestMeasurement = useMemo(() => {
+    if (measurements.length === 0) return null
+    return [...measurements].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]
+  }, [measurements])
 
   const { thresholdWarning, thresholdDanger } = sensor ? getThresholds(sensor) : { thresholdWarning: 0, thresholdDanger: 0 }
-  const overThreshold = sensor ? sensor.currentValue > thresholdDanger : false
-  const nearThreshold = sensor ? sensor.currentValue > thresholdWarning : false
-  const maxScale      = thresholdDanger * 1.5 || 100
 
-  const valueColorClass =
-    sensor?.status === 'danger'  ? 'text-sensor-danger'  :
-    sensor?.status === 'warning' ? 'text-sensor-warning' :
-    sensor?.status === 'offline' ? 'text-ink-muted'      :
-    'text-sensor-normal'
+  const setPreset = (days: number) => {
+    const from = new Date(); from.setDate(from.getDate() - (days - 1))
+    setDateFrom(from.toISOString().slice(0, 10)); setDateTo(today); setTablePage(1)
+  }
 
-  const handlePrint = () => { setPrintOpen(false); setTimeout(() => window.print(), 300) }
-
+  // ─── 엑셀 ─────────────────────────────────────────────────────────────────
   const handleExcelDownload = async () => {
     let chartBase64: string | null = null
     if (chartRef.current) {
@@ -420,1087 +292,490 @@ export default function SensorDetailPage() {
         const svgEl = chartRef.current.querySelector('svg')
         if (svgEl) {
           const svgData = new XMLSerializer().serializeToString(svgEl)
-          const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' })
-          const svgUrl  = URL.createObjectURL(svgBlob)
-          await new Promise<void>((resolve) => {
-            const img = new Image()
-            const scale = 3
+          const svgUrl  = URL.createObjectURL(new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' }))
+          await new Promise<void>(resolve => {
+            const img = new Image(); const scale = 3
             img.onload = () => {
               const canvas = document.createElement('canvas')
-              canvas.width  = svgEl.clientWidth  * scale
-              canvas.height = svgEl.clientHeight * scale
+              canvas.width = svgEl.clientWidth * scale; canvas.height = svgEl.clientHeight * scale
               const ctx = canvas.getContext('2d')!
-              ctx.fillStyle = '#ffffff'
-              ctx.fillRect(0, 0, canvas.width, canvas.height)
+              ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height)
               ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
               chartBase64 = canvas.toDataURL('image/png', 1.0)
-              URL.revokeObjectURL(svgUrl)
-              resolve()
+              URL.revokeObjectURL(svgUrl); resolve()
             }
             img.onerror = () => { URL.revokeObjectURL(svgUrl); resolve() }
             img.src = svgUrl
           })
-        } else {
-          const canvas = await html2canvas(chartRef.current, {
-            scale: 3, backgroundColor: '#ffffff', useCORS: true,
-          })
-          chartBase64 = canvas.toDataURL('image/png', 1.0)
         }
-      } catch { chartBase64 = null }
+      } catch {}
     }
-
-    const managerUsernames: string[] = (() => {
-      try { return JSON.parse(sensor.site_managers || '[]') } catch { return [] }
-    })()
+    const managerUsernames: string[] = (() => { try { return JSON.parse(sensor.site_managers || '[]') } catch { return [] } })()
     let managerText = '—'
     if (managerUsernames.length > 0) {
       try {
         const users = await userApi.getList()
-        managerText = managerUsernames.map((uname: string) => {
-          const u = users.find((x: any) => x.username === uname)
-          return u ? `${u.username} (${u.role})` : uname
-        }).join(', ')
+        managerText = managerUsernames.map((u: string) => { const f = users.find((x: any) => x.username === u); return f ? `${f.username} (${f.role})` : u }).join(', ')
       } catch { managerText = managerUsernames.join(', ') }
     }
-
     const excelSourceRows = dateFrom === dateTo ? measurements : dailyReadings
-    const sortedRows = [...excelSourceRows].sort((a: any, b: any) =>
-      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-    )
-    const initValue = globalInitReading ? parseFloat(String(
-      sensorCode === '80053' && calcMode === 'linear'
-        ? (globalInitReading.linear_value ?? globalInitReading.value)
-        : globalInitReading.value
-    )) : (sortedRows.length > 0 ? parseFloat(String(sortedRows[0].value)) : 0)
-    const initDate  = globalInitReading
-      ? new Date(globalInitReading.timestamp)
-      : (sortedRows.length > 0 ? new Date(sortedRows[0].timestamp) : new Date())
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sortedRows = [...excelSourceRows].sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+    const initDate = globalInitReading ? new Date(globalInitReading.timestamp) : (sortedRows.length > 0 ? new Date(sortedRows[0].timestamp) : new Date())
     const ExcelJSModule = await import('exceljs') as any
     const ExcelJS = ExcelJSModule.default ?? ExcelJSModule
-    const wb2 = new ExcelJS.Workbook()
-    const ws2 = wb2.addWorksheet(sensor.manageNo || sensor.name || '측정데이터')
-
-    const DARK = 'FFF2F2F2', MID = 'FFF2F2F2', WHITE = 'FFFFFFFF'
-    const BLACK = 'FF000000', RED = 'FFC00000', BLUE = 'FF2F5496'
-    const YELL = 'FFFFF2CC', ALT = 'FFEEF4FB'
-    const thin = { style: 'thin' as const, color: { argb: 'FF000000' } }
-    const med  = { style: 'medium' as const, color: { argb: DARK } }
-    const TB = { top: thin, left: thin, bottom: thin, right: thin }
-    const MB = { top: med,  left: med,  bottom: med,  right: med  }
+    const wb2 = new ExcelJS.Workbook(); const ws2 = wb2.addWorksheet(sensor.manageNo || sensor.name || '측정데이터')
+    const DARK = 'FFD9D9D9', MID = 'FFD9D9D9', WHITE = 'FFFFFFFF', BLACK = 'FF000000', RED = 'FFC00000', BLUE = 'FF2F5496', YELL = 'FFFFF2CC', ALT = 'FFEEF4FB'
+    const thin = { style: 'thin' as const, color: { argb: 'FF000000' } }, med = { style: 'medium' as const, color: { argb: DARK } }
+    const TB = { top: thin, left: thin, bottom: thin, right: thin }, MB = { top: med, left: med, bottom: med, right: med }
     const fill = (argb: string) => ({ type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb } })
     const font = (bold = false, sz = 9, argb = BLACK) => ({ name: '맑은 고딕', size: sz, bold, color: { argb } })
-    const aln  = (h: 'center' | 'left' | 'right' = 'center', v: 'middle' | 'top' | 'bottom' = 'middle', wrap = false) => ({ horizontal: h, vertical: v, wrapText: wrap })
-
+    const aln  = (h: 'center'|'left'|'right' = 'center', v: 'middle'|'top'|'bottom' = 'middle', wrap = false) => ({ horizontal: h, vertical: v, wrapText: wrap })
     ws2.columns = [{ width: 14 }, { width: 7 }, { width: 13 }, { width: 12 }, { width: 12 }, { width: 14 }]
-
     const setH = (r: number, h: number) => { ws2.getRow(r).height = h }
-    setH(1, 28); setH(2, 4); setH(3, 18); setH(4, 18); setH(5, 18)
-    const CR_START = 6
-    const CR_END = 15
+    setH(1,28); setH(2,4); setH(3,18); setH(4,18); setH(5,18)
+    const CR_START = 6, CR_END = 15
     for (let r = CR_START; r <= CR_END; r++) setH(r, 18)
-    setH(CR_END + 1, 14)
-    setH(CR_END + 2, 4); setH(CR_END + 3, 18); setH(CR_END + 4, 18); setH(CR_END + 5, 18); setH(CR_END + 6, 3)
+    setH(CR_END+1,14); setH(CR_END+2,4); setH(CR_END+3,18); setH(CR_END+4,18); setH(CR_END+5,18); setH(CR_END+6,3)
     const DS = CR_END + 7
-    sortedRows.forEach((_: any, i: number) => setH(DS + i, 17))
-
+    sortedRows.forEach((_: any, i: number) => setH(DS+i, 17))
     ws2.mergeCells('A1:F1')
-    const t = ws2.getCell('A1')
-    t.value = 'Water Level Meter Report'; t.font = font(true, 15, BLACK); t.fill = fill(WHITE); t.alignment = aln(); t.border = MB
-
+    const t = ws2.getCell('A1'); t.value = 'Water Level Meter Report'; t.font = font(true,15,BLACK); t.fill = fill(WHITE); t.alignment = aln(); t.border = MB
     const infoRows = [
-      ['현   장   명', sensor.siteName || '—',          '계측기 No.', sensor.manageNo || '—'],
-      ['설 치 현 황',  sensor.installDate ? `설치일자 (${sensor.installDate.slice(0, 10)})` : '—', '초기측정일', initDate.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })],
-      ['관   리   자', managerText,                      '설치위치',   sensor.location?.description || '—'],
+      ['현   장   명', sensor.siteName||'—', '계측기 No.', sensor.manageNo||'—'],
+      ['설 치 현 황', sensor.installDate?`설치일자 (${sensor.installDate.slice(0,10)})`:'—', '초기측정일', initDate.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'})],
+      ['관   리   자', managerText, '설치위치', sensor.location?.description||'—'],
     ]
-    infoRows.forEach(([l1, v1, l2, v2]: any, i: number) => {
-      const r = 3 + i
-      ws2.mergeCells(r, 2, r, 3); ws2.mergeCells(r, 5, r, 6)
-      const setC = (col: number, val: string, fnt: any, fil: any, al: any) => {
-        const c = ws2.getCell(r, col); c.value = val; c.font = fnt; c.fill = fil; c.alignment = al; c.border = TB
-      }
-      setC(1, l1, font(true, 9, BLACK), fill(DARK), aln())
-      setC(2, v1, font(false, 8, BLACK), fill(WHITE), aln('left'))
-      setC(4, l2, font(true, 9, BLACK), fill(DARK), aln())
-      setC(5, v2, font(false, 8, BLACK), fill(WHITE), aln('left'))
+    infoRows.forEach(([l1,v1,l2,v2]: any, i: number) => {
+      const r = 3+i; ws2.mergeCells(r,2,r,3); ws2.mergeCells(r,5,r,6)
+      const setC = (col: number, val: string, fnt: any, fil: any, al: any) => { const c = ws2.getCell(r,col); c.value=val; c.font=fnt; c.fill=fil; c.alignment=al; c.border=TB }
+      setC(1,l1,font(true,9,BLACK),fill(DARK),aln()); setC(2,v1,font(false,8,BLACK),fill(WHITE),aln('left'))
+      setC(4,l2,font(true,9,BLACK),fill(DARK),aln()); setC(5,v2,font(false,8,BLACK),fill(WHITE),aln('left'))
     })
-
     if (chartBase64) {
       const imgId = wb2.addImage({ base64: chartBase64.split(',')[1], extension: 'png' })
-      ws2.addImage(imgId, {
-        tl: { col: 0, row: CR_START - 1 } as any,
-        br: { col: 6, row: CR_END } as any,
-        editAs: 'oneCell',
-      })
+      ws2.addImage(imgId, { tl: { col:0, row:CR_START-1 } as any, br: { col:6, row:CR_END } as any, editAs:'oneCell' })
     }
-
-    const legendRow = CR_END + 1
-    ws2.mergeCells(legendRow, 1, legendRow, 2)
-    const lgLine = ws2.getCell(legendRow, 1)
-    lgLine.value = '── ' + (sensor.manageNo || sensor.name)
-    lgLine.font = { name: '맑은 고딕', size: 9, color: { argb: 'FF2F5496' } }
-    lgLine.alignment = { horizontal: 'center', vertical: 'middle' }
-
-    ws2.mergeCells(legendRow, 3, legendRow, 4)
-    const lgLower = ws2.getCell(legendRow, 3)
-    lgLower.value = '- - - 1차 하한기준'
-    lgLower.font = { name: '맑은 고딕', size: 9, color: { argb: 'FFC00000' } }
-    lgLower.alignment = { horizontal: 'center', vertical: 'middle' }
-
-    ws2.mergeCells(legendRow, 5, legendRow, 6)
-    const lgUpper = ws2.getCell(legendRow, 5)
-    lgUpper.value = '- - - 1차 상한기준'
-    lgUpper.font = { name: '맑은 고딕', size: 9, color: { argb: 'FFE07000' } }
-    lgUpper.alignment = { horizontal: 'center', vertical: 'middle' }
-
-    const H1 = CR_END + 3, H2 = CR_END + 4, H3 = CR_END + 5
-    const mhdr = (r1: number, c1: number, r2: number, c2: number, val: string, sz = 9, bg = DARK) => {
-      ws2.mergeCells(r1, c1, r2, c2)
-      const c = ws2.getCell(r1, c1); c.value = val; c.font = font(true, sz, BLACK); c.fill = fill(bg); c.alignment = aln('center', 'middle', true); c.border = TB
-    }
-    mhdr(H1, 1, H3, 1, '측  정  일'); mhdr(H1, 2, H3, 2, '경과일')
-    mhdr(H1, 3, H1, 5, sensor.manageNo || sensor.name); mhdr(H1, 6, H3, 6, '비  고')
-    mhdr(H2, 3, H2, 3, `지하수위 G.L(${sensor.unit})`, 8, MID)
-    mhdr(H2, 4, H2, 5, '변화량(m)', 8, MID)
-    const setHdr = (r: number, c: number, val: string, sz = 7, bg = MID) => {
-      const cell = ws2.getCell(r, c); cell.value = val; cell.font = font(true, sz, BLACK); cell.fill = fill(bg); cell.alignment = aln('center', 'middle', true); cell.border = TB
-    }
-    ws2.getCell(H3, 3).fill = fill(MID); ws2.getCell(H3, 3).border = TB
-    setHdr(H3, 4, '전측정치대비'); setHdr(H3, 5, '초기치대비')
-
-    sortedRows.forEach((row: any, i: number) => {
-      const r = DS + i
-      const isFirst = i === 0
-      const rf = isFirst ? YELL : (i % 2 === 0 ? ALT : WHITE)
-      const base = { fill: fill(rf), border: TB, alignment: aln() }
-      const setD = (c: number, val: any, fnt: any, numFmt?: string) => {
-        const cell = ws2.getCell(r, c); cell.value = val; cell.font = fnt; Object.assign(cell, base)
-        if (numFmt) cell.numFmt = numFmt
-      }
-      const curDate  = new Date(row.timestamp)
-      const curMidnight  = new Date(curDate.getFullYear(), curDate.getMonth(), curDate.getDate())
-      const initMidnight = new Date(initDate.getFullYear(), initDate.getMonth(), initDate.getDate())
-      const elapsed  = Math.round((curMidnight.getTime() - initMidnight.getTime()) / 86400000)
-      const curVal   = parseFloat(parseFloat(String(row.value)).toFixed(2))
-      const prevVal  = i > 0 ? parseFloat(parseFloat(String(sortedRows[i - 1].value)).toFixed(2)) : curVal
-      const prevDiff = parseFloat((curVal - prevVal).toFixed(2))
-      const initDiff = parseFloat((curVal - parseFloat(initValue.toFixed(2))).toFixed(2))
-
-      setD(1, curDate.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }), font(false, 9, BLACK))
-      setD(2, elapsed, font(false, 9, BLACK))
-      setD(3, curVal,  font(false, 9, BLACK), '0.00')
-      if (isFirst) {
-        setD(4, 0, font(false, 9, BLACK), '0.00')
-        setD(5, 0, font(false, 9, BLACK), '0.00')
-      } else {
-        setD(4, prevDiff, font(false, 9, prevDiff < 0 ? RED : BLUE), '+0.00;-0.00;0.00')
-        setD(5, initDiff, font(false, 9, initDiff < 0 ? RED : BLUE), '+0.00;-0.00;0.00')
-      }
-      const dateKey = curDate.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
-      const note = remarks[dateKey] || (isFirst ? '초기치' : '')
-      const cn = ws2.getCell(r, 6); cn.value = note; cn.font = font(isFirst, 9, isFirst ? RED : BLACK)
-      cn.fill = fill(isFirst ? YELL : rf); cn.border = TB; cn.alignment = aln()
+    const legendRow = CR_END+1
+    ws2.mergeCells(legendRow,1,legendRow,2); const lgLine = ws2.getCell(legendRow,1)
+    lgLine.value = '── '+(sensor.manageNo||sensor.name); lgLine.font = { name:'맑은 고딕', size:9, color:{argb:'FF2F5496'} }; lgLine.alignment = { horizontal:'center', vertical:'middle' }
+    ws2.mergeCells(legendRow,3,legendRow,4); const lgLower = ws2.getCell(legendRow,3)
+    lgLower.value = '- - - 1차 하한기준'; lgLower.font = { name:'맑은 고딕', size:9, color:{argb:'FFC00000'} }; lgLower.alignment = { horizontal:'center', vertical:'middle' }
+    ws2.mergeCells(legendRow,5,legendRow,6); const lgUpper = ws2.getCell(legendRow,5)
+    lgUpper.value = '- - - 1차 상한기준'; lgUpper.font = { name:'맑은 고딕', size:9, color:{argb:'FFE07000'} }; lgUpper.alignment = { horizontal:'center', vertical:'middle' }
+    const H1=CR_END+3, H2=CR_END+4, H3=CR_END+5
+    const mhdr = (r1:number,c1:number,r2:number,c2:number,val:string,sz=9,bg=DARK) => { ws2.mergeCells(r1,c1,r2,c2); const c=ws2.getCell(r1,c1); c.value=val; c.font=font(true,sz,BLACK); c.fill=fill(bg); c.alignment=aln('center','middle',true); c.border=TB }
+    mhdr(H1,1,H3,1,'측  정  일'); mhdr(H1,2,H3,2,'경과일'); mhdr(H1,3,H1,5,sensor.manageNo||sensor.name); mhdr(H1,6,H3,6,'비  고')
+    mhdr(H2,3,H2,3,`지하수위 G.L(${sensor.unit})`,8,MID); mhdr(H2,4,H2,5,'변화량(m)',8,MID)
+    const setHdr = (r:number,c:number,val:string,sz=7,bg=MID) => { const cell=ws2.getCell(r,c); cell.value=val; cell.font=font(true,sz,BLACK); cell.fill=fill(bg); cell.alignment=aln('center','middle',true); cell.border=TB }
+    ws2.getCell(H3,3).fill=fill(MID); ws2.getCell(H3,3).border=TB; setHdr(H3,4,'전측정치대비'); setHdr(H3,5,'초기치대비')
+    sortedRows.forEach((row:any,i:number) => {
+      const r=DS+i, isFirst=i===0, rf=isFirst?YELL:(i%2===0?ALT:WHITE), base={fill:fill(rf),border:TB,alignment:aln()}
+      const setD = (c:number,val:any,fnt:any,numFmt?:string) => { const cell=ws2.getCell(r,c); cell.value=val; cell.font=fnt; Object.assign(cell,base); if(numFmt) cell.numFmt=numFmt }
+      const curDate=new Date(row.timestamp), curMid=new Date(curDate.getFullYear(),curDate.getMonth(),curDate.getDate()), initMid=new Date(initDate.getFullYear(),initDate.getMonth(),initDate.getDate())
+      const elapsed=Math.round((curMid.getTime()-initMid.getTime())/86400000)
+      const curVal=parseFloat(parseFloat(String(row.value)).toFixed(2)), prevVal=i>0?parseFloat(parseFloat(String(sortedRows[i-1].value)).toFixed(2)):curVal
+      const prevDiff=parseFloat((curVal-prevVal).toFixed(2)), initDiff=parseFloat((curVal-parseFloat(initValue.toFixed(2))).toFixed(2))
+      setD(1,curDate.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'}),font(false,9,BLACK))
+      setD(2,elapsed,font(false,9,BLACK)); setD(3,curVal,font(false,9,BLACK),'0.00')
+      if(isFirst){setD(4,0,font(false,9,BLACK),'0.00');setD(5,0,font(false,9,BLACK),'0.00')}
+      else{setD(4,prevDiff,font(false,9,prevDiff<0?RED:BLUE),'+0.00;-0.00;0.00');setD(5,initDiff,font(false,9,initDiff<0?RED:BLUE),'+0.00;-0.00;0.00')}
+      const dateKey=curDate.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'})
+      const note=remarks[dateKey]||(isFirst?'초기치':''); const cn=ws2.getCell(r,6); cn.value=note; cn.font=font(isFirst,9,isFirst?RED:BLACK); cn.fill=fill(isFirst?YELL:rf); cn.border=TB; cn.alignment=aln()
     })
-
-    ws2.pageSetup.paperSize = 9; ws2.pageSetup.orientation = 'portrait'
-    ws2.pageSetup.fitToPage = true; ws2.pageSetup.fitToWidth = 1; ws2.pageSetup.fitToHeight = 0
-
-    const buf  = await wb2.xlsx.writeBuffer()
-    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-    const url  = URL.createObjectURL(blob)
-    const a    = document.createElement('a'); a.href = url
-    a.download = `${sensor.manageNo || sensor.name}_${dateFrom}_${dateTo}.xlsx`
-    a.click(); URL.revokeObjectURL(url)
+    ws2.pageSetup.paperSize=9; ws2.pageSetup.orientation='portrait'; ws2.pageSetup.fitToPage=true; ws2.pageSetup.fitToWidth=1; ws2.pageSetup.fitToHeight=0
+    const buf=await wb2.xlsx.writeBuffer(), blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}), url=URL.createObjectURL(blob), a=document.createElement('a')
+    a.href=url; a.download=`${sensor.manageNo||sensor.name}_${dateFrom}_${dateTo}.xlsx`; a.click(); URL.revokeObjectURL(url)
   }
 
+  // ─── PDF ──────────────────────────────────────────────────────────────────
   const handlePdfDownload = async () => {
-    const doc = new jsPDF('p', 'mm', 'a4')
-    const pageWidth = doc.internal.pageSize.getWidth()
-
-    const fontRes = await fetch('/NanumGothic.ttf')
-    const fontBuffer = await fontRes.arrayBuffer()
-    const uint8Array = new Uint8Array(fontBuffer)
-    let binary = ''
-    for (let i = 0; i < uint8Array.byteLength; i++) {
-      binary += String.fromCharCode(uint8Array[i])
-    }
-    const fontBase64 = btoa(binary)
-    doc.addFileToVFS('NanumGothic.ttf', fontBase64)
-    doc.addFont('NanumGothic.ttf', 'NanumGothic', 'normal')
-    doc.addFont('NanumGothic.ttf', 'NanumGothic', 'bold')
-    doc.setFont('NanumGothic', 'normal')
-
-    const managers = (() => {
-      try { return JSON.parse((sensor as any).site_managers || '[]') } catch { return [] }
-    })()
-    let managerText = '—'
-    if (managers.length > 0) {
-      try {
-        const users = await userApi.getList()
-        managerText = managers.map((username: string) => {
-          const user = users.find((u: any) => u.username === username)
-          return user ? `${user.username} (${user.role})` : username
-        }).join(', ')
-      } catch { managerText = managers.join(', ') }
-    }
-
-    const pdfInitDateStr = globalInitReading
-      ? new Date(globalInitReading.timestamp).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
-      : dateFrom
-
-    doc.setFontSize(16)
-    doc.text('Water Level Meter Report', pageWidth / 2, 20, { align: 'center' })
-
-    autoTable(doc, {
-      startY: 28,
-      head: [],
-      body: [
-        ['현장명',  sensor.siteName || '—',                                                        '계측기 No.', sensor.manageNo || '—'],
-        ['설치현황', sensor.installDate ? `설치일자 (${sensor.installDate.slice(0, 10)})` : '—', '초기측정일', pdfInitDateStr],
-        ['관리자',  managerText,                                                                     '설치위치',   sensor.location?.description || '—'],
-      ],
-      theme: 'grid',
-      styles: { fontSize: 9, cellPadding: 2, font: 'NanumGothic' },
-      columnStyles: {
-        0: { fillColor: [240, 240, 240], cellWidth: 25 },
-        1: { cellWidth: 65 },
-        2: { fillColor: [240, 240, 240], cellWidth: 25 },
-        3: { cellWidth: 65 },
-      },
-    })
-
-    const currentY = (doc as any).lastAutoTable.finalY + 5
-    const chartData = [...(chartMode === 'hourly' ? measurements : dailyReadings)].sort((a: any, b: any) =>
-      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-    )
-
-    // 1차 관리기준 값 (80053은 globalInitReading ± 4)
-    let level1Lower: number | null = null
-    let level1Upper: number | null = null
-    if (sensorCode === '80053' && globalInitReading) {
-      const initVal = parseFloat(String(
-        calcMode === 'linear'
-          ? (globalInitReading.linear_value ?? globalInitReading.value)
-          : globalInitReading.value
-      ))
-      level1Lower = parseFloat((initVal - 4).toFixed(2))
-      level1Upper = parseFloat((initVal + 4).toFixed(2))
-    } else {
-      level1Lower = sensor.criteria?.level1Lower !== '' && sensor.criteria?.level1Lower != null
-        ? parseFloat(sensor.criteria.level1Lower) : null
-      level1Upper = sensor.criteria?.level1Upper !== '' && sensor.criteria?.level1Upper != null
-        ? parseFloat(sensor.criteria.level1Upper) : null
-    }
-
-    if (chartData.length > 0) {
-      const chartX = 15, chartY = currentY, chartW = pageWidth - 30, chartH = 50
-
-      doc.setDrawColor(180, 180, 180); doc.setLineWidth(0.3)
-      doc.rect(chartX, chartY, chartW, chartH)
-
-      const values = chartData.map((r: any) => parseFloat(r.value))
-      const refVals = [
-        ...(level1Lower !== null && !isNaN(level1Lower) ? [level1Lower] : []),
-        ...(level1Upper !== null && !isNaN(level1Upper) ? [level1Upper] : []),
-      ]
-      const allVals = [...values, ...refVals]
-      const minVal = Math.min(...allVals), maxVal = Math.max(...allVals)
-      const padding = (maxVal - minVal) * 0.1 || 1
-      const yMin = minVal - padding, yMax = maxVal + padding, range = yMax - yMin
-
-      // 격자선
-      doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.2)
-      for (let g = 1; g <= 3; g++) {
-        const gy = chartY + (chartH / 4) * g
-        doc.line(chartX, gy, chartX + chartW, gy)
-        doc.setFontSize(5); doc.setTextColor(120, 120, 120)
-        doc.text((yMax - (range / 4) * g).toFixed(2), chartX - 1, gy + 1, { align: 'right' })
-      }
-      doc.setFontSize(5); doc.setTextColor(120, 120, 120)
-      doc.text(yMax.toFixed(2), chartX - 1, chartY + 2, { align: 'right' })
-      doc.text(yMin.toFixed(2), chartX - 1, chartY + chartH + 1, { align: 'right' })
-
-      // 1차 하한선 (빨간색)
-      if (level1Lower !== null && !isNaN(level1Lower)) {
-        const refY = chartY + chartH - ((level1Lower - yMin) / range) * chartH
-        if (refY >= chartY && refY <= chartY + chartH) {
-          doc.setDrawColor(192, 0, 0); doc.setLineWidth(0.4)
-          let x = chartX
-          while (x < chartX + chartW) {
-            doc.line(x, refY, Math.min(x + 3, chartX + chartW), refY); x += 5
-          }
-          doc.setFontSize(5); doc.setTextColor(192, 0, 0)
-          doc.text('1차 하한기준', chartX + chartW - 1, refY - 1, { align: 'right' })
-        }
-      }
-
-      // 1차 상한선 (주황색)
-      if (level1Upper !== null && !isNaN(level1Upper)) {
-        const refY = chartY + chartH - ((level1Upper - yMin) / range) * chartH
-        if (refY >= chartY && refY <= chartY + chartH) {
-          doc.setDrawColor(224, 112, 0); doc.setLineWidth(0.4)
-          let x = chartX
-          while (x < chartX + chartW) {
-            doc.line(x, refY, Math.min(x + 3, chartX + chartW), refY); x += 5
-          }
-          doc.setFontSize(5); doc.setTextColor(224, 112, 0)
-          doc.text('1차 상한기준', chartX + chartW - 1, refY - 1, { align: 'right' })
-        }
-      }
-
-      // 데이터 선
-      doc.setDrawColor(34, 150, 100); doc.setLineWidth(0.5); doc.setTextColor(0, 0, 0)
-      for (let i = 1; i < chartData.length; i++) {
-        const x1 = chartX + ((i - 1) / (chartData.length - 1)) * chartW
-        const x2 = chartX + (i / (chartData.length - 1)) * chartW
-        const y1 = chartY + chartH - ((parseFloat(chartData[i - 1].value) - yMin) / range) * chartH
-        const y2 = chartY + chartH - ((parseFloat(chartData[i].value) - yMin) / range) * chartH
-        doc.line(x1, y1, x2, y2)
-      }
-
-      // X축 날짜 레이블
-      doc.setFontSize(5); doc.setTextColor(120, 120, 120)
-      const labelCount = Math.min(5, chartData.length)
-      for (let l = 0; l < labelCount; l++) {
-        const idx = Math.round((l / (labelCount - 1 || 1)) * (chartData.length - 1))
-        const x = chartX + (idx / (chartData.length - 1 || 1)) * chartW
-        doc.text(new Date(chartData[idx].timestamp).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }), x, chartY + chartH + 4, { align: 'center' })
-      }
-      doc.setTextColor(0, 0, 0)
-
-      // 범례 — 가운데 정렬
-      const legendY = chartY + chartH + 10
-      const centerX = chartX + chartW / 2
-      doc.setFontSize(7)
-
-      // 센서명 범례
-      const leftLegendX = centerX - 50
-      doc.setDrawColor(34, 150, 100); doc.setLineWidth(0.8)
-      doc.line(leftLegendX, legendY, leftLegendX + 8, legendY)
-      doc.setTextColor(34, 150, 100)
-      doc.text(`── ${sensor.manageNo || sensor.name}`, leftLegendX + 10, legendY + 0.5)
-
-      // 1차 하한 범례
-      if (level1Lower !== null && !isNaN(level1Lower)) {
-        const lx1 = centerX - 5
-        doc.setDrawColor(192, 0, 0); doc.setLineWidth(0.6)
-        let lx = lx1
-        while (lx < lx1 + 8) { doc.line(lx, legendY, Math.min(lx + 3, lx1 + 8), legendY); lx += 5 }
-        doc.setTextColor(192, 0, 0)
-        doc.text('1차 하한기준', lx1 + 10, legendY + 0.5)
-      }
-
-      // 1차 상한 범례
-      if (level1Upper !== null && !isNaN(level1Upper)) {
-        const lx2 = centerX + 35
-        doc.setDrawColor(224, 112, 0); doc.setLineWidth(0.6)
-        let lx = lx2
-        while (lx < lx2 + 8) { doc.line(lx, legendY, Math.min(lx + 3, lx2 + 8), legendY); lx += 5 }
-        doc.setTextColor(224, 112, 0)
-        doc.text('1차 상한기준', lx2 + 10, legendY + 0.5)
-      }
-      doc.setTextColor(0, 0, 0)
-    }
-
-    // PDF 표
-    const pdfSourceRows = dateFrom === dateTo ? measurements : dailyReadings
-    const pdfSortedRows = [...pdfSourceRows].sort((a: any, b: any) =>
-      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-    )
-    const pdfInitVal  = globalInitReading
-      ? parseFloat(String(
-          sensorCode === '80053' && calcMode === 'linear'
-            ? (globalInitReading.linear_value ?? globalInitReading.value)
-            : globalInitReading.value
-        ))
-      : (pdfSortedRows.length > 0 ? parseFloat(parseFloat(String(pdfSortedRows[0].value)).toFixed(2)) : 0)
-    const pdfInitDate = globalInitReading
-      ? new Date(globalInitReading.timestamp)
-      : (pdfSortedRows.length > 0 ? new Date(pdfSortedRows[0].timestamp) : new Date())
-
-    const tableStartY = currentY + 65
-    autoTable(doc, {
-      startY: tableStartY,
-      head: [['측정일', '경과일', `지하수위 G.L(${sensor.unit})`, '전측정대비', '초기치대비', '비고']],
-      body: pdfSortedRows.map((r: any, i: number) => {
-        const curVal   = parseFloat(parseFloat(String(r.value)).toFixed(2))
-        const prevVal  = i > 0 ? parseFloat(parseFloat(String(pdfSortedRows[i - 1].value)).toFixed(2)) : curVal
-        const prevDiff = parseFloat((curVal - prevVal).toFixed(2))
-        const initDiff = parseFloat((curVal - pdfInitVal).toFixed(2))
-        const rDate    = new Date(r.timestamp)
-        const curMid   = new Date(rDate.getFullYear(), rDate.getMonth(), rDate.getDate())
-        const initMid  = new Date(pdfInitDate.getFullYear(), pdfInitDate.getMonth(), pdfInitDate.getDate())
-        const elapsed  = Math.round((curMid.getTime() - initMid.getTime()) / 86400000)
-        const dateKey  = new Date(r.timestamp).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
-        return [
-          dateKey,
-          elapsed,
-          curVal.toFixed(2),
-          i === 0 ? '0.00' : (prevDiff > 0 ? `+${prevDiff}` : String(prevDiff)),
-          i === 0 ? '0.00' : (initDiff > 0 ? `+${initDiff}` : String(initDiff)),
-          i === 0 ? '초기치' : (remarks[dateKey] || ''),
-        ]
-      }),
-      theme: 'grid',
-      headStyles: { fillColor: [60, 80, 120], textColor: 255, fontSize: 8, font: 'NanumGothic', fontStyle: 'normal' },
-      styles: { fontSize: 8, cellPadding: 2, font: 'NanumGothic' },
-    })
-
-    doc.save(`${sensor.manageNo || sensor.name}_${dateFrom}_${dateTo}.pdf`)
+    const doc = new jsPDF('p','mm','a4'), pageWidth = doc.internal.pageSize.getWidth()
+    const fontRes=await fetch('/NanumGothic.ttf'), fontBuffer=await fontRes.arrayBuffer(), uint8=new Uint8Array(fontBuffer)
+    let bin=''; for(let i=0;i<uint8.byteLength;i++) bin+=String.fromCharCode(uint8[i])
+    const fb=btoa(bin); doc.addFileToVFS('NanumGothic.ttf',fb); doc.addFont('NanumGothic.ttf','NanumGothic','normal'); doc.addFont('NanumGothic.ttf','NanumGothic','bold'); doc.setFont('NanumGothic','normal')
+    const managers=(() => { try{return JSON.parse((sensor as any).site_managers||'[]')}catch{return []} })()
+    let mt='—'; if(managers.length>0){try{const u=await userApi.getList();mt=managers.map((m:string)=>{const f=u.find((x:any)=>x.username===m);return f?`${f.username} (${f.role})`:m}).join(', ')}catch{mt=managers.join(', ')}}
+    const pdfSourceRows=dateFrom===dateTo?measurements:dailyReadings
+    const pdfSortedRows=[...pdfSourceRows].sort((a:any,b:any)=>new Date(a.timestamp).getTime()-new Date(b.timestamp).getTime())
+    const pdfInitDate=globalInitReading?new Date(globalInitReading.timestamp):(pdfSortedRows.length>0?new Date(pdfSortedRows[0].timestamp):new Date())
+    doc.setFontSize(16); doc.text('Water Level Meter Report',pageWidth/2,20,{align:'center'})
+    autoTable(doc,{startY:28,head:[],body:[['현장명',sensor.siteName||'—','계측기 No.',sensor.manageNo||'—'],['설치현황',sensor.installDate?`설치일자 (${sensor.installDate.slice(0,10)})`:'—','초기측정일',pdfInitDate.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'})],['관리자',mt,'설치위치',sensor.location?.description||'—']],theme:'grid',styles:{fontSize:9,cellPadding:2,font:'NanumGothic'},columnStyles:{0:{fillColor:[240,240,240],cellWidth:25},1:{cellWidth:65},2:{fillColor:[240,240,240],cellWidth:25},3:{cellWidth:65}}})
+    const cy=(doc as any).lastAutoTable.finalY+5
+    autoTable(doc,{startY:cy+55,head:[['측정일','경과일',`지하수위 G.L(${sensor.unit})`,'전측정대비','초기치대비','비고']],body:pdfSortedRows.map((r:any,i:number)=>{const cv=parseFloat(parseFloat(String(r.value)).toFixed(2)),pv=i>0?parseFloat(parseFloat(String(pdfSortedRows[i-1].value)).toFixed(2)):cv,pd=parseFloat((cv-pv).toFixed(2)),id_=parseFloat((cv-initValue).toFixed(2)),rd=new Date(r.timestamp),cm=new Date(rd.getFullYear(),rd.getMonth(),rd.getDate()),im=new Date(pdfInitDate.getFullYear(),pdfInitDate.getMonth(),pdfInitDate.getDate()),el=Math.round((cm.getTime()-im.getTime())/86400000),dk=rd.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'});return[dk,el,cv.toFixed(2),i===0?'0.00':(pd>0?`+${pd}`:String(pd)),i===0?'0.00':(id_>0?`+${id_}`:String(id_)),i===0?'초기치':(remarks[dk]||'')]}),theme:'grid',headStyles:{fillColor:[60,80,120],textColor:255,fontSize:8,font:'NanumGothic',fontStyle:'normal'},styles:{fontSize:8,cellPadding:2,font:'NanumGothic'}})
+    doc.save(`${sensor.manageNo||sensor.name}_${dateFrom}_${dateTo}.pdf`)
   }
 
-  const setPreset = (days: number) => {
-    const from = new Date()
-    from.setDate(from.getDate() - (days - 1))
-    setDateFrom(from.toISOString().slice(0, 10))
-    setDateTo(today)
-    setTablePage(1)
-  }
+  // ─── 테이블 ───────────────────────────────────────────────────────────────
+  const tableData = useMemo(() => {
+    const source = chartMode === 'hourly' ? measurementsWithGaps : dailyReadings
+    return [...source].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+  }, [chartMode, measurementsWithGaps, dailyReadings])
 
-  if (loading) return (
-    <div className="flex h-full items-center justify-center bg-surface-page">
-      <p className="font-mono text-sm text-ink-muted">센서 정보 불러오는 중...</p>
-    </div>
-  )
+  const totalPages = Math.ceil(tableData.length / TABLE_PAGE_SIZE)
+  const pagedTable = tableData.slice((tablePage-1)*TABLE_PAGE_SIZE, tablePage*TABLE_PAGE_SIZE)
 
-  if (!sensor) return (
-    <div className="flex h-full items-center justify-center bg-surface-page">
-      <p className="font-mono text-sm text-ink-muted">센서를 찾을 수 없습니다.</p>
-    </div>
-  )
+  const formulaDisplay = useMemo(() => {
+    if (sensorCode !== '80053') return sensor?.formula || '—'
+    return `Linear:G*(I-X)*0.703 / Poly:(A*X²+B*X+C)*0.703`
+  }, [sensorCode, sensor])
+
+  if (loading) return <div className="flex h-full items-center justify-center bg-surface-page"><p className="font-mono text-sm text-ink-muted">센서 정보 불러오는 중...</p></div>
+  if (!sensor) return <div className="flex h-full items-center justify-center bg-surface-page"><p className="font-mono text-sm text-ink-muted">센서를 찾을 수 없습니다.</p></div>
+
+  const hasFloorPlan = !!(sensor.floor_plan_url || sensor.site_floor_plan_url)
+  const floorPlanUrl = hasFloorPlan ? `${API_BASE}/api/sensors/${sensor.id}/floor-plan-image?t=${floorPlanTimestamp}` : null
+  const statusNormal = icons.filter(i=>iconStatuses[i.key]==='normal').length
+  const statusWarning = icons.filter(i=>iconStatuses[i.key]==='warning').length
+  const statusDanger  = icons.filter(i=>iconStatuses[i.key]==='danger').length
+  const currentIconKey = sensorCode === '80053' ? `${sensor.id}:${depthLabel}` : sensor.id
 
   return (
-    <div className="flex-1 overflow-y-auto bg-surface-page">
-
-      <div className="sticky top-0 z-10 border-b border-line bg-surface-card/90 px-3 py-3 sm:px-6 backdrop-blur-md">    
-        <div className="flex items-center gap-3">
-          <Link href="/sensors" className="text-sm text-ink-muted transition-colors hover:text-ink">← 센서 목록</Link>
-          <span className="text-line-strong">/</span>
-          <h1 className="font-mono text-[15px] font-semibold text-ink">{sensor.manageNo || sensor.id}</h1>
-          <span className="font-mono text-xs text-ink-muted">{sensor.name}</span>
-          <StatusBadge status={sensor.status} />
+    <div className="flex h-full flex-col overflow-hidden bg-surface-page">
+      {/* 헤더 */}
+      <div className="shrink-0 border-b border-line bg-surface-card/90 px-4 py-2.5 backdrop-blur-md">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <Link href="/sensors" className="text-sm text-ink-muted hover:text-ink">← 센서 목록</Link>
+            <span className="text-line-strong">/</span>
+            <h1 className="font-mono text-[15px] font-semibold text-ink">{sensor.manageNo || sensor.id}</h1>
+            <span className="font-mono text-xs text-ink-muted">{sensor.nameAbbr}</span>
+            <StatusBadge status={sensor.status} />
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setPrintOpen(true)} className="flex items-center gap-1 rounded-md border border-line bg-surface-card px-3 py-1.5 font-mono text-xs text-ink-muted hover:border-brand/40 hover:text-brand">📊 Excel / PDF</button>
+            <button onClick={() => setQrOpen(true)} className="flex items-center gap-1 rounded-md border border-line bg-surface-card px-3 py-1.5 font-mono text-xs text-ink-muted hover:border-brand/40 hover:text-brand">QR</button>
+          </div>
         </div>
       </div>
 
-      <div ref={printRef} style={{ display: 'none' }} />
+      {/* 3단 레이아웃 */}
+      <div className="flex flex-1 min-h-0">
 
-      <div className="space-y-5 p-3 sm:p-6">
-
-        {sensor.status === 'danger' && (
-          <div className="rounded-xl border border-sensor-dangerborder bg-sensor-dangerbg px-5 py-4 danger-flash">
-            <p className="flex items-center gap-2 font-semibold text-sensor-dangertext">
-              <span className="pulse-danger" />위험 — 임계값 초과 감지
-            </p>
-            <p className="mt-1 text-sm text-sensor-dangertext/80">
-              현재값 <strong>{sensor.currentValue} {sensor.unit}</strong>이(가) 위험 임계값
-              <strong> {thresholdDanger} {sensor.unit}</strong>을 초과하였습니다. 즉시 현장 점검을 실시하세요.
-            </p>
-          </div>
-        )}
-        {sensor.status === 'warning' && (
-          <div className="rounded-xl border border-sensor-warningborder bg-sensor-warningbg px-5 py-4">
-            <p className="flex items-center gap-2 font-semibold text-sensor-warningtext">⚠ 주의 — 모니터링 강화 필요</p>
-            <p className="mt-1 text-sm text-sensor-warningtext/80">
-              현재값 <strong>{sensor.currentValue} {sensor.unit}</strong>이(가) 주의 임계값에 도달했습니다.
-            </p>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-          <div className="geo-card p-5">
-            <h2 className="mb-4 text-sm font-semibold text-ink">센서 정보</h2>
-            <dl className="space-y-3 text-sm">
+        {/* 좌: 센서 정보 */}
+        <div className="hidden lg:flex w-52 shrink-0 flex-col border-r border-line bg-surface-card overflow-y-auto">
+          <div className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xs font-semibold text-ink">센서 정보</h2>
+              <StatusBadge status={sensor.status} />
+            </div>
+            <dl className="space-y-2">
               {[
-                { label: '관리번호',  value: sensor.manageNo || '—' },
-                { label: '센서명',    value: sensor.name },
-                { label: '현장',      value: sensor.siteName || '—' },
-                { label: '설치 위치', value: sensor.location.description || '—' },
-                { label: '설치일',    value: sensor.installDate ? new Date(sensor.installDate).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '—' },
-                { label: '측정단위',  value: sensor.unit || '—' },
-                { label: '측정주기',  value: sensor.operation?.measureCycle || '—' },
-                { label: '계산식',    value: sensor.formula || '—' },
-                { label: '1차 상한',  value: sensor.nameAbbr === '80053' && globalInitReading
-                  ? (() => {
-                      const init = parseFloat(String(calcMode === 'linear' ? (globalInitReading.linear_value ?? globalInitReading.value) : globalInitReading.value))
-                      return `${(init + 4).toFixed(2)} ${sensor.unit || ''} (초기값 ${init.toFixed(2)} + 4${sensor.unit || ''})`.trim()
-                    })()
-                  : sensor.criteria?.level1Upper ? `${sensor.criteria.level1Upper} ${sensor.criteria.criteriaUnit || ''}`.trim() : '—' },
-                { label: '1차 하한',  value: sensor.nameAbbr === '80053' && globalInitReading
-                  ? (() => {
-                      const init = parseFloat(String(calcMode === 'linear' ? (globalInitReading.linear_value ?? globalInitReading.value) : globalInitReading.value))
-                      return `${(init - 4).toFixed(2)} ${sensor.unit || ''} (초기값 ${init.toFixed(2)} - 4${sensor.unit || ''})`.trim()
-                    })()
-                  : sensor.criteria?.level1Lower ? `${sensor.criteria.level1Lower} ${sensor.criteria.criteriaUnit || ''}`.trim() : '—' },
-                { label: '2차 상한',  value: sensor.criteria?.level2Upper ? `${sensor.criteria.level2Upper} ${sensor.criteria.criteriaUnit || ''}`.trim() : '—' },
-                { label: '2차 하한',  value: sensor.criteria?.level2Lower ? `${sensor.criteria.level2Lower} ${sensor.criteria.criteriaUnit || ''}`.trim() : '—' },
-                ...(!isMultiMonitor ? [{ label: '마지막 수신', value: `${formatTimestamp(sensor.lastUpdated)} (${getRelativeTime(sensor.lastUpdated)})` }] : []),
-              ].map(item => (
-                <div key={item.label} className="flex items-start gap-3">
-                  <dt className="w-28 shrink-0 font-mono text-xs text-ink-muted">{item.label}</dt>
-                  <dd className="font-medium text-ink break-all">{item.value}</dd>
+                { l: '관리번호', v: sensor.manageNo || '—' },
+                { l: '센서명',   v: sensor.name },
+                { l: '현장',     v: sensor.siteName || '—' },
+                { l: '설치 위치', v: sensor.location.description || '—' },
+                { l: '설치일',   v: sensor.installDate ? new Date(sensor.installDate).toLocaleDateString('ko-KR') : '—' },
+                { l: '측정단위', v: sensor.unit || '—' },
+                { l: '측정주기', v: '01:00' },
+              ].map(({ l, v }) => (
+                <div key={l} className="flex gap-1">
+                  <dt className="w-16 shrink-0 font-mono text-[10px] text-ink-muted">{l}</dt>
+                  <dd className="flex-1 font-mono text-[10px] text-ink break-all">{v}</dd>
                 </div>
               ))}
-
-              {/* 계산식 상수값 표시 */}
-              {sensor.formulaParams && Object.values(sensor.formulaParams).some((v: any) => v) && (
-                <div className="mt-2 rounded-lg border border-line bg-surface-subtle px-3 py-2.5">
-                  <p className="mb-2 font-mono text-[10px] font-semibold uppercase tracking-wider text-ink-muted">계산식 상수값</p>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                    {[
-                      { key: 'A', val: sensor.formulaParams.coeffA },
-                      { key: 'B', val: sensor.formulaParams.coeffB },
-                      { key: 'C', val: sensor.formulaParams.coeffC },
-                      { key: 'D', val: sensor.formulaParams.coeffD },
-                      { key: 'E', val: sensor.formulaParams.coeffE },
-                      { key: 'G(Linear)', val: sensor.formulaParams.coeffG },
-                      { key: 'I (초기값)', val: sensor.formulaParams.initVal },
-                      { key: 'Tc (현재온도)', val: sensor.formulaParams.currentTemp },
-                      { key: 'Tco (온도계수)', val: sensor.formulaParams.tempCoeff },
-                      { key: 'Ti (초기온도)', val: sensor.formulaParams.initTemp },
-                      { key: 'R (외부참조)', val: sensor.formulaParams.extRef },
-                    ].filter(item => item.val).map(item => (
-                      <div key={item.key} className="flex items-center gap-2">
-                        <span className="font-mono text-[10px] text-ink-muted w-24 shrink-0">{item.key}</span>
-                        <span className="font-mono text-[11px] font-medium text-ink">{item.val}</span>
-                      </div>
-                    ))}
-                  </div>
+              <div className="flex gap-1">
+                <dt className="w-16 shrink-0 font-mono text-[10px] text-ink-muted">계산식</dt>
+                <dd className="flex-1 font-mono text-[10px] text-ink break-all">{formulaDisplay}</dd>
+              </div>
+              {level1Upper !== null && (
+                <div className="flex gap-1">
+                  <dt className="w-16 shrink-0 font-mono text-[10px] text-ink-muted">1차 상한</dt>
+                  <dd className="flex-1 font-mono text-[10px] text-ink">{(level1Upper as number).toFixed(2)} m{sensorCode==='80053'&&<span className="text-ink-muted"> (+4m)</span>}</dd>
                 </div>
               )}
-
-              {(sensor.criteria?.noAlarm || sensor.criteria?.noSms) && (
-                <div className="flex gap-2 pt-1">
-                  {sensor.criteria.noAlarm && <span className="rounded-full border border-sensor-warningborder bg-sensor-warningbg px-2.5 py-0.5 font-mono text-[11px] text-sensor-warningtext">알람 미적용</span>}
-                  {sensor.criteria.noSms   && <span className="rounded-full border border-alarm-infoborder bg-alarm-infobg px-2.5 py-0.5 font-mono text-[11px] text-alarm-infotext">No SMS</span>}
+              {level1Lower !== null && (
+                <div className="flex gap-1">
+                  <dt className="w-16 shrink-0 font-mono text-[10px] text-ink-muted">1차 하한</dt>
+                  <dd className="flex-1 font-mono text-[10px] text-ink">{(level1Lower as number).toFixed(2)} m{sensorCode==='80053'&&<span className="text-ink-muted"> (-4m)</span>}</dd>
                 </div>
               )}
+              <div className="flex gap-1">
+                <dt className="w-16 shrink-0 font-mono text-[10px] text-ink-muted">마지막 수신</dt>
+                <dd className="flex-1 font-mono text-[10px] text-ink">{sensor.lastUpdated?new Date(sensor.lastUpdated).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'—'}</dd>
+              </div>
             </dl>
-          </div>
 
-          <div className="geo-card p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-ink">계측계획 평면도</h2>
-              {!isMultiMonitor && (
-                <label className="cursor-pointer rounded-md border border-line bg-surface-card px-2.5 py-1 font-mono text-[10px] text-ink-muted transition-colors hover:border-brand/40 hover:text-brand">
-                  📎 {sensor.floor_plan_url || sensor.site_floor_plan_url ? '변경' : '업로드'}
-                  <input type="file" accept="image/jpeg,image/png,image/gif,image/webp,application/pdf" className="hidden"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0]
-                      if (!file) return
-                      const formData = new FormData()
-                      formData.append('file', file)
-                      try {
-                        const token = localStorage.getItem('gm_token')
-                        const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://yuhyun-sensor-monitoring-back.onrender.com'
-                        const res = await fetch(
-                          `${apiBase}/api/sensors/${sensor.id}/floor-plan`,
-                          { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData }
-                        )
-                        const data = await res.json()
-                        if (data.success) {
-                          setSensor((prev: any) => ({ ...prev, floor_plan_url: 'exists', site_floor_plan_url: 'exists' }))
-                          setFloorPlanTimestamp(Date.now())
-                        } else {
-                          alert('업로드 실패: ' + (data.error || '알 수 없는 오류'))
-                        }
-                      } catch { alert('업로드 중 오류가 발생했습니다.') }
-                    }}
-                  />
-                </label>
-              )}
-            </div>
-            {(() => {
-              const hasFloorPlan = !!(sensor.floor_plan_url || sensor.site_floor_plan_url)
-              const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://yuhyun-sensor-monitoring-back.onrender.com'
-              const floorPlanUrl = hasFloorPlan
-                ? `${API_BASE}/api/sensors/${sensor.id}/floor-plan-image?t=${floorPlanTimestamp}`
-                : null
-              return floorPlanUrl ? (
-                <div className="rounded-xl border border-line overflow-hidden bg-surface-subtle">
-                  <img
-                    src={floorPlanUrl}
-                    alt="계측계획 평면도"
-                    className="w-full object-contain"
-                    style={{ maxHeight: '400px' }}
-                  />
-                </div>
-              ) : (
-                <div className="rounded-xl border border-dashed border-line bg-surface-subtle flex flex-col items-center justify-center gap-3 py-16">
-                  <span className="text-4xl">🗺</span>
-                  <p className="font-mono text-sm text-ink-muted">평면도 이미지 준비 중</p>
-                  <p className="font-mono text-[10px] text-ink-muted">PNG, JPG, PDF 업로드 가능</p>
-                  {!isMultiMonitor && (
-                    <label className="cursor-pointer rounded-lg border border-brand/40 bg-brand/10 px-4 py-2 font-mono text-[11px] text-brand transition-colors hover:bg-brand/20">
-                      📎 평면도 업로드
-                      <input type="file" accept="image/jpeg,image/png,image/gif,image/webp,application/pdf" className="hidden"
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0]
-                          if (!file) return
-                          const formData = new FormData()
-                          formData.append('file', file)
-                          try {
-                            const token = localStorage.getItem('gm_token')
-                            const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://yuhyun-sensor-monitoring-back.onrender.com'
-                            const res = await fetch(
-                              `${apiBase}/api/sensors/${sensor.id}/floor-plan`,
-                              { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData }
-                            )
-                            const data = await res.json()
-                            if (data.success) {
-                              setSensor((prev: any) => ({ ...prev, floor_plan_url: 'exists', site_floor_plan_url: 'exists' }))
-                              setFloorPlanTimestamp(Date.now())
-                            } else {
-                              alert('업로드 실패: ' + (data.error || '알 수 없는 오류'))
-                            }
-                          } catch { alert('업로드 중 오류가 발생했습니다.') }
-                        }}
-                      />
-                    </label>
-                  )}
-                </div>
-              )
-            })()}
-          </div>
-        </div>
-
-        <div className="geo-card p-5">
-          {/* 날짜 선택 + 출력/QR 버튼 */}
-          <div className="mb-4 flex flex-wrap items-center gap-2 border-b border-line pb-4">
-            <div className="flex gap-1">
-              {[
-                { label: '오늘',  days: 1  },
-                { label: '7일',   days: 7  },
-                { label: '30일',  days: 30 },
-                { label: '90일',  days: 90 },
-              ].map(p => (
-                <button key={p.label} onClick={() => setPreset(p.days)}
-                  className={[
-                    'rounded-md px-2.5 py-1 font-mono text-[11px] font-medium transition-all border',
-                    dateFrom === new Date(new Date().setDate(new Date().getDate() - p.days + 1)).toISOString().slice(0,10) && dateTo === today
-                      ? 'border-brand/40 bg-brand/10 text-brand'
-                      : 'border-line text-ink-muted hover:border-line-strong hover:text-ink-sub',
-                  ].join(' ')}>
-                  {p.label}
-                </button>
-              ))}
-            </div>
-
-            <span className="text-ink-muted">|</span>
-
-            <div className="flex items-center gap-1.5 rounded-lg border border-line bg-surface-card px-3 py-1 shadow-card">
-              <span className="font-mono text-[10px] text-ink-muted">시작</span>
-              <input type="date" value={dateFrom} max={today}
-                onChange={e => { setDateFrom(e.target.value); setTablePage(1) }}
-                className="font-mono text-xs text-ink outline-none bg-transparent" />
-            </div>
-            <span className="font-mono text-xs text-ink-muted">~</span>
-            <div className={[
-              'flex items-center gap-1.5 rounded-lg border px-3 py-1 shadow-card',
-              !isValidRange ? 'border-sensor-dangerborder bg-sensor-dangerbg' : 'border-line bg-surface-card',
-            ].join(' ')}>
-              <span className="font-mono text-[10px] text-ink-muted">종료</span>
-              <input type="date" value={dateTo} min={dateFrom} max={today}
-                onChange={e => { setDateTo(e.target.value); setTablePage(1) }}
-                className="font-mono text-xs text-ink outline-none bg-transparent" />
-            </div>
-
-            {isValidRange && (
-              <span className="rounded-full border border-line bg-surface-subtle px-2.5 py-1 font-mono text-[11px] text-ink-muted">
-                {dayCount}일 · {readings.length}개 포인트
-              </span>
-            )}
-            {!isValidRange && (
-              <span className="font-mono text-[11px] text-sensor-dangertext">종료일이 시작일보다 앞설 수 없습니다.</span>
-            )}
-
-            <div className="ml-auto flex items-center gap-2 sm:gap-3">
-              <button onClick={() => { setPrintConfig(c => ({ ...c, dateFrom, dateTo })); setPrintOpen(true) }}
-                className="flex items-center gap-1.5 rounded-lg border border-line bg-surface-card px-3 py-1.5 font-mono text-xs sm:text-sm sm:px-4 text-ink-sub shadow-card transition-colors hover:border-brand/40 hover:bg-brand/10 hover:text-brand">
-                📊 <span className="hidden sm:inline">Excel / </span>PDF
-              </button>
-              <button onClick={() => setQrOpen(true)}
-                className="flex items-center gap-1.5 rounded-lg border border-line bg-surface-card px-3 py-1.5 font-mono text-xs sm:text-sm sm:px-4 text-ink-sub shadow-card transition-colors hover:border-brand/40 hover:bg-brand/10 hover:text-brand">
-                ⊞ QR
-              </button>
-            </div>
-          </div>
-
-          <div className="mb-4 flex flex-col gap-2">
-            {/* 제목 */}
-            <div>
-              <h2 className="text-sm font-semibold text-ink">
-                {chartMode === 'hourly' ? '시간별' : '일별'} 트렌드
-                {isToday ? ' — 오늘' : ` — ${dateFrom} ~ ${dateTo}`}
-              </h2>
-              <p className="mt-0.5 font-mono text-[10px] text-ink-muted">
-                {isValidRange
-                  ? `${dayCount}일 · ${chartMode === 'hourly' ? readings.length : dailyReadings.length}개 포인트`
-                  : '날짜 범위를 확인해 주세요.'}
-              </p>
-            </div>
-
-            {/* 버튼 1줄 */}
-            <div className="flex flex-wrap items-center gap-2">
-              {sensor.nameAbbr === '80053' && (
-                <>
-                  {/* depth 버튼 */}
-                  <div className="flex gap-1 rounded-lg border border-line bg-surface-subtle p-1">
-                    {(['1', '2', '3'] as const).map(d => (
-                      <button key={d} onClick={() => setDepthLabel(d)}
-                        className={['rounded-md px-3 py-1.5 font-mono text-[13px] font-medium transition-all',
-                          depthLabel === d ? 'bg-surface-card text-brand shadow-card' : 'text-ink-muted hover:text-ink-sub'].join(' ')}>
-                        {d}번 수위계
-                      </button>
-                    ))}
-                  </div>
-                  {/* Linear/Poly 버튼 */}
-                  <div className="flex gap-1 rounded-lg border border-line bg-surface-subtle p-1">
-                    {(['linear', 'poly'] as const).map(mode => (
-                      <button key={mode} onClick={() => setCalcMode(mode)}
-                        className={['rounded-md px-3 py-1.5 font-mono text-[13px] font-medium transition-all',
-                          calcMode === mode ? 'bg-surface-card text-brand shadow-card' : 'text-ink-muted hover:text-ink-sub'].join(' ')}>
-                        {mode === 'poly' ? 'Polynomial' : 'Linear (메인)'}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-              {/* 시간별/일별 버튼 */}
-              <div className="flex gap-1 rounded-lg border border-line bg-surface-subtle p-1">
-                {(['hourly', 'daily'] as const).map(mode => (
-                  <button key={mode} onClick={() => setChartMode(mode)}
-                    className={['rounded-md px-3 py-1.5 font-mono text-[13px] font-medium transition-all',
-                      chartMode === mode ? 'bg-surface-card text-brand shadow-card' : 'text-ink-muted hover:text-ink-sub'].join(' ')}>
-                    {mode === 'hourly' ? '시간별' : '일별'}
-                  </button>
-                ))}
-              </div>
-              {/* 이전/다음 버튼 */}
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => {
-                    const diff = dateDiffDays(dateFrom, dateTo)
-                    const newTo   = new Date(dateFrom); newTo.setDate(newTo.getDate() - 1)
-                    const newFrom = new Date(newTo);    newFrom.setDate(newFrom.getDate() - diff)
-                    setDateFrom(newFrom.toISOString().slice(0, 10))
-                    setDateTo(newTo.toISOString().slice(0, 10))
-                  }}
-                  className="rounded-md px-2.5 py-1.5 font-mono text-sm text-ink-muted border border-line transition-colors hover:bg-surface-subtle hover:text-ink">
-                  ← 이전
-                </button>
-                <button
-                  disabled={dateTo >= today}
-                  onClick={() => {
-                    const diff = dateDiffDays(dateFrom, dateTo)
-                    const newFrom = new Date(dateTo); newFrom.setDate(newFrom.getDate() + 1)
-                    const newTo   = new Date(newFrom); newTo.setDate(newTo.getDate() + diff)
-                    const capTo = newTo.toISOString().slice(0, 10) > today ? today : newTo.toISOString().slice(0, 10)
-                    setDateFrom(newFrom.toISOString().slice(0, 10))
-                    setDateTo(capTo)
-                  }}
-                  className="rounded-md px-2.5 py-1.5 font-mono text-sm text-ink-muted border border-line transition-colors hover:bg-surface-subtle hover:text-ink disabled:opacity-30 disabled:cursor-not-allowed">
-                  다음 →
-                </button>
-              </div>
-            </div>
-
-            {/* 보정값 — 별도 줄 */}
-            {sensor.nameAbbr === '80053' && (
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-mono text-xs sm:text-sm text-ink-muted shrink-0">보정값 ({depthLabel}번 수위계)</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  min="-100"
-                  max="100"
-                  value={correctionInput[depthLabel] ?? (correctionParams[depthLabel] !== undefined && correctionParams[depthLabel] !== 0 ? String(correctionParams[depthLabel]) : '')}
-                  onChange={e => setCorrectionInput(prev => ({ ...prev, [depthLabel]: e.target.value }))}
-                  onWheel={e => e.currentTarget.blur()}
-                  className="w-24 rounded border border-line bg-surface-card px-2 py-1.5 font-mono text-sm text-ink text-right focus:outline-none focus:ring-1 focus:ring-brand/40"
-                />
-                <span className="font-mono text-xs sm:text-sm text-ink-muted shrink-0">{sensor.unit}</span>
-                <button
-                  disabled={correctionSaving}
-                  onClick={async () => {
-                    const inputStr = correctionInput[depthLabel] ?? ''
-                    const val = inputStr === '' ? 0 : parseFloat(inputStr)
-                    if (isNaN(val) || val < -100 || val > 100) {
-                      alert('보정값은 -100 ~ 100 사이의 숫자만 입력 가능합니다.')
-                      return
-                    }
-                    const next = { ...correctionParams, [depthLabel]: val }
-                    setCorrectionSaving(true)
-                    try {
-                      await sensorApi.updateInfo(Number(id), { correction_params: next })
-                      setCorrectionParams(next)
-                      setCorrectionInput(prev => ({ ...prev, [depthLabel]: String(val) }))
-                    } catch { /* toast 필요시 추가 */ }
-                    finally { setCorrectionSaving(false) }
-                  }}
-                  className="rounded-md bg-brand px-3 py-1.5 font-mono text-[13px] text-white disabled:opacity-50">
-                  {correctionSaving ? '저장 중…' : '적용'}
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* 계측 현황 요약 */}
-          <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div className="rounded-xl border border-line bg-surface-subtle py-3 px-2 text-center">
-              <p className="font-mono text-[10px] text-ink-muted">
-                {sensor.nameAbbr === '80053' ? '기간 내 최신값' : '현재 측정값'}
-              </p>
-              <p className={`mt-1 font-mono text-base sm:text-lg font-semibold ${valueColorClass}`}>
-                {sensor.status === 'offline' ? '—'
-                  : measurements.length > 0 && sensor.nameAbbr === '80053'
-                  ? parseFloat(String(measurements[0].value)).toFixed(2)
-                    : sensor.currentValue}
-                <span className="ml-1 text-xs font-normal text-ink-muted">{sensor.unit}</span>
-              </p>
-            </div>
-            {globalInitReading && (
-              <div className="rounded-xl border border-line bg-surface-subtle py-3 px-2 text-center">
-                <p className="font-mono text-[10px] text-ink-muted">초기측정값</p>
-                <p className="mt-1 font-mono text-lg font-semibold text-ink">
-                  {parseFloat(String(
-                    sensor.nameAbbr === '80053' && calcMode === 'linear'
-                      ? (globalInitReading.linear_value ?? globalInitReading.value)
-                      : globalInitReading.value
-                  )).toFixed(2)}
-                  <span className="ml-1 text-xs font-normal text-ink-muted">{sensor.unit}</span>
-                </p>
-                <p className="font-mono text-[9px] text-ink-muted">
-                  {new Date(globalInitReading.timestamp).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })}
-                  {' '}{new Date(globalInitReading.timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
-                </p>
-              </div>
-            )}
-            {measurements.length > 0 && sensor.status !== 'offline' && (
-              <>
-                <div className="rounded-xl border border-line bg-surface-subtle py-3 px-2 text-center">
-                  <p className="font-mono text-[10px] text-ink-muted">최솟값</p>
-                  <p className="mt-1 font-mono text-lg font-semibold text-sensor-normal">
-                    {Math.min(...measurements.map((r: any) => parseFloat(r.value))).toFixed(2)}
-                    <span className="ml-1 text-xs font-normal text-ink-muted">{sensor.unit}</span>
-                  </p>
-                </div>
-                <div className="rounded-xl border border-line bg-surface-subtle py-3 px-2 text-center">
-                  <p className="font-mono text-[10px] text-ink-muted">최댓값</p>
-                  <p className={`mt-1 font-mono text-lg font-semibold ${sensor.status === 'danger' ? 'text-sensor-danger' : sensor.status === 'warning' ? 'text-sensor-warning' : 'text-ink'}`}>
-                    {Math.max(...measurements.map((r: any) => parseFloat(r.value))).toFixed(2)}
-                    <span className="ml-1 text-xs font-normal text-ink-muted">{sensor.unit}</span>
-                  </p>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* 게이지 */}
-          {sensor.status !== 'offline' && (
-            <div className="mb-4 space-y-1.5">
-              <div className="relative h-3 overflow-hidden rounded-full bg-surface-muted">
-                <div className="absolute top-0 h-full bg-sensor-warning/20"
-                  style={{ left: `${(thresholdWarning / maxScale) * 100}%`, width: `${((thresholdDanger - thresholdWarning) / maxScale) * 100}%` }} />
-                <div className="absolute top-0 h-full bg-sensor-danger/20"
-                  style={{ left: `${(thresholdDanger / maxScale) * 100}%`, right: 0 }} />
-                <div className={['absolute top-0 h-full w-1 rounded-full shadow-sm transition-all duration-500',
-                  overThreshold ? 'bg-sensor-danger' : nearThreshold ? 'bg-sensor-warning' : 'bg-sensor-normal'].join(' ')}
-                  style={{ left: `${Math.min((sensor.currentValue / maxScale) * 100, 97)}%` }} />
-              </div>
-              <div className="flex justify-between font-mono text-[10px]">
-                <span className="text-sensor-warningtext">주의: {thresholdWarning} {sensor.unit}</span>
-                <span className="text-sensor-dangertext">위험: {thresholdDanger} {sensor.unit}</span>
-              </div>
-            </div>
-          )}
-
-          {(chartMode === 'hourly' ? measurements : dailyReadings).length > 0 ? (
-            <div key={`${dateFrom}-${dateTo}-${chartMode}`} className="animate-fade-in-up" ref={chartRef}>
-              {sensor.nameAbbr === '80053' && (
-                <p className="mb-2 font-mono text-[10px] text-ink-muted">
-                  ※ depth_label {depthLabel}번 기준 데이터입니다. ({calcMode === 'poly' ? 'Polynomial' : 'Linear'} 계산값)
-                </p>
-              )}
-              <SensorTrendChart
-                sensor={sensor}
-                readings={chartMode === 'hourly' ? measurements : dailyReadings}
-                initValue={globalInitReading
-                  ? parseFloat(String(calcMode === 'linear'
-                    ? (globalInitReading.linear_value ?? globalInitReading.value)
-                    : globalInitReading.value))
-                  : undefined}
-              />
-            </div>
-          ) : (
-            <div className="flex h-[220px] items-center justify-center rounded-xl bg-surface-subtle">
-              <p className="font-mono text-sm text-ink-muted">
-                {!isValidRange ? '날짜 범위가 올바르지 않습니다.' : '데이터가 없습니다.'}
-              </p>
-            </div>
-          )}
-        </div>
-
-        {(() => {
-          const tableData = chartMode === 'hourly' ? measurements : dailyTableData
-          const totalPages = Math.max(1, Math.ceil(tableData.length / TABLE_PAGE_SIZE))
-          const safePage = Math.min(tablePage, totalPages)
-          const pageData = tableData.slice((safePage - 1) * TABLE_PAGE_SIZE, safePage * TABLE_PAGE_SIZE)
-          return (
-            <div className="geo-card overflow-hidden">
-              <div className="flex flex-col gap-2 border-b border-line px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h2 className="text-sm font-semibold text-ink">측정 데이터</h2>
-                  <p className="font-mono text-[10px] text-ink-muted">
-                    {isValidRange
-                      ? `${dateFrom} ~ ${dateTo} · 전체 ${tableData.length}건 · ${TABLE_PAGE_SIZE}건씩 표시`
-                      : '날짜 범위를 확인해 주세요.'}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex gap-1 rounded-lg border border-line bg-surface-subtle p-1">
-                    {(['hourly', 'daily'] as const).map(mode => (
-                      <button key={mode} onClick={() => { setChartMode(mode); setTablePage(1) }}
-                        className={['rounded-md px-3 py-1 font-mono text-[11px] font-medium transition-all',
-                          chartMode === mode ? 'bg-surface-card text-brand shadow-card' : 'text-ink-muted hover:text-ink-sub'].join(' ')}>
-                        {mode === 'hourly' ? '시간별' : '일별'}
-                      </button>
-                    ))}
-                  </div>
-                  {tableData.length > TABLE_PAGE_SIZE && (
-                    <div className="flex items-center gap-2">
-                      <button
-                        disabled={safePage <= 1}
-                        onClick={() => setTablePage(p => Math.max(1, p - 1))}
-                        className="rounded-md border border-line px-2.5 py-1 font-mono text-xs text-ink-muted transition-colors hover:bg-surface-subtle hover:text-ink disabled:opacity-30 disabled:cursor-not-allowed">
-                        ←
-                      </button>
-                      <span className="font-mono text-xs text-ink-muted">
-                        <span className="font-semibold text-ink">{safePage}</span> / {totalPages}
-                      </span>
-                      <button
-                        disabled={safePage >= totalPages}
-                        onClick={() => setTablePage(p => Math.min(totalPages, p + 1))}
-                        className="rounded-md border border-line px-2.5 py-1 font-mono text-xs text-ink-muted transition-colors hover:bg-surface-subtle hover:text-ink disabled:opacity-30 disabled:cursor-not-allowed">
-                        →
-                      </button>
+            {sensorCode === '80053' && (
+              <div className="mt-3 rounded-lg border border-line bg-surface-subtle p-2">
+                <p className="mb-1.5 font-mono text-[9px] font-semibold text-ink-muted uppercase tracking-wider">계산식 상수값</p>
+                <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+                  {[{k:'A',v:sensor.formulaParams?.coeffA},{k:'B',v:sensor.formulaParams?.coeffB},{k:'C',v:sensor.formulaParams?.coeffC},{k:'G(Linear)',v:sensor.formulaParams?.coeffG},{k:'I (초기값)',v:sensor.formulaParams?.initVal}].filter(x=>x.v).map(({k,v})=>(
+                    <div key={k} className="flex gap-1">
+                      <span className="font-mono text-[10px] text-ink-muted w-14 shrink-0">{k}</span>
+                      <span className="font-mono text-[10px] text-ink">{v}</span>
                     </div>
-                  )}
-                </div>
-              </div>
-
-              {chartMode === 'daily' && (
-                <p className="px-5 pt-3 font-mono text-[10px] text-ink-muted">
-                  ※ 초기값은 첫 번째 측정값 기준입니다.
-                </p>
-              )}
-
-              <div className="overflow-x-auto">
-                {tableData.length > 0 ? (
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-line bg-surface-subtle">
-                        {chartMode === 'hourly'
-                          ? ['날짜', '시각', '측정값', '상태'].map(h => (
-                              <th key={h} className="px-2 sm:px-4 py-2.5 text-left font-mono text-[10px] font-semibold uppercase tracking-wide text-ink-muted">{h}</th>
-                            ))
-                          : ['측정일', '경과일', `지하수위 G.L(${sensor.unit})`, '전측정대비', '초기치대비', '비고'].map(h => (
-                              <th key={h} className="px-2 sm:px-4 py-2.5 text-left font-mono text-[10px] font-semibold uppercase tracking-wide text-ink-muted">{h}</th>
-                            ))
-                        }
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-line">
-                      {pageData.map((r: any, i: number) => {
-                        const dt = new Date(r.timestamp)
-                        const rowCls =
-                          r.status === 'danger'  ? 'bg-sensor-dangerbg/30'  :
-                          r.status === 'warning' ? 'bg-sensor-warningbg/30' : ''
-                        return (
-                          <tr key={i} className={`transition-colors hover:bg-surface-subtle ${rowCls}`}>
-                            {chartMode === 'hourly' ? (
-                              <>
-                                <td className="px-2 sm:px-4 py-2 font-mono text-xs text-ink-muted whitespace-nowrap">
-                                  {dt.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })}
-                                </td>
-                                <td className="px-2 sm:px-4 py-2 font-mono text-xs text-ink-muted whitespace-nowrap">
-                                  {dt.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
-                                </td>
-                                <td className={`px-4 py-2 font-mono text-sm font-medium ${
-                                  r.status === 'danger' ? 'text-sensor-danger' :
-                                  r.status === 'warning' ? 'text-sensor-warning' : 'text-ink'}`}>
-                                  {r.value} {sensor.unit}
-                                </td>
-                                <td className="px-4 py-2">
-                                  <StatusBadge status={r.status} size="sm" />
-                                </td>
-                              </>
-                            ) : (
-                              <>
-                                <td className="px-4 py-2 font-mono text-xs text-ink-muted">
-                                  {dt.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })}
-                                </td>
-                                <td className="px-4 py-2 font-mono text-xs text-ink-muted text-center">
-                                  {r.elapsed}
-                                </td>
-                                <td className={`px-4 py-2 font-mono text-sm font-medium ${
-                                  r.status === 'danger' ? 'text-sensor-danger' :
-                                  r.status === 'warning' ? 'text-sensor-warning' : 'text-ink'}`}>
-                                  {parseFloat(r.value).toFixed(2)}
-                                </td>
-                                <td className={`px-4 py-2 font-mono text-xs ${r.prevDiff > 0 ? 'text-sensor-danger' : r.prevDiff < 0 ? 'text-sensor-normal' : 'text-ink-muted'}`}>
-                                  {r.prevDiff > 0 ? '+' : ''}{r.prevDiff}
-                                </td>
-                                <td className={`px-4 py-2 font-mono text-xs ${r.initDiff > 0 ? 'text-sensor-danger' : r.initDiff < 0 ? 'text-sensor-normal' : 'text-ink-muted'}`}>
-                                  {r.initDiff > 0 ? '+' : ''}{r.initDiff}
-                                </td>
-                                <td className="px-4 py-2">
-                                  <input
-                                    type="text"
-                                    value={remarks[r.dateKey] || ''}
-                                    onChange={e => setRemarks(prev => ({ ...prev, [r.dateKey]: e.target.value }))}
-                                    placeholder="비고 입력"
-                                    className="w-full rounded border border-line bg-transparent px-2 py-1 font-mono text-xs text-ink outline-none focus:border-brand/50"
-                                  />
-                                </td>
-                              </>
-                            )}
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                ) : (
-                  <div className="py-10 text-center font-mono text-sm text-ink-muted">
-                    {!isValidRange ? '날짜 범위가 올바르지 않습니다.' : '데이터가 없습니다.'}
-                  </div>
-                )}
-              </div>
-
-              {isValidRange && totalPages > 1 && totalPages <= 10 && (
-                <div className="flex items-center justify-center gap-1.5 border-t border-line py-3">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-                    <button key={p} onClick={() => setTablePage(p)}
-                      className={[
-                        'h-2 rounded-full transition-all duration-200',
-                        p === safePage ? 'w-5 bg-brand' : 'w-2 bg-line-strong hover:bg-ink-muted',
-                      ].join(' ')} />
                   ))}
                 </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 중: 평면도 */}
+        <div className="flex flex-1 flex-col border-r border-line min-w-0">
+          <div className="shrink-0 flex items-center justify-between border-b border-line px-3 py-2">
+            <div className="flex items-center gap-2">
+              <h2 className="text-xs font-semibold text-ink">계측계획 평면도</h2>
+              <span className="font-mono text-[10px] text-ink-muted hidden sm:inline">(센서를 드래그하여 이동)</span>
+            </div>
+            {!isMultiMonitor && (
+              <div className="flex items-center gap-1">
+                <button onClick={() => setShowAddIcon(true)} className="flex items-center gap-1 rounded-md border border-brand/30 bg-brand/10 px-2.5 py-1 font-mono text-[10px] text-brand hover:bg-brand/20">+ 추가</button>
+                <label className="cursor-pointer rounded-md border border-line bg-surface-card px-2 py-1 font-mono text-[10px] text-ink-muted hover:border-brand/40 hover:text-brand">
+                  📎 {hasFloorPlan ? '변경' : '업로드'}
+                  <input type="file" accept="image/jpeg,image/png,image/gif,image/webp,application/pdf" className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0]; if (!file) return
+                      const formData = new FormData(); formData.append('file', file)
+                      try {
+                        const res = await fetch(`${API_BASE}/api/sensors/${sensor.id}/floor-plan`, { method:'POST', headers:{Authorization:`Bearer ${localStorage.getItem('gm_token')}`}, body:formData })
+                        const data = await res.json()
+                        if (data.success) { setSensor((prev:any)=>({...prev,floor_plan_url:'exists',site_floor_plan_url:'exists'})); setFloorPlanTimestamp(Date.now()) }
+                        else alert('업로드 실패: '+(data.error||'알 수 없는 오류'))
+                      } catch { alert('업로드 중 오류가 발생했습니다.') }
+                    }} />
+                </label>
+              </div>
+            )}
+          </div>
+
+          <div className="flex-1 relative bg-surface-subtle overflow-hidden" ref={floorPlanRef}>
+            {floorPlanUrl ? (
+              <>
+                <img src={floorPlanUrl} alt="계측계획 평면도" className="w-full h-full object-contain select-none" draggable={false} />
+                {icons.map(icon => (
+                  <SensorIcon key={icon.key} icon={icon} isSelected={icon.key === currentIconKey}
+                    status={iconStatuses[icon.key] || 'offline'}
+                    onMouseDown={e => handleIconMouseDown(icon.key, e)}
+                    onClick={() => handleIconClick(icon.key)} />
+                ))}
+                {icons.length > 0 && (
+                  <div className="absolute bottom-2 right-2 bg-surface-card/90 rounded-lg border border-line px-2.5 py-1.5 backdrop-blur-sm space-y-0.5">
+                    {statusNormal  > 0 && <div className="flex items-center gap-1.5 font-mono text-[10px]"><span className="w-1.5 h-1.5 rounded-full bg-sensor-normal" />정상 ({statusNormal})</div>}
+                    {statusWarning > 0 && <div className="flex items-center gap-1.5 font-mono text-[10px]"><span className="w-1.5 h-1.5 rounded-full bg-sensor-warning" />경고 ({statusWarning})</div>}
+                    {statusDanger  > 0 && <div className="flex items-center gap-1.5 font-mono text-[10px]"><span className="w-1.5 h-1.5 rounded-full bg-sensor-danger" />위험 ({statusDanger})</div>}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="flex h-full flex-col items-center justify-center gap-3">
+                <span className="text-5xl">🗺</span>
+                <p className="font-mono text-sm text-ink-muted">평면도 이미지 준비 중</p>
+                <p className="font-mono text-[10px] text-ink-muted">PNG, JPG, PDF 업로드 가능</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 우: 시간별 트렌드 */}
+        <div className="hidden xl:flex w-80 shrink-0 flex-col overflow-y-auto bg-surface-card">
+          <div className="shrink-0 flex items-center justify-between border-b border-line px-3 py-2">
+            <h2 className="text-xs font-semibold text-ink">시간별 트렌드</h2>
+            <span className="font-mono text-[11px] font-medium text-brand">{sensor.manageNo}</span>
+          </div>
+
+          <div className="p-3 space-y-3">
+            {/* 조회 기간 */}
+            <div className="rounded-lg border border-line bg-surface-subtle p-2.5">
+              <p className="mb-2 font-mono text-[10px] font-semibold text-ink-muted">□ 조회 기간 설정</p>
+              <div className="flex gap-1 mb-2">
+                {[['오늘',1],['7일',7],['30일',30]].map(([label,days])=>(
+                  <button key={String(label)} onClick={()=>setPreset(Number(days))} className="flex-1 rounded-md border border-line py-1 font-mono text-[11px] text-ink-muted hover:bg-surface-card hover:text-ink">{label}</button>
+                ))}
+              </div>
+              <div className="flex items-center gap-1">
+                <input type="date" value={dateFrom} max={today} onChange={e=>{setDateFrom(e.target.value);setTablePage(1)}} className="flex-1 rounded-md border border-line bg-surface-card px-2 py-1 font-mono text-[11px] text-ink focus:outline-none" />
+                <span className="font-mono text-[10px] text-ink-muted">~</span>
+                <input type="date" value={dateTo} min={dateFrom} max={today} onChange={e=>{setDateTo(e.target.value);setTablePage(1)}} className="flex-1 rounded-md border border-line bg-surface-card px-2 py-1 font-mono text-[11px] text-ink focus:outline-none" />
+              </div>
+            </div>
+
+            {/* 조회 단위 + 계산식 */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <p className="mb-1 font-mono text-[10px] text-ink-muted">△ 조회 단위</p>
+                <div className="flex gap-1">
+                  {['시간별','일별'].map(m=>(
+                    <button key={m} onClick={()=>setChartMode(m==='시간별'?'hourly':'daily')} className={['flex-1 rounded-md border py-1 font-mono text-[10px]',chartMode===(m==='시간별'?'hourly':'daily')?'border-brand/30 bg-brand/10 text-brand':'border-line text-ink-muted hover:bg-surface-subtle'].join(' ')}>{m}</button>
+                  ))}
+                </div>
+              </div>
+              {sensorCode==='80053'&&(
+                <div>
+                  <p className="mb-1 font-mono text-[10px] text-ink-muted">∧ 계산식 적용</p>
+                  <div className="flex gap-1">
+                    {[['Linear','linear'],['Polynomial','poly']].map(([l,v])=>(
+                      <button key={v} onClick={()=>setCalcMode(v as 'linear'|'poly')} className={['flex-1 rounded-md border py-1 font-mono text-[10px]',calcMode===v?'border-brand/30 bg-brand/10 text-brand':'border-line text-ink-muted hover:bg-surface-subtle'].join(' ')}>{l}</button>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
-          )
-        })()}
+
+            {/* depth 버튼 */}
+            {sensorCode==='80053'&&(
+              <div className="flex gap-1">
+                {(['1','2','3'] as const).map(d=>(
+                  <button key={d} onClick={()=>setDepthLabel(d)} className={['flex-1 rounded-md border py-1.5 font-mono text-[10px]',depthLabel===d?'border-brand/30 bg-brand/10 text-brand font-medium':'border-line text-ink-muted hover:bg-surface-subtle'].join(' ')}>{d}번 수위계</button>
+                ))}
+              </div>
+            )}
+
+            {/* 측정값 카드 */}
+            <div className="grid grid-cols-2 gap-1.5">
+              {[
+                {label:'기간 내 최신값', value:latestMeasurement?.value},
+                {label:'초기측정값', value:initValue},
+                {label:'최솟값', value:measurements.length>0?Math.min(...measurements.filter(m=>m.value!==null).map(m=>m.value)):null},
+                {label:'최댓값', value:measurements.length>0?Math.max(...measurements.filter(m=>m.value!==null).map(m=>m.value)):null},
+              ].map(({label,value})=>(
+                <div key={label} className="rounded-lg border border-line bg-surface-subtle p-2 text-center">
+                  <p className="font-mono text-[9px] text-ink-muted">{label}</p>
+                  <p className={`font-mono text-sm font-semibold mt-0.5 ${sensor.status==='danger'?'text-sensor-danger':sensor.status==='warning'?'text-sensor-warning':'text-sensor-normal'}`}>
+                    {value!==null&&value!==undefined?Number(value).toFixed(2):'—'}<span className="text-[10px] text-ink-muted ml-0.5">{sensor.unit}</span>
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* 게이지 */}
+            {(level1Lower!==null||level1Upper!==null)&&latestMeasurement&&(
+              <div className="rounded-lg border border-line bg-surface-subtle p-2">
+                <div className="flex justify-between font-mono text-[10px] text-ink-muted mb-1"><span>정상 구간</span><span>경고</span></div>
+                <div className="h-2 rounded-full bg-surface-muted overflow-hidden">
+                  <div className="h-full rounded-full bg-sensor-normal transition-all" style={{width:level1Upper!==null&&level1Lower!==null?`${Math.max(0,Math.min(100,((latestMeasurement.value-(level1Lower as number))/((level1Upper as number)-(level1Lower as number)))*100))}%`:'50%'}} />
+                </div>
+              </div>
+            )}
+
+            {/* 차트 */}
+            <div ref={chartRef} className="rounded-lg border border-line bg-surface-card overflow-hidden" style={{height:160}}>
+              <SensorTrendChart sensor={sensor} readings={chartMode==='hourly'?measurements:dailyReadings} initValue={sensorCode==='80053'?initValue:undefined} />
+            </div>
+
+            {/* 보정값 */}
+            {sensorCode==='80053'&&(
+              <div className="rounded-lg border border-line bg-surface-subtle p-2.5">
+                <p className="mb-2 font-mono text-[10px] font-semibold text-ink-muted">📊 초기값(기준점) 보정</p>
+                <div className="flex items-center gap-1.5">
+                  <input type="number" step="0.01" min="-100" max="100" placeholder="0.00"
+                    value={correctionInput[depthLabel]??(correctionParams[depthLabel]!==undefined&&correctionParams[depthLabel]!==0?String(correctionParams[depthLabel]):'')}
+                    onChange={e=>setCorrectionInput(prev=>({...prev,[depthLabel]:e.target.value}))}
+                    onWheel={e=>e.currentTarget.blur()}
+                    className="flex-1 rounded-md border border-line bg-surface-card px-2 py-1.5 font-mono text-sm text-ink text-right focus:outline-none focus:ring-1 focus:ring-brand/40" />
+                  <span className="font-mono text-xs text-ink-muted shrink-0">{sensor.unit}</span>
+                  <button disabled={correctionSaving}
+                    onClick={async()=>{
+                      const s=correctionInput[depthLabel]??'', v=s===''?0:parseFloat(s)
+                      if(isNaN(v)||v<-100||v>100){alert('보정값은 -100 ~ 100 사이의 숫자만 입력 가능합니다.');return}
+                      const next={...correctionParams,[depthLabel]:v}; setCorrectionSaving(true)
+                      try{await sensorApi.updateInfo(Number(id),{correction_params:next});setCorrectionParams(next);setCorrectionInput(prev=>({...prev,[depthLabel]:String(v)}))}catch{}finally{setCorrectionSaving(false)}
+                    }}
+                    className="rounded-md bg-sensor-normal px-2.5 py-1.5 font-mono text-[10px] text-white disabled:opacity-50 whitespace-nowrap">
+                    {correctionSaving?'저장 중…':'✓ 적용하기'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
-      {printOpen && (
-        <PrintModal sensor={sensor} config={printConfig} onChange={setPrintConfig}
-          onExcel={() => { setPrintOpen(false); handleExcelDownload() }}
-          onPdf={() => { setPrintOpen(false); handlePdfDownload() }}
-          onClose={() => setPrintOpen(false)} />
+      {/* 하단: 측정 데이터 로그 */}
+      <div className="shrink-0 border-t border-line" style={{maxHeight:'35vh',overflowY:'auto'}}>
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-surface-card px-4 py-2">
+          <h2 className="text-xs font-semibold text-ink">
+            측정 데이터 로그
+            <span className="ml-2 font-mono text-[10px] text-ink-muted">총 {tableData.length}건</span>
+            {sensorCode==='80053'&&<span className="ml-1 font-mono text-[10px] text-brand">({depthLabel}번 수위계)</span>}
+          </h2>
+          {totalPages>1&&(
+            <div className="flex items-center gap-1">
+              <button disabled={tablePage===1} onClick={()=>setTablePage(p=>p-1)} className="rounded px-2 py-0.5 font-mono text-[11px] text-ink-muted border border-line disabled:opacity-30 hover:bg-surface-subtle">←</button>
+              <span className="font-mono text-[11px] text-ink-muted">{tablePage}/{totalPages}</span>
+              <button disabled={tablePage===totalPages} onClick={()=>setTablePage(p=>p+1)} className="rounded px-2 py-0.5 font-mono text-[11px] text-ink-muted border border-line disabled:opacity-30 hover:bg-surface-subtle">→</button>
+            </div>
+          )}
+        </div>
+        <table className="w-full text-xs">
+          <thead className="sticky top-[37px] bg-surface-subtle">
+            <tr>{['날짜','시각',`측정값(${sensor.unit})`,'계산상태','상태'].map(h=>(
+              <th key={h} className="border-b border-line px-3 py-1.5 text-left font-mono text-[10px] font-semibold text-ink-muted">{h}</th>
+            ))}</tr>
+          </thead>
+          <tbody>
+            {pagedTable.length===0?(
+              <tr><td colSpan={5} className="px-4 py-8 text-center font-mono text-xs text-ink-muted">데이터가 없습니다.</td></tr>
+            ):pagedTable.map((row:any,i)=>{
+              const isGap=row.status==='gap'||row.value===null; const d=new Date(row.timestamp)
+              return(
+                <tr key={i} className={isGap?'bg-surface-subtle/50':i%2===0?'':'bg-surface-subtle/30'}>
+                  <td className="border-b border-line px-3 py-1.5 font-mono text-[11px] text-ink-muted">{d.toLocaleDateString('ko-KR',{month:'2-digit',day:'2-digit'})}</td>
+                  <td className="border-b border-line px-3 py-1.5 font-mono text-[11px] text-ink-muted">{d.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}</td>
+                  <td className={`border-b border-line px-3 py-1.5 font-mono text-[11px] font-medium ${isGap?'text-ink-muted':'text-ink'}`}>{isGap?<span className="text-ink-muted">—</span>:`${Number(row.value).toFixed(4)} ${sensor.unit}`}</td>
+                  <td className="border-b border-line px-3 py-1.5 font-mono text-[10px] text-ink-muted">{isGap?'—':(sensorCode==='80053'?`${calcMode==='linear'?'Linear':'Polynomial'} 적용`:'—')}</td>
+                  <td className="border-b border-line px-3 py-1.5">{isGap?<span className="font-mono text-[10px] text-ink-muted">● 미수신</span>:<span className={`font-mono text-[10px] ${row.status==='danger'?'text-sensor-dangertext':row.status==='warning'?'text-sensor-warningtext':'text-sensor-normaltext'}`}>● {row.status==='danger'?'위험':row.status==='warning'?'주의':'정상'}</span>}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* 모달 */}
+      {printOpen&&(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 backdrop-blur-sm p-4" onClick={()=>setPrintOpen(false)}>
+          <div className="geo-card w-full max-w-sm p-6" onClick={e=>e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4"><h2 className="text-sm font-semibold text-ink">출력 설정</h2><button onClick={()=>setPrintOpen(false)} className="text-ink-muted hover:text-ink">✕</button></div>
+            <div className="rounded-xl border border-line bg-surface-subtle p-3 text-xs text-ink-muted space-y-1 mb-4">
+              <p className="font-semibold text-ink">{sensor.siteName||'현장명 없음'}</p>
+              <p>{sensor.manageNo} · {sensor.name}</p>
+              <p>{dateFrom} ~ {dateTo}</p>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={()=>setPrintOpen(false)} className="flex-1 rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-sub hover:border-line-strong">취소</button>
+              <button onClick={()=>{setPrintOpen(false);handleExcelDownload()}} className="flex-1 rounded-lg bg-sensor-normal px-4 py-2 text-sm font-medium text-white hover:opacity-90">📊 Excel</button>
+              <button onClick={()=>{setPrintOpen(false);handlePdfDownload()}} className="flex-1 rounded-lg bg-sensor-warning px-4 py-2 text-sm font-medium text-white hover:opacity-90">📄 PDF</button>
+            </div>
+          </div>
+        </div>
       )}
-      {qrOpen && <QRModal sensorId={sensor.id} onClose={() => setQrOpen(false)} />}
+      {qrOpen&&<QRModal sensor={sensor} onClose={()=>setQrOpen(false)} />}
+
+      {/* 아이콘 추가 모달 */}
+      {showAddIcon&&(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 backdrop-blur-sm p-4" onClick={()=>setShowAddIcon(false)}>
+          <div className="geo-card w-full max-w-sm p-6" onClick={e=>e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4"><h2 className="text-sm font-semibold text-ink">센서 아이콘 추가</h2><button onClick={()=>setShowAddIcon(false)} className="text-ink-muted hover:text-ink">✕</button></div>
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1.5 block font-mono text-[10px] font-semibold uppercase tracking-wider text-ink-muted">센서 선택</label>
+                <select value={addIconSensor} onChange={e=>setAddIconSensor(e.target.value)} className="w-full rounded-lg border border-line bg-surface-subtle px-3 py-2 text-sm text-ink outline-none focus:border-brand/50">
+                  <option value="">센서를 선택하세요</option>
+                  {siteSensors.map((s:any)=>(<option key={s.id} value={String(s.id)}>{s.manage_no||s.name} — {s.name}</option>))}
+                </select>
+              </div>
+              {addIconSensor&&allSensors.find((s:any)=>String(s.id)===addIconSensor)?.sensor_code==='80053'&&(
+                <div>
+                  <label className="mb-1.5 block font-mono text-[10px] font-semibold uppercase tracking-wider text-ink-muted">Depth 선택</label>
+                  <div className="flex gap-2">
+                    {(['1','2','3'] as const).map(d=>(
+                      <button key={d} onClick={()=>setAddIconDepth(d)} className={['flex-1 rounded-md border py-1.5 font-mono text-[11px]',addIconDepth===d?'border-brand/30 bg-brand/10 text-brand':'border-line text-ink-muted hover:bg-surface-subtle'].join(' ')}>{d}번</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2 mt-5">
+              <button onClick={()=>setShowAddIcon(false)} className="flex-1 rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-sub">취소</button>
+              <button onClick={handleAddIcon} disabled={!addIconSensor} className="flex-1 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-50">추가</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div ref={printRef} style={{display:'none'}} />
+      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}`}</style>
     </div>
   )
 }
