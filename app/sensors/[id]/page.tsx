@@ -179,8 +179,7 @@ export default function SensorDetailPage() {
   const [sensorCode, setSensorCode] = useState<string>('')
   const [dateFrom, setDateFrom] = useState(today)
   const [dateTo,   setDateTo]   = useState(today)
-  const [timeFrom, setTimeFrom] = useState<string>('00:00')
-  const [timeTo,   setTimeTo]   = useState<string>('23:59')
+  const [selectedHour, setSelectedHour] = useState<string>('12:00')
   const [chartMode, setChartMode] = useState<'hourly' | 'daily'>('hourly')
   const [depthLabel, setDepthLabel] = useState<'1' | '2' | '3'>('1')
   const [calcMode,   setCalcMode]   = useState<'poly' | 'linear'>('linear')
@@ -199,8 +198,8 @@ export default function SensorDetailPage() {
   useEffect(() => {
     if (!id || !sensorCode) return
     sensorApi.getMeasurements(Number(id), {
-      from: chartMode === 'daily' ? `${dateFrom}T${timeFrom}` : dateFrom,
-      to:   chartMode === 'daily' ? `${dateTo}T${timeTo}`   : dateTo,
+      from: chartMode === 'daily' ? `${dateFrom}T${selectedHour}` : dateFrom,
+      to:   chartMode === 'daily' ? `${dateTo}T${selectedHour}:59` : dateTo,
       limit: 2000,
       depthLabel: sensorCode === '80053' ? depthLabel : undefined,
     }).then((data: any[]) => {
@@ -212,7 +211,7 @@ export default function SensorDetailPage() {
       }))
       setMeasurements(mapped.reverse())
     }).catch(() => {})
-  }, [id, sensorCode, dateFrom, dateTo, depthLabel, calcMode, correctionParams, chartMode, timeFrom, timeTo])
+  }, [id, sensorCode, dateFrom, dateTo, depthLabel, calcMode, correctionParams, chartMode, selectedHour])
 
   const [globalInitReading, setGlobalInitReading] = useState<any>(null)
   useEffect(() => {
@@ -229,25 +228,23 @@ export default function SensorDetailPage() {
 
   // ─── 데이터 공백 구간 처리 ────────────────────────────────────────────────
   const measurementsWithGaps = useMemo(() => {
-    if (measurements.length === 0) return []
-    const sorted = [...measurements].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
     const dataMap = new Map<number, any>()
-    sorted.forEach(m => {
+    measurements.forEach(m => {
       const t = new Date(m.timestamp)
       dataMap.set(new Date(t.getFullYear(), t.getMonth(), t.getDate(), t.getHours()).getTime(), m)
     })
-    const first = new Date(sorted[0].timestamp), last = new Date(sorted[sorted.length - 1].timestamp)
-    const slotFrom = new Date(first.getFullYear(), first.getMonth(), first.getDate(), first.getHours())
-    const slotTo   = new Date(last.getFullYear(), last.getMonth(), last.getDate(), last.getHours())
+    // 선택한 날짜 전체 범위 슬롯 생성
+    const rangeFrom = new Date(dateFrom + 'T00:00:00')
+    const rangeTo   = new Date(dateTo   + 'T23:00:00')
     const slots: any[] = []
-    let cur = new Date(slotFrom)
-    while (cur <= slotTo) {
-      const key = cur.getTime()
+    let cur = new Date(rangeFrom)
+    while (cur <= rangeTo) {
+      const key = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate(), cur.getHours()).getTime()
       slots.push(dataMap.has(key) ? dataMap.get(key) : { timestamp: cur.toISOString(), value: null, unit: sensor?.unit || '', status: 'gap' })
       cur = new Date(cur.getTime() + 3600000)
     }
     return slots
-  }, [measurements, sensor?.unit])
+  }, [measurements, sensor?.unit, dateFrom, dateTo])
 
   const dailyReadings = useMemo(() => {
     const map = new Map<string, any>()
@@ -593,13 +590,12 @@ export default function SensorDetailPage() {
                 <input type="date" value={dateTo} min={dateFrom} max={today} onChange={e=>{setDateTo(e.target.value);setTablePage(1)}} className="flex-1 rounded-md border border-line bg-surface-card px-2 py-1 font-mono text-[11px] text-ink focus:outline-none" />
               </div>
               {chartMode === 'daily' && (
-                <div className="flex items-center gap-1 mt-1">
-                  <span className="font-mono text-[10px] text-ink-muted shrink-0">시간</span>
-                  <input type="time" value={timeFrom} onChange={e=>setTimeFrom(e.target.value)}
-                    className="flex-1 rounded-md border border-line bg-surface-card px-2 py-1 font-mono text-[11px] text-ink focus:outline-none" />
-                  <span className="font-mono text-[10px] text-ink-muted">~</span>
-                  <input type="time" value={timeTo} onChange={e=>setTimeTo(e.target.value)}
-                    className="flex-1 rounded-md border border-line bg-surface-card px-2 py-1 font-mono text-[11px] text-ink focus:outline-none" />
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className="font-mono text-[10px] text-ink-muted shrink-0">조회 시간</span>
+                  <input type="time" value={selectedHour} step="3600"
+                    onChange={e => setSelectedHour(e.target.value)}
+                    className="flex-1 rounded-md border border-line bg-surface-card px-2 py-1 font-mono text-[11px] text-ink focus:outline-none focus:ring-1 focus:ring-brand/40" />
+                  <span className="font-mono text-[10px] text-ink-muted shrink-0">시 데이터</span>
                 </div>
               )}
             </div>
@@ -653,18 +649,34 @@ export default function SensorDetailPage() {
             </div>
 
             {/* 게이지 */}
-            {(level1Lower!==null||level1Upper!==null)&&latestMeasurement&&(
-              <div className="rounded-lg border border-line bg-surface-subtle p-2">
-                <div className="flex justify-between font-mono text-[10px] text-ink-muted mb-1"><span>정상 구간</span><span>경고</span></div>
-                <div className="h-2 rounded-full bg-surface-muted overflow-hidden">
-                  <div className="h-full rounded-full bg-sensor-normal transition-all" style={{width:level1Upper!==null&&level1Lower!==null?`${Math.max(0,Math.min(100,((latestMeasurement.value-(level1Lower as number))/((level1Upper as number)-(level1Lower as number)))*100))}%`:'50%'}} />
+            {(level1Lower!==null||level1Upper!==null)&&latestMeasurement&&(()=>{
+              const lo = level1Lower as number, hi = level1Upper as number
+              const val = latestMeasurement.value
+              // 0~1 사이 위치
+              const pct = lo !== null && hi !== null
+                ? Math.max(0, Math.min(1, (val - lo) / (hi - lo)))
+                : 0.5
+              const isNormalRange = pct >= 0 && pct <= 1
+              return (
+                <div className="rounded-lg border border-line bg-surface-subtle px-3 py-2">
+                  <div className="flex justify-between font-mono text-[10px] mb-1.5">
+                    <span className="text-sensor-normaltext font-medium">정상 구간</span>
+                    <span className="text-sensor-warningtext font-medium">경고</span>
+                  </div>
+                  <div className="relative h-3 rounded-full overflow-hidden" style={{background:'#f9d0d0'}}>
+                    {/* 정상 구간 (녹색) */}
+                    <div className="absolute left-0 top-0 h-full rounded-full bg-sensor-normal/30" style={{width:'100%'}} />
+                    {/* 현재값 위치 마커 */}
+                    <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 rounded-full border-2 border-white shadow-md transition-all"
+                      style={{left:`${pct*100}%`, background: isNormalRange ? '#22c55e' : '#ef4444'}} />
+                  </div>
                 </div>
-              </div>
-            )}
+              )
+            })()}
 
             {/* 차트 */}
-            <div ref={chartRef} className="rounded-lg border border-line bg-surface-card overflow-hidden" style={{height:160}}>
-              <SensorTrendChart sensor={sensor} readings={chartMode==='hourly'?measurements:dailyReadings} initValue={sensorCode==='80053'?initValue:undefined} />
+            <div ref={chartRef} className="rounded-lg border border-line bg-surface-card overflow-hidden" style={{height:240}}>
+              <SensorTrendChart sensor={sensor} readings={chartMode==='hourly'?measurementsWithGaps:dailyReadings} initValue={sensorCode==='80053'?initValue:undefined} />
             </div>
 
             {/* 보정값 */}
