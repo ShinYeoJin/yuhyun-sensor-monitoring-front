@@ -179,6 +179,8 @@ export default function SensorDetailPage() {
   const [sensorCode, setSensorCode] = useState<string>('')
   const [dateFrom, setDateFrom] = useState(today)
   const [dateTo,   setDateTo]   = useState(today)
+  const [timeFrom, setTimeFrom] = useState<string>('00:00')
+  const [timeTo,   setTimeTo]   = useState<string>('23:59')
   const [chartMode, setChartMode] = useState<'hourly' | 'daily'>('hourly')
   const [depthLabel, setDepthLabel] = useState<'1' | '2' | '3'>('1')
   const [calcMode,   setCalcMode]   = useState<'poly' | 'linear'>('linear')
@@ -197,7 +199,9 @@ export default function SensorDetailPage() {
   useEffect(() => {
     if (!id || !sensorCode) return
     sensorApi.getMeasurements(Number(id), {
-      from: dateFrom, to: dateTo, limit: 2000,
+      from: chartMode === 'daily' ? `${dateFrom}T${timeFrom}` : dateFrom,
+      to:   chartMode === 'daily' ? `${dateTo}T${timeTo}`   : dateTo,
+      limit: 2000,
       depthLabel: sensorCode === '80053' ? depthLabel : undefined,
     }).then((data: any[]) => {
       const corr = correctionParams[depthLabel] ?? 0
@@ -208,7 +212,7 @@ export default function SensorDetailPage() {
       }))
       setMeasurements(mapped.reverse())
     }).catch(() => {})
-  }, [id, sensorCode, dateFrom, dateTo, depthLabel, calcMode, correctionParams])
+  }, [id, sensorCode, dateFrom, dateTo, depthLabel, calcMode, correctionParams, chartMode, timeFrom, timeTo])
 
   const [globalInitReading, setGlobalInitReading] = useState<any>(null)
   useEffect(() => {
@@ -498,11 +502,11 @@ export default function SensorDetailPage() {
             {sensorCode === '80053' && (
               <div className="mt-3 rounded-lg border border-line bg-surface-subtle p-2">
                 <p className="mb-1.5 font-mono text-[9px] font-semibold text-ink-muted uppercase tracking-wider">계산식 상수값</p>
-                <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+                <div className="flex flex-col gap-1">
                   {[{k:'A',v:sensor.formulaParams?.coeffA},{k:'B',v:sensor.formulaParams?.coeffB},{k:'C',v:sensor.formulaParams?.coeffC},{k:'G(Linear)',v:sensor.formulaParams?.coeffG},{k:'I (초기값)',v:sensor.formulaParams?.initVal}].filter(x=>x.v).map(({k,v})=>(
                     <div key={k} className="flex gap-1">
-                      <span className="font-mono text-[10px] text-ink-muted w-14 shrink-0">{k}</span>
-                      <span className="font-mono text-[10px] text-ink">{v}</span>
+                      <span className="font-mono text-[10px] text-ink-muted w-16 shrink-0">{k}</span>
+                      <span className="font-mono text-[10px] text-ink break-all">{v}</span>
                     </div>
                   ))}
                 </div>
@@ -588,6 +592,16 @@ export default function SensorDetailPage() {
                 <span className="font-mono text-[10px] text-ink-muted">~</span>
                 <input type="date" value={dateTo} min={dateFrom} max={today} onChange={e=>{setDateTo(e.target.value);setTablePage(1)}} className="flex-1 rounded-md border border-line bg-surface-card px-2 py-1 font-mono text-[11px] text-ink focus:outline-none" />
               </div>
+              {chartMode === 'daily' && (
+                <div className="flex items-center gap-1 mt-1">
+                  <span className="font-mono text-[10px] text-ink-muted shrink-0">시간</span>
+                  <input type="time" value={timeFrom} onChange={e=>setTimeFrom(e.target.value)}
+                    className="flex-1 rounded-md border border-line bg-surface-card px-2 py-1 font-mono text-[11px] text-ink focus:outline-none" />
+                  <span className="font-mono text-[10px] text-ink-muted">~</span>
+                  <input type="time" value={timeTo} onChange={e=>setTimeTo(e.target.value)}
+                    className="flex-1 rounded-md border border-line bg-surface-card px-2 py-1 font-mono text-[11px] text-ink focus:outline-none" />
+                </div>
+              )}
             </div>
 
             {/* 조회 단위 + 계산식 */}

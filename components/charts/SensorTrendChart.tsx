@@ -51,14 +51,13 @@ export function SensorTrendChart({ sensor, readings, hideXAxis = false , initVal
 
   const data = sortedSource.map((r: SensorReading) => {
     const d = new Date(r.timestamp)
+    const val = r.value === null ? null : (typeof r.value === 'string' ? parseFloat(r.value) : r.value)
     return {
       time: d.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }),
-      fullTime: d.toLocaleString('ko-KR', {
-        year: 'numeric', month: '2-digit', day: '2-digit',
-        hour: '2-digit', minute: '2-digit',
-      }),
-      value: typeof r.value === 'string' ? parseFloat(r.value) : r.value,
+      fullTime: d.toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }),
+      value: val,
       unit: sensor.unit,
+      isGap: r.value === null,
     }
   })
 
@@ -183,6 +182,7 @@ export function SensorTrendChart({ sensor, readings, hideXAxis = false , initVal
             activeDot={{ r: 5 }}
             isAnimationActive={data.length <= 300}
             animationDuration={350}
+            connectNulls={false}
           />
         </LineChart>
       </ResponsiveContainer>
