@@ -374,12 +374,14 @@ function SitesPageInner() {
     siteApi.getAll().then((data: any[]) => setSites(data)).catch(console.error)
   }, [])
 
-  // URL에 id 파라미터가 있으면 해당 현장 편집 모달 자동 오픈
+  // URL에 id 파라미터가 있으면 해당 현장 카드로 스크롤
   useEffect(() => {
     const targetId = searchParams.get('id')
     if (targetId && sites.length > 0) {
-      const target = sites.find((s: any) => String(s.dbId) === targetId || String(s.id) === targetId)
-      if (target) openEdit(target)
+      setTimeout(() => {
+        const el = document.getElementById(`site-card-${targetId}`)
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }, 100)
     }
   }, [searchParams, sites])
 
@@ -528,7 +530,7 @@ function SitesPageInner() {
             {filtered.map((site: any) => {
               const st = statusStyle[site.liveStatus as SiteStatus] || statusStyle['normal']
               return (
-                <div key={site.id} className={['geo-card flex flex-col p-5 transition-shadow hover:shadow-cardhover', site.liveStatus === 'danger' ? 'danger-flash' : ''].join(' ')}>
+                <div key={site.id} id={`site-card-${site.dbId}`} className={['geo-card flex flex-col p-5 transition-shadow hover:shadow-cardhover', site.liveStatus === 'danger' ? 'danger-flash' : ''].join(' ')}>
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <h2 className="font-semibold text-ink">{site.name}</h2>
