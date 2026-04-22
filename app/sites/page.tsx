@@ -24,9 +24,9 @@ interface SiteWithStatus extends Site {
 }
 
 type SiteForm = {
-  name: string; location: string; description: string; managers: string[]; selectedSensors: number[]; floor_plan_url?: string
+  name: string; location: string; description: string; managers: string[]; selectedSensors: number[]; has_floor_plan?: boolean
 }
-const emptyForm: SiteForm = { name: '', location: '', description: '', managers: [], selectedSensors: [], floor_plan_url: '' }
+const emptyForm: SiteForm = { name: '', location: '', description: '', managers: [], selectedSensors: [], has_floor_plan: false }
 
 const inputCls = 'w-full rounded-lg border border-line bg-surface-subtle px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-ink-muted focus:border-brand/50 focus:ring-2 focus:ring-brand/10'
 const labelCls = 'mb-1.5 block font-mono text-[10px] font-semibold uppercase tracking-wider text-ink-muted'
@@ -51,7 +51,7 @@ function SiteStatusBar({ normal, warning, danger, total }: { normal: number; war
 function SiteModal({ mode, form, onChange, onSubmit, onClose, users, sensors, siteCode }: {
   mode: 'add' | 'edit'; form: SiteForm
   onChange: (f: SiteForm) => void; onSubmit: () => void; onClose: () => void
-  users: any[]; sensors: any[]; siteCode: string
+  users: any[]; sensors: any[]; siteCode: string; siteId?: number
 }) {
   const isValid = form.name.trim() !== '' && form.location.trim() !== ''
   const toggleManager = (username: string) => {
@@ -133,16 +133,16 @@ function SiteModal({ mode, form, onChange, onSubmit, onClose, users, sensors, si
           <div>
             <label className={labelCls}>현장 평면도</label>
             <div className="rounded-xl border border-line overflow-hidden">
-              {form.floor_plan_url ? (
+              {form.has_floor_plan && siteId ? (
                 <div className="relative">
                   <img
-                    src={`${process.env.NEXT_PUBLIC_API_URL}${form.floor_plan_url}`}
+                    src={`${process.env.NEXT_PUBLIC_API_URL || 'https://yuhyun-sensor-monitoring-back.onrender.com'}/api/sites/${siteId}/floor-plan-image?t=${Date.now()}`}
                     alt="평면도"
                     className="w-full object-contain max-h-48"
                   />
                   <button
                     type="button"
-                    onClick={() => onChange({ ...form, floor_plan_url: '' })}
+                    onClick={() => onChange({ ...form, has_floor_plan: false })}
                     className="absolute top-2 right-2 rounded-full bg-ink/50 px-2 py-1 font-mono text-[10px] text-white hover:bg-ink/70"
                   >
                     ✕ 제거
@@ -155,7 +155,7 @@ function SiteModal({ mode, form, onChange, onSubmit, onClose, users, sensors, si
                   <span className="font-mono text-[10px] text-ink-muted">PNG, JPG, PDF</span>
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/gif,image/webp,application/pdf"
                     className="hidden"
                     onChange={async (e) => {
                       const file = e.target.files?.[0]
@@ -163,16 +163,19 @@ function SiteModal({ mode, form, onChange, onSubmit, onClose, users, sensors, si
                       const formData = new FormData()
                       formData.append('file', file)
                       try {
-                        const token = localStorage.getItem('token')
+                        const token = localStorage.getItem('gm_token')
+                        const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://yuhyun-sensor-monitoring-back.onrender.com'
                         const res = await fetch(
-                          `${process.env.NEXT_PUBLIC_API_URL}/api/files/upload`,
+                          `${apiBase}/api/sites/${siteId}/floor-plan`,
                           { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData }
                         )
                         const data = await res.json()
                         if (data.success) {
-                          onChange({ ...form, floor_plan_url: `/uploads/${data.file.filename}` })
+                          onChange({ ...form, has_floor_plan: true })
+                        } else {
+                          alert('업로드 실패: ' + (data.error || '알 수 없는 오류'))
                         }
-                      } catch { alert('업로드 실패') }
+                      } catch { alert('업로드 중 오류가 발생했습니다.') }
                     }}
                   />
                 </label>
@@ -413,13 +416,13 @@ function SitesPageInner() {
   const openAdd  = () => { setForm(emptyForm); setAddOpen(true) }
   const openEdit = (site: any) => {
     const currentSensors = sensors.filter((s: any) => s.site_code === site.site_code).map((s: any) => s.id)
-    setForm({ name: site.name, location: site.location || '', description: site.description || '', managers: site.managers || [], selectedSensors: currentSensors, floor_plan_url: site.floor_plan_url || '' })
+    setForm({ name: site.name, location: site.location || '', description: site.description || '', managers: site.managers || [], selectedSensors: currentSensors, has_floor_plan: !!site.floor_plan_url })
     setEditTarget(site)
   }
 
   const handleAdd = async () => {
     try {
-      const result = await siteApi.create({ name: form.name, location: form.location, description: form.description, managers: form.managers, floor_plan_url: form.floor_plan_url })
+      const result = await siteApi.create({ name: form.name, location: form.location, description: form.description, managers: form.managers })
       // 선택된 센서들을 새 현장으로 변경
       if (form.selectedSensors.length > 0) {
         await Promise.all(form.selectedSensors.map((sensorId: number) =>
@@ -438,7 +441,7 @@ function SitesPageInner() {
   const handleEdit = async () => {
     if (!editTarget) return
     try {
-      await siteApi.update(editTarget.id, { name: form.name, location: form.location, description: form.description, managers: form.managers, floor_plan_url: form.floor_plan_url })
+      await siteApi.update(editTarget.id, { name: form.name, location: form.location, description: form.description, managers: form.managers })
       // 센서 소속 현장 변경
       // 선택된 센서 → 현재 현장으로 변경
       await Promise.all(form.selectedSensors.map((sensorId: number) =>
@@ -605,8 +608,8 @@ function SitesPageInner() {
 
       {sensorModal && <SensorListModal site={sensorModal} sensors={sensors} onClose={() => setSensorModal(null)} />}
       {userModal && <UserInfoModal user={userModal} onClose={() => setUserModal(null)} />}
-      {addOpen && <SiteModal mode="add" form={form} onChange={setForm} onSubmit={handleAdd} onClose={() => setAddOpen(false)} users={dbUsers} sensors={sensors} siteCode="" />}
-      {editTarget  && <SiteModal mode="edit" form={form} onChange={setForm} onSubmit={handleEdit} onClose={() => setEditTarget(null)} users={dbUsers} sensors={sensors} siteCode={editTarget.site_code} />}
+      {addOpen && <SiteModal mode="add" form={form} onChange={setForm} onSubmit={handleAdd} onClose={() => setAddOpen(false)} users={dbUsers} sensors={sensors} siteCode="" siteId={undefined} />}
+      {editTarget && <SiteModal mode="edit" form={form} onChange={setForm} onSubmit={handleEdit} onClose={() => setEditTarget(null)} users={dbUsers} sensors={sensors} siteCode={editTarget.site_code} siteId={editTarget.dbId} />}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 backdrop-blur-sm" onClick={() => setDeleteTarget(null)}>
           <div className="geo-card w-full max-w-sm animate-fade-in-up p-6 text-center" onClick={e => e.stopPropagation()}>

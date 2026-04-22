@@ -999,7 +999,7 @@ export default function SensorDetailPage() {
                         )
                         const data = await res.json()
                         if (data.success) {
-                          setSensor((prev: any) => ({ ...prev, floor_plan_url: 'exists' }))
+                          setSensor((prev: any) => ({ ...prev, floor_plan_url: 'exists', site_floor_plan_url: 'exists' }))
                           setFloorPlanTimestamp(Date.now())
                         } else {
                           alert('업로드 실패: ' + (data.error || '알 수 없는 오류'))
@@ -1048,7 +1048,8 @@ export default function SensorDetailPage() {
                             )
                             const data = await res.json()
                             if (data.success) {
-                              setSensor((prev: any) => ({ ...prev, floor_plan_url: 'exists' }))
+                              setSensor((prev: any) => ({ ...prev, floor_plan_url: 'exists', site_floor_plan_url: 'exists' }))
+                              setFloorPlanTimestamp(Date.now())
                             } else {
                               alert('업로드 실패: ' + (data.error || '알 수 없는 오류'))
                             }
