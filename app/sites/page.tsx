@@ -416,7 +416,7 @@ function SitesPageInner() {
   const openAdd  = () => { setForm(emptyForm); setAddOpen(true) }
   const openEdit = (site: any) => {
     const currentSensors = sensors.filter((s: any) => s.site_code === site.site_code).map((s: any) => s.id)
-    setForm({ name: site.name, location: site.location || '', description: site.description || '', managers: site.managers || [], selectedSensors: currentSensors, has_floor_plan: !!site.floor_plan_url })
+    setForm({ name: site.name, location: site.location || '', description: site.description || '', managers: site.managers || [], selectedSensors: currentSensors, has_floor_plan: !!site.has_floor_plan })
     setEditTarget(site)
   }
 
