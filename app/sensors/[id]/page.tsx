@@ -449,77 +449,132 @@ export default function SensorDetailPage() {
     const cy=(doc as any).lastAutoTable.finalY+5
     const chartData = [...(chartMode === 'hourly' ? measurements : dailyReadings.filter((r:any)=>r.value!==null))].sort((a:any,b:any)=>new Date(a.timestamp).getTime()-new Date(b.timestamp).getTime())
     if (chartData.length > 0) {
-      const chartX=15, chartY=cy, chartW=pageWidth-30, chartH=50
-      doc.setDrawColor(180,180,180); doc.setLineWidth(0.3); doc.rect(chartX,chartY,chartW,chartH)
-      const values=chartData.filter((r:any)=>r.value!==null).map((r:any)=>parseFloat(r.value))
-      const refVals=[...(level1Lower!==null&&!isNaN(level1Lower as number)?[level1Lower as number]:[]),...(level1Upper!==null&&!isNaN(level1Upper as number)?[level1Upper as number]:[])]
-      const allVals=[...values,...refVals]
-      const minVal=Math.min(...allVals),maxVal=Math.max(...allVals)
-      const padding=(maxVal-minVal)*0.1||1
-      const yMin=minVal-padding,yMax=maxVal+padding,range=yMax-yMin
-      // 기준선
-      if (level1Lower!==null&&!isNaN(level1Lower as number)) {
-        const refY=chartY+chartH-((( level1Lower as number)-yMin)/range)*chartH
-        if(refY>=chartY&&refY<=chartY+chartH){doc.setDrawColor(192,0,0);doc.setLineWidth(0.4);let x=chartX;while(x<chartX+chartW){doc.line(x,refY,Math.min(x+3,chartX+chartW),refY);x+=5}doc.setFontSize(5);doc.setTextColor(192,0,0);doc.text(`1차 하한기준 (${level1Lower})`,chartX+chartW-1,refY-1,{align:'right'})}
-      }
-      if (level1Upper!==null&&!isNaN(level1Upper as number)) {
-        const refY=chartY+chartH-(((level1Upper as number)-yMin)/range)*chartH
-        if(refY>=chartY&&refY<=chartY+chartH){doc.setDrawColor(224,112,0);doc.setLineWidth(0.4);let x=chartX;while(x<chartX+chartW){doc.line(x,refY,Math.min(x+3,chartX+chartW),refY);x+=5}doc.setFontSize(5);doc.setTextColor(224,112,0);doc.text(`1차 상한기준 (${level1Upper})`,chartX+chartW-1,refY-1,{align:'right'})}
-      }
+      const chartX = 20, chartY = cy, chartW = pageWidth - 30, chartH = 60
+      const values = chartData.filter((r:any) => r.value !== null).map((r:any) => parseFloat(r.value))
+      const refVals = [
+        ...(level1Lower !== null && !isNaN(level1Lower as number) ? [level1Lower as number] : []),
+        ...(level1Upper !== null && !isNaN(level1Upper as number) ? [level1Upper as number] : []),
+      ]
+      const allVals = [...values, ...refVals]
+      const minVal = Math.min(...allVals), maxVal = Math.max(...allVals)
+      const padding = (maxVal - minVal) * 0.15 || 1
+      const yMin = minVal - padding, yMax = maxVal + padding, range = yMax - yMin
 
-      // 데이터 선 (null 구간은 끊김 처리)
-      doc.setDrawColor(34,150,100);doc.setLineWidth(0.5);doc.setTextColor(0,0,0)
-      for(let i=1;i<chartData.length;i++){
-        const prevVal = chartData[i-1].value
-        const curVal  = chartData[i].value
-        if(prevVal===null||curVal===null) continue  // null 이면 선 연결 안함
-        const x1=chartX+((i-1)/(chartData.length-1))*chartW,x2=chartX+(i/(chartData.length-1))*chartW
-        const y1=chartY+chartH-((parseFloat(prevVal)-yMin)/range)*chartH,y2=chartY+chartH-((parseFloat(curVal)-yMin)/range)*chartH
-        doc.line(x1,y1,x2,y2)
-      }
+      // 차트 배경 및 테두리
+      doc.setFillColor(255, 255, 255)
+      doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.3)
+      doc.rect(chartX, chartY, chartW, chartH, 'FD')
 
-      // x축 레이블
-      doc.setFontSize(5);doc.setTextColor(120,120,120)
-      const lc=Math.min(5,chartData.length)
-      for(let l=0;l<lc;l++){
-        const idx=Math.round((l/(lc-1||1))*(chartData.length-1)),x=chartX+(idx/(chartData.length-1||1))*chartW
-        doc.text(new Date(chartData[idx].timestamp).toLocaleDateString('ko-KR',{month:'2-digit',day:'2-digit'}),x,chartY+chartH+4,{align:'center'})
-      }
-      // Y축 레이블
-      doc.setFontSize(5); doc.setTextColor(120,120,120)
+      // Y축 격자선 및 눈금
+      doc.setFontSize(5); doc.setTextColor(140, 140, 140)
       const ySteps = 4
-      for(let s=0;s<=ySteps;s++){
-        const yVal = yMax - (range/ySteps)*s
-        const yPos = chartY + (chartH/ySteps)*s
-        doc.text(yVal.toFixed(2), chartX-1, yPos+1, {align:'right'})
+      for (let s = 0; s <= ySteps; s++) {
+        const yVal = yMax - (range / ySteps) * s
+        const yPos = chartY + (chartH / ySteps) * s
+        // 격자선
+        doc.setDrawColor(230, 230, 230); doc.setLineWidth(0.2)
+        doc.line(chartX, yPos, chartX + chartW, yPos)
+        // Y축 눈금값
+        doc.setTextColor(100, 100, 100)
+        doc.text(yVal.toFixed(2), chartX - 1, yPos + 1, { align: 'right' })
       }
+
       // Y축 제목
-      doc.setFontSize(5); doc.setTextColor(100,100,100)
-      doc.text(`G.L(${sensor.unit})`, chartX+2, chartY+3)
-      // 범례
-      const legendY = chartY + chartH + 8
+      doc.setFontSize(5); doc.setTextColor(100, 100, 100)
+      doc.text(`G.L(${sensor.unit})`, chartX + 1, chartY + 4)
+
+      // 1차 하한기준선
+      if (level1Lower !== null && !isNaN(level1Lower as number)) {
+        const refY = chartY + chartH - ((level1Lower as number - yMin) / range) * chartH
+        if (refY >= chartY && refY <= chartY + chartH) {
+          doc.setDrawColor(192, 0, 0); doc.setLineWidth(0.5)
+          let x = chartX
+          while (x < chartX + chartW) { doc.line(x, refY, Math.min(x + 3, chartX + chartW), refY); x += 5 }
+          doc.setFontSize(5); doc.setTextColor(192, 0, 0)
+          doc.text(`1차 하한기준 (${level1Lower})`, chartX + chartW - 1, refY - 1, { align: 'right' })
+        }
+      }
+
+      // 1차 상한기준선
+      if (level1Upper !== null && !isNaN(level1Upper as number)) {
+        const refY = chartY + chartH - ((level1Upper as number - yMin) / range) * chartH
+        if (refY >= chartY && refY <= chartY + chartH) {
+          doc.setDrawColor(224, 112, 0); doc.setLineWidth(0.5)
+          let x = chartX
+          while (x < chartX + chartW) { doc.line(x, refY, Math.min(x + 3, chartX + chartW), refY); x += 5 }
+          doc.setFontSize(5); doc.setTextColor(224, 112, 0)
+          doc.text(`1차 상한기준 (${level1Upper})`, chartX + chartW - 1, refY - 1, { align: 'right' })
+        }
+      }
+
+      // 데이터 선 + 점 (null 구간 끊김)
+      doc.setDrawColor(34, 150, 100); doc.setLineWidth(0.6)
+      for (let i = 1; i < chartData.length; i++) {
+        const prevVal = chartData[i - 1].value, curVal = chartData[i].value
+        if (prevVal === null || curVal === null) continue
+        const x1 = chartX + ((i - 1) / (chartData.length - 1)) * chartW
+        const x2 = chartX + (i / (chartData.length - 1)) * chartW
+        const y1 = chartY + chartH - ((parseFloat(prevVal) - yMin) / range) * chartH
+        const y2 = chartY + chartH - ((parseFloat(curVal) - yMin) / range) * chartH
+        doc.line(x1, y1, x2, y2)
+      }
+      // 데이터 점 (◆)
+      doc.setFillColor(34, 150, 100)
+      chartData.forEach((r: any, i: number) => {
+        if (r.value === null) return
+        const x = chartX + (i / (chartData.length - 1)) * chartW
+        const y = chartY + chartH - ((parseFloat(r.value) - yMin) / range) * chartH
+        const s = 1.2
+        doc.setFillColor(34, 150, 100)
+        doc.triangle(x, y - s, x + s, y, x, y + s, 'F')
+        doc.triangle(x, y - s, x - s, y, x, y + s, 'F')
+      })
+
+      // X축 날짜 레이블 (최대 6개)
+      doc.setFontSize(5); doc.setTextColor(120, 120, 120)
+      const maxLabels = Math.min(6, chartData.length)
+      const labelStep = Math.ceil(chartData.length / maxLabels)
+      for (let i = 0; i < chartData.length; i += labelStep) {
+        const x = chartX + (i / (chartData.length - 1 || 1)) * chartW
+        const d = new Date(chartData[i].timestamp)
+        doc.text(
+          d.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }),
+          x, chartY + chartH + 4, { align: 'center' }
+        )
+      }
+
+      // 범례 (가운데 정렬)
+      const legendY = chartY + chartH + 10
       const centerX = chartX + chartW / 2
       doc.setFontSize(6)
-      // 센서명 (가운데 기준 좌측)
-      doc.setDrawColor(34,150,100); doc.setLineWidth(0.8)
-      doc.line(centerX-50, legendY, centerX-42, legendY)
-      doc.setTextColor(34,150,100)
-      doc.text(`── ${sensor.manageNo||sensor.name}`, centerX-40, legendY+0.5)
-      // 1차 하한기준 (가운데)
-      if(level1Lower!==null){
-        doc.setDrawColor(192,0,0); doc.setLineWidth(0.6)
-        let lx=centerX-5; while(lx<centerX+3){doc.line(lx,legendY,Math.min(lx+3,centerX+3),legendY);lx+=5}
-        doc.setTextColor(192,0,0); doc.text('- - - 1차 하한기준', centerX+5, legendY+0.5)
+
+      // 센서명
+      doc.setDrawColor(34, 150, 100); doc.setLineWidth(1.0)
+      doc.line(centerX - 52, legendY, centerX - 44, legendY)
+      doc.setTextColor(34, 150, 100)
+      doc.text(`── ${sensor.manageNo || sensor.name}`, centerX - 42, legendY + 0.5)
+
+      // 1차 하한기준
+      if (level1Lower !== null) {
+        doc.setDrawColor(192, 0, 0); doc.setLineWidth(0.6)
+        let lx = centerX - 3
+        while (lx < centerX + 5) { doc.line(lx, legendY, Math.min(lx + 3, centerX + 5), legendY); lx += 5 }
+        doc.setTextColor(192, 0, 0)
+        doc.text('- - - 1차 하한기준', centerX + 7, legendY + 0.5)
       }
-      // 1차 상한기준 (가운데 우측)
-      if(level1Upper!==null){
-        doc.setDrawColor(224,112,0); doc.setLineWidth(0.6)
-        let lx=centerX+38; while(lx<centerX+46){doc.line(lx,legendY,Math.min(lx+3,centerX+46),legendY);lx+=5}
-        doc.setTextColor(224,112,0); doc.text('- - - 1차 상한기준', centerX+48, legendY+0.5)
+
+      // 1차 상한기준
+      if (level1Upper !== null) {
+        doc.setDrawColor(224, 112, 0); doc.setLineWidth(0.6)
+        let lx = centerX + 42
+        while (lx < centerX + 50) { doc.line(lx, legendY, Math.min(lx + 3, centerX + 50), legendY); lx += 5 }
+        doc.setTextColor(224, 112, 0)
+        doc.text('- - - 1차 상한기준', centerX + 52, legendY + 0.5)
       }
-      doc.setTextColor(0,0,0)
+
+      doc.setTextColor(0, 0, 0)
     }
-    autoTable(doc,{startY:cy+65,head:[['측정일','경과일',`지하수위 G.L(${sensor.unit})`,'전측정대비','초기치대비','비고']],body:pdfSortedRows.map((r:any,i:number)=>{
+    autoTable(doc,{startY:cy+75,head:[['측정일','경과일',`지하수위 G.L(${sensor.unit})`,'전측정대비','초기치대비','비고']],body:pdfSortedRows.map((r:any,i:number)=>{
       const rd=new Date(r.timestamp),cm=new Date(rd.getFullYear(),rd.getMonth(),rd.getDate()),im=new Date(pdfInitDate.getFullYear(),pdfInitDate.getMonth(),pdfInitDate.getDate()),el=Math.round((cm.getTime()-im.getTime())/86400000),dk=rd.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'})
       if(r.value===null) return[dk,'—','미수신','—','—','']
       const cv=parseFloat(parseFloat(String(r.value)).toFixed(2))
