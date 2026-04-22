@@ -399,6 +399,7 @@ function SitesPageInner() {
       const liveStatus: SiteStatus = liveDanger > 0 ? 'danger' : liveWarning > 0 ? 'warning' : 'normal'
       return {
         ...site,
+        dbId: site.id,
         liveStatus,
         liveDanger, liveWarning, liveNormal, liveOffline, liveTotal,
         managers: site.managers || [],
