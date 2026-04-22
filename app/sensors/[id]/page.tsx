@@ -451,7 +451,7 @@ export default function SensorDetailPage() {
     if (chartData.length > 0) {
       const chartX=15, chartY=cy, chartW=pageWidth-30, chartH=50
       doc.setDrawColor(180,180,180); doc.setLineWidth(0.3); doc.rect(chartX,chartY,chartW,chartH)
-      const values=chartData.map((r:any)=>parseFloat(r.value))
+      const values=chartData.filter((r:any)=>r.value!==null).map((r:any)=>parseFloat(r.value))
       const refVals=[...(level1Lower!==null&&!isNaN(level1Lower as number)?[level1Lower as number]:[]),...(level1Upper!==null&&!isNaN(level1Upper as number)?[level1Upper as number]:[])]
       const allVals=[...values,...refVals]
       const minVal=Math.min(...allVals),maxVal=Math.max(...allVals)
@@ -466,13 +466,18 @@ export default function SensorDetailPage() {
         const refY=chartY+chartH-(((level1Upper as number)-yMin)/range)*chartH
         if(refY>=chartY&&refY<=chartY+chartH){doc.setDrawColor(224,112,0);doc.setLineWidth(0.4);let x=chartX;while(x<chartX+chartW){doc.line(x,refY,Math.min(x+3,chartX+chartW),refY);x+=5}doc.setFontSize(5);doc.setTextColor(224,112,0);doc.text(`1차 상한기준 (${level1Upper})`,chartX+chartW-1,refY-1,{align:'right'})}
       }
-      // 데이터 선
+
+      // 데이터 선 (null 구간은 끊김 처리)
       doc.setDrawColor(34,150,100);doc.setLineWidth(0.5);doc.setTextColor(0,0,0)
       for(let i=1;i<chartData.length;i++){
+        const prevVal = chartData[i-1].value
+        const curVal  = chartData[i].value
+        if(prevVal===null||curVal===null) continue  // null 이면 선 연결 안함
         const x1=chartX+((i-1)/(chartData.length-1))*chartW,x2=chartX+(i/(chartData.length-1))*chartW
-        const y1=chartY+chartH-((parseFloat(chartData[i-1].value)-yMin)/range)*chartH,y2=chartY+chartH-((parseFloat(chartData[i].value)-yMin)/range)*chartH
+        const y1=chartY+chartH-((parseFloat(prevVal)-yMin)/range)*chartH,y2=chartY+chartH-((parseFloat(curVal)-yMin)/range)*chartH
         doc.line(x1,y1,x2,y2)
       }
+
       // x축 레이블
       doc.setFontSize(5);doc.setTextColor(120,120,120)
       const lc=Math.min(5,chartData.length)
