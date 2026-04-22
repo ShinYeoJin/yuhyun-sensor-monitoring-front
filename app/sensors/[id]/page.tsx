@@ -482,7 +482,7 @@ export default function SensorDetailPage() {
     const wb2 = new ExcelJS.Workbook()
     const ws2 = wb2.addWorksheet(sensor.manageNo || sensor.name || '측정데이터')
 
-    const DARK = 'FF1F3864', MID = 'FF2F5496', WHITE = 'FFFFFFFF'
+    const DARK = 'FF808080', MID = 'FFB0B0B0', WHITE = 'FFFFFFFF'
     const BLACK = 'FF000000', RED = 'FFC00000', BLUE = 'FF2F5496'
     const YELL = 'FFFFF2CC', ALT = 'FFEEF4FB'
     const thin = { style: 'thin' as const, color: { argb: 'FF000000' } }
@@ -507,7 +507,7 @@ export default function SensorDetailPage() {
 
     ws2.mergeCells('A1:F1')
     const t = ws2.getCell('A1')
-    t.value = 'Water Level Meter Report'; t.font = font(true, 15, WHITE); t.fill = fill(DARK); t.alignment = aln(); t.border = MB
+    t.value = 'Water Level Meter Report'; t.font = font(true, 15, BLACK); t.fill = fill(DARK); t.alignment = aln(); t.border = MB
 
     const infoRows = [
       ['현   장   명', sensor.siteName || '—',          '계측기 No.', sensor.manageNo || '—'],
@@ -520,10 +520,10 @@ export default function SensorDetailPage() {
       const setC = (col: number, val: string, fnt: any, fil: any, al: any) => {
         const c = ws2.getCell(r, col); c.value = val; c.font = fnt; c.fill = fil; c.alignment = al; c.border = TB
       }
-      setC(1, l1, font(true, 9, WHITE), fill(MID), aln())
-      setC(2, v1, font(false, 9, BLACK), fill(WHITE), aln('left'))
-      setC(4, l2, font(true, 9, WHITE), fill(MID), aln())
-      setC(5, v2, font(false, 9, BLACK), fill(WHITE), aln('left'))
+      setC(1, l1, font(true, 9, BLACK), fill(MID), aln())
+      setC(2, v1, font(false, 8, BLACK), fill(WHITE), aln('left'))
+      setC(4, l2, font(true, 9, BLACK), fill(MID), aln())
+      setC(5, v2, font(false, 8, BLACK), fill(WHITE), aln('left'))
     })
 
     if (chartBase64) {
@@ -557,14 +557,14 @@ export default function SensorDetailPage() {
     const H1 = CR_END + 3, H2 = CR_END + 4, H3 = CR_END + 5
     const mhdr = (r1: number, c1: number, r2: number, c2: number, val: string, sz = 9, bg = DARK) => {
       ws2.mergeCells(r1, c1, r2, c2)
-      const c = ws2.getCell(r1, c1); c.value = val; c.font = font(true, sz, WHITE); c.fill = fill(bg); c.alignment = aln('center', 'middle', true); c.border = TB
+      const c = ws2.getCell(r1, c1); c.value = val; c.font = font(true, sz, BLACK); c.fill = fill(bg); c.alignment = aln('center', 'middle', true); c.border = TB
     }
     mhdr(H1, 1, H3, 1, '측  정  일'); mhdr(H1, 2, H3, 2, '경과일')
     mhdr(H1, 3, H1, 5, sensor.manageNo || sensor.name); mhdr(H1, 6, H3, 6, '비  고')
     mhdr(H2, 3, H2, 3, `지하수위 G.L(${sensor.unit})`, 8, MID)
     mhdr(H2, 4, H2, 5, '변화량(m)', 8, MID)
     const setHdr = (r: number, c: number, val: string, sz = 7, bg = MID) => {
-      const cell = ws2.getCell(r, c); cell.value = val; cell.font = font(true, sz, WHITE); cell.fill = fill(bg); cell.alignment = aln('center', 'middle', true); cell.border = TB
+      const cell = ws2.getCell(r, c); cell.value = val; cell.font = font(true, sz, BLACK); cell.fill = fill(bg); cell.alignment = aln('center', 'middle', true); cell.border = TB
     }
     ws2.getCell(H3, 3).fill = fill(MID); ws2.getCell(H3, 3).border = TB
     setHdr(H3, 4, '전측정치대비'); setHdr(H3, 5, '초기치대비')
