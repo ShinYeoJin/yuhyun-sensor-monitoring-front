@@ -6,6 +6,8 @@ import type { Site } from '@/types'
 import { sensorApi, userApi, siteApi } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 
 type SiteStatus = 'danger' | 'warning' | 'normal'
 type ViewFilter = 'all' | 'danger' | 'warning' | 'normal'
@@ -348,7 +350,7 @@ function SensorListModal({ site, sensors, onClose }: { site: any; sensors: any[]
   )
 }
 
-export default function SitesPage() {
+function SitesPageInner() {
   const { user:me } = useAuth()
   const canManage = me?.role !== 'MultiMonitor'
   const [sites,        setSites]        = useState<any[]>([])
@@ -362,6 +364,7 @@ export default function SitesPage() {
   const [toast,        setToast]        = useState<string | null>(null)
   const [userModal,    setUserModal]    = useState<any | null>(null)
   const [sensorModal, setSensorModal] = useState<any | null>(null)
+  const searchParams = useSearchParams()
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 2500) }
 
@@ -370,6 +373,15 @@ export default function SitesPage() {
     userApi.getList().then((data: any[]) => setDbUsers(data)).catch(console.error)
     siteApi.getAll().then((data: any[]) => setSites(data)).catch(console.error)
   }, [])
+
+  // URL에 id 파라미터가 있으면 해당 현장 편집 모달 자동 오픈
+  useEffect(() => {
+    const targetId = searchParams.get('id')
+    if (targetId && sites.length > 0) {
+      const target = sites.find((s: any) => String(s.dbId) === targetId || String(s.id) === targetId)
+      if (target) openEdit(target)
+    }
+  }, [searchParams, sites])
 
   const sitesWithStatus = useMemo(() => {
     return sites.map((site: any) => {
@@ -607,5 +619,13 @@ export default function SitesPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function SitesPage() {
+  return (
+    <Suspense>
+      <SitesPageInner />
+    </Suspense>
   )
 }

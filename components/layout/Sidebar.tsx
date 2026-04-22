@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth, DEFAULT_USER } from '@/lib/auth-context'
-import { alarmApi, userApi } from '@/lib/api'
+import { alarmApi, userApi, siteApi } from '@/lib/api'
 
 const navGroups = [
   {
@@ -18,7 +18,6 @@ const navGroups = [
   {
     label: '현장',
     items: [
-      { href: '/sites', label: '현장 관리',  icon: '⊞', showBadge: false },
       { href: '/users', label: '사용자 관리', icon: '◎', showBadge: false },
       { href: '/files', label: '파일 관리',  icon: '□',  showBadge: false },
     ],
@@ -36,6 +35,22 @@ function SidebarContent({
   const pathname = usePathname()
   const { user } = useAuth()
   const currentUser = user ?? DEFAULT_USER
+
+  const [sitesOpen, setSitesOpen] = useState(false)
+  const [sites, setSites] = useState<any[]>([])
+  const [sitesLoading, setSitesLoading] = useState(false)
+
+  const handleSitesToggle = async () => {
+    if (!sitesOpen && sites.length === 0) {
+      setSitesLoading(true)
+      try {
+        const data = await siteApi.getAll()
+        setSites(data)
+      } catch {}
+      finally { setSitesLoading(false) }
+    }
+    setSitesOpen(prev => !prev)
+  }
 
   const [pwOpen,   setPwOpen]   = useState(false)
   const [pwForm,   setPwForm]   = useState({ current: '', next: '', confirm: '' })
@@ -123,6 +138,52 @@ function SidebarContent({
                 </Link>
               )
             })}
+
+            {/* 현장 관리 토글 — 현장 그룹 아래에만 삽입 */}
+            {group.label === '현장' && (
+              <div>
+                <button
+                  onClick={handleSitesToggle}
+                  className={[
+                    'flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-[13px] transition-colors',
+                    pathname.startsWith('/sites')
+                      ? 'border border-brand/20 bg-brand/10 font-medium text-brand'
+                      : 'border border-transparent text-ink-sub hover:bg-surface-subtle hover:text-ink',
+                  ].join(' ')}
+                >
+                  <span className="w-4 shrink-0 text-center text-[13px] leading-none">⊞</span>
+                  <span className="flex-1">현장 관리</span>
+                  <span className="text-[10px] text-ink-muted">{sitesOpen ? '▲' : '▼'}</span>
+                </button>
+
+                {sitesOpen && (
+                  <div className="ml-3 mt-0.5 border-l border-line pl-2">
+                    {sitesLoading ? (
+                      <p className="px-3 py-2 font-mono text-[11px] text-ink-muted">불러오는 중...</p>
+                    ) : sites.length === 0 ? (
+                      <p className="px-3 py-2 font-mono text-[11px] text-ink-muted">등록된 현장 없음</p>
+                    ) : (
+                      sites.map((site: any) => (
+                        <Link
+                          key={site.id}
+                          href={`/sites?id=${site.id}`}
+                          onClick={onClose}
+                          className={[
+                            'flex items-center gap-2 rounded-md px-3 py-1.5 text-[12px] transition-colors',
+                            pathname.startsWith('/sites') && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('id') === String(site.id)
+                              ? 'bg-brand/10 font-medium text-brand'
+                              : 'text-ink-muted hover:bg-surface-subtle hover:text-ink',
+                          ].join(' ')}
+                        >
+                          <span className="text-[10px]">•</span>
+                          <span className="truncate">{site.name}</span>
+                        </Link>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ))}
       </nav>
