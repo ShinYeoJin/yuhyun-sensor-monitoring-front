@@ -148,6 +148,11 @@ function SiteModal({ mode, form, onChange, onSubmit, onClose, users, sensors, si
                     ✕ 제거
                   </button>
                 </div>
+              ) : mode === 'add' ? (
+                <div className="flex flex-col items-center justify-center gap-2 bg-surface-subtle py-6">
+                  <span className="text-2xl">🗺</span>
+                  <span className="font-mono text-[11px] text-ink-muted">현장 추가 후 편집에서 업로드 가능합니다</span>
+                </div>
               ) : (
                 <label className="flex cursor-pointer flex-col items-center justify-center gap-2 bg-surface-subtle py-6 hover:bg-surface-muted transition-colors">
                   <span className="text-2xl">🗺</span>

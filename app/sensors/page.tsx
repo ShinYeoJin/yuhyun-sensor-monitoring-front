@@ -179,10 +179,11 @@ function FormulaModal({ mode, form, onChange, onSubmit, onClose }: {
 }
 
 // ─── 센서 추가/편집 모달 ──────────────────────────────────────────────────────
-function SensorModal({ mode, form, onChange, onSubmit, onClose, formulas, sites }: {
+function SensorModal({ mode, form, onChange, onSubmit, onClose, formulas, sites, editTarget }: {
   mode: 'add' | 'edit'; form: SensorForm
   onChange: (f: SensorForm) => void; onSubmit: () => void; onClose: () => void
   formulas: any[]; sites: any[]
+  editTarget?: any
 }) {
   const isValid = form.name.trim() !== ''
   const set = (key: keyof SensorForm, val: string) => onChange({ ...form, [key]: val })
@@ -1302,7 +1303,7 @@ export default function SensorsPage() {
       )}
 
       {addOpen && <SensorModal mode="add" form={form} onChange={setForm} onSubmit={handleAdd} onClose={() => setAddOpen(false)} formulas={formulas} sites={sites} />}
-      {editTarget && <SensorModal mode="edit" form={form} onChange={setForm} onSubmit={handleEdit} onClose={() => setEditTarget(null)} formulas={formulas} sites={sites} editTarget={editTarget} />}
+      {editTarget && <SensorModal mode="edit" form={form} onChange={setForm} onSubmit={handleEdit} onClose={() => setEditTarget(null)} formulas={formulas} sites={sites} />}
       {deleteTarget && <DeleteModal sensorName={deleteTarget.name} onConfirm={handleDelete} onClose={() => setDeleteTarget(null)} />}
       {formulaAddOpen && <FormulaModal mode="add" form={formulaForm} onChange={setFormulaForm} onSubmit={handleFormulaAdd} onClose={() => setFormulaAddOpen(false)} />}
       {formulaEditTarget && <FormulaModal mode="edit" form={formulaForm} onChange={setFormulaForm} onSubmit={handleFormulaEdit} onClose={() => setFormulaEditTarget(null)} />}
