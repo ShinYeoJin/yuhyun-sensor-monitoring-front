@@ -148,14 +148,16 @@ export default function SensorDetailPage() {
     if (draggingKey.current) return
     const parts = key.split(':')
     const clickedSensorId = parts[0]; const clickedDepth = parts[1] as '1' | '2' | '3' | undefined
+    // 아이콘 클릭 시 항상 label을 iconLabel로 설정
+    const clickedIcon = icons.find(i => i.key === key)
+    if (clickedIcon) setIconLabel(clickedIcon.label)
     if (clickedSensorId !== String(sensor?.id)) {
-      const clickedIcon = icons.find(i => i.key === key)
       if (clickedIcon) sessionStorage.setItem('gm_iconLabel', clickedIcon.label)
       window.location.href = `/sensors/${clickedSensorId}`
       return
     }
     if (clickedDepth) setDepthLabel(clickedDepth)
-  }, [sensor])
+  }, [sensor, icons])
 
   const handleAddIcon = async () => {
     if (!addIconSensor) return
