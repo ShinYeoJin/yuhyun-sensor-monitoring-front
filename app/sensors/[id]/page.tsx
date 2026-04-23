@@ -100,6 +100,7 @@ export default function SensorDetailPage() {
   const [addIconDepth, setAddIconDepth] = useState<string>('1')
   const [editingIcon, setEditingIcon] = useState<{ key: string; label: string } | null>(null)
   const [editingLabel, setEditingLabel] = useState<string>('')
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
 
   useEffect(() => {
     if (!sensor?.sensor_positions) return
