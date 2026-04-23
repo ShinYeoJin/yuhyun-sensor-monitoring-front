@@ -37,9 +37,11 @@ interface Props {
   readings?: SensorReading[]
   hideXAxis?: boolean
   initValue?: number
+  level1Upper?: number | null
+  level1Lower?: number | null
 }
 
-export function SensorTrendChart({ sensor, readings, hideXAxis = false, initValue }: Props) {
+export function SensorTrendChart({ sensor, readings, hideXAxis = false, initValue, level1Upper: propLevel1Upper, level1Lower: propLevel1Lower }: Props) {
   const source = readings ?? sensor.readings ?? []
 
   const sortedSource = [...source].sort((a, b) =>
@@ -59,12 +61,12 @@ export function SensorTrendChart({ sensor, readings, hideXAxis = false, initValu
   })
 
   // 1차 관리기준
-  const level1Lower = sensor.criteria?.level1Lower !== '' && sensor.criteria?.level1Lower != null
-  ? parseFloat(sensor.criteria.level1Lower) : null
-  const level1Upper = sensor.criteria?.level1Upper !== '' && sensor.criteria?.level1Upper != null
-    ? parseFloat(sensor.criteria.level1Upper) : null
-  const refLine  = (level1Lower !== null && !isNaN(level1Lower)) ? level1Lower : null
-  const refLine2 = (level1Upper !== null && !isNaN(level1Upper)) ? level1Upper : null
+  const level1Lower = propLevel1Lower !== undefined ? propLevel1Lower
+    : (sensor.criteria?.level1Lower !== '' && sensor.criteria?.level1Lower != null ? parseFloat(sensor.criteria.level1Lower) : null)
+  const level1Upper = propLevel1Upper !== undefined ? propLevel1Upper
+    : (sensor.criteria?.level1Upper !== '' && sensor.criteria?.level1Upper != null ? parseFloat(sensor.criteria.level1Upper) : null)
+  const refLine  = (level1Lower !== null && level1Lower !== undefined && !isNaN(level1Lower)) ? level1Lower : null
+  const refLine2 = (level1Upper !== null && level1Upper !== undefined && !isNaN(level1Upper)) ? level1Upper : null
 
   // 가로 스크롤: 데이터 1건당 최소 12px, 최소 전체 너비
   const MIN_WIDTH_PER_POINT = 12

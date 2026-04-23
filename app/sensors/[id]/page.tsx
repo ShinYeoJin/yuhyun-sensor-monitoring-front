@@ -70,6 +70,7 @@ export default function SensorDetailPage() {
         criteria: {
           level1Upper: data.level1_upper ?? '', level1Lower: data.level1_lower ?? '',
           level2Upper: data.level2_upper ?? '', level2Lower: data.level2_lower ?? '',
+          depthCriteria: data.depth_criteria || {},
         },
         siteId: data.site_code || '', siteDbId: data.site_db_id || null, siteName: data.site_name || '',
         installDate: data.install_date || '', location: { description: data.location_desc || '' },
@@ -159,7 +160,7 @@ export default function SensorDetailPage() {
       window.location.href = `/sensors/${clickedSensorId}`
       return
     }
-    if (clickedDepth) setDepthLabel(clickedDepth)
+    if (clickedDepth) { setDepthLabel(clickedDepth); setCriteriaEditing(false) }
   }, [sensor, icons])
 
   const handleAddIcon = async () => {
@@ -326,11 +327,18 @@ export default function SensorDetailPage() {
 
   // ─── 1차 상하한 ───────────────────────────────────────────────────────────
   const { level1Upper, level1Lower } = useMemo(() => {
+    if (sensorCode === '80053') {
+      const dc = sensor?.criteria?.depthCriteria?.[depthLabel]
+      return {
+        level1Upper: dc?.upper != null && dc.upper !== '' ? parseFloat(dc.upper) : null,
+        level1Lower: dc?.lower != null && dc.lower !== '' ? parseFloat(dc.lower) : null,
+      }
+    }
     return {
       level1Upper: sensor?.criteria?.level1Upper !== '' && sensor?.criteria?.level1Upper != null ? parseFloat(sensor.criteria.level1Upper) : null,
       level1Lower: sensor?.criteria?.level1Lower !== '' && sensor?.criteria?.level1Lower != null ? parseFloat(sensor.criteria.level1Lower) : null,
     }
-  }, [sensor])
+  }, [sensor, sensorCode, depthLabel])
 
   const initValue = useMemo(() => {
     if (!globalInitReading) return 0
@@ -715,18 +723,35 @@ export default function SensorDetailPage() {
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="font-mono text-[9px] font-semibold uppercase tracking-wider text-ink-muted">1차 관리기준</span>
                     {!criteriaEditing ? (
-                      <button onClick={() => { setCriteriaEditing(true); setCriteriaInput({ upper: sensor.criteria?.level1Upper ?? '', lower: sensor.criteria?.level1Lower ?? '' }) }}
-                        className="font-mono text-[9px] text-brand hover:underline">수정</button>
+                      <button onClick={() => {
+                        setCriteriaEditing(true)
+                        if (sensorCode === '80053') {
+                          const dc = sensor.criteria?.depthCriteria?.[depthLabel]
+                          setCriteriaInput({ upper: dc?.upper != null ? String(dc.upper) : '', lower: dc?.lower != null ? String(dc.lower) : '' })
+                        } else {
+                          setCriteriaInput({ upper: sensor.criteria?.level1Upper ?? '', lower: sensor.criteria?.level1Lower ?? '' })
+                        }
+                      }} className="font-mono text-[9px] text-brand hover:underline">수정</button>
                     ) : (
                       <div className="flex gap-1">
                         <button onClick={async () => {
                           setCriteriaSaving(true)
                           try {
-                            await sensorApi.updateInfo(Number(id), {
-                              level1_upper: criteriaInput.upper !== '' ? parseFloat(criteriaInput.upper) : null,
-                              level1_lower: criteriaInput.lower !== '' ? parseFloat(criteriaInput.lower) : null,
-                            })
-                            setSensor((prev: any) => ({ ...prev, criteria: { ...prev.criteria, level1Upper: criteriaInput.upper, level1Lower: criteriaInput.lower } }))
+                            if (sensorCode === '80053') {
+                              const prevDc = sensor.criteria?.depthCriteria || {}
+                              const nextDc = {
+                                ...prevDc,
+                                [depthLabel]: { upper: criteriaInput.upper !== '' ? parseFloat(criteriaInput.upper) : null, lower: criteriaInput.lower !== '' ? parseFloat(criteriaInput.lower) : null }
+                              }
+                              await sensorApi.updateInfo(Number(id), { depth_criteria: nextDc })
+                              setSensor((prev: any) => ({ ...prev, criteria: { ...prev.criteria, depthCriteria: nextDc } }))
+                            } else {
+                              await sensorApi.updateInfo(Number(id), {
+                                level1_upper: criteriaInput.upper !== '' ? parseFloat(criteriaInput.upper) : null,
+                                level1_lower: criteriaInput.lower !== '' ? parseFloat(criteriaInput.lower) : null,
+                              })
+                              setSensor((prev: any) => ({ ...prev, criteria: { ...prev.criteria, level1Upper: criteriaInput.upper, level1Lower: criteriaInput.lower } }))
+                            }
                             setCriteriaEditing(false)
                           } catch { alert('저장 실패') } finally { setCriteriaSaving(false) }
                         }} disabled={criteriaSaving} className="font-mono text-[9px] text-brand hover:underline disabled:opacity-50">{criteriaSaving ? '저장중' : '저장'}</button>
@@ -937,7 +962,7 @@ export default function SensorDetailPage() {
                   const depthIcon = icons.find(i => i.key === `${sensor.id}:${d}`)
                   const btnLabel = depthIcon ? depthIcon.label : `${d}번 수위계`
                   return (
-                    <button key={d} onClick={()=>setDepthLabel(d)} className={['flex-1 rounded-md border py-1.5 font-mono text-[10px]',depthLabel===d?'border-brand/30 bg-brand/10 text-brand font-medium':'border-line text-ink-muted hover:bg-surface-subtle'].join(' ')}>{btnLabel}</button>
+                    <button key={d} onClick={()=>{ setDepthLabel(d); setCriteriaEditing(false) }} className={['flex-1 rounded-md border py-1.5 font-mono text-[10px]',depthLabel===d?'border-brand/30 bg-brand/10 text-brand font-medium':'border-line text-ink-muted hover:bg-surface-subtle'].join(' ')}>{btnLabel}</button>
                   )
                 })}
               </div>
@@ -988,7 +1013,7 @@ export default function SensorDetailPage() {
 
             {/* 차트 */}
             <div ref={chartRef} className="rounded-lg border border-line bg-surface-card overflow-hidden" style={{height:240}}>
-              <SensorTrendChart sensor={sensor} readings={chartMode==='hourly'?measurementsWithGaps:dailyReadings} initValue={sensorCode==='80053'?initValue:undefined} />
+             <SensorTrendChart sensor={sensor} readings={chartMode==='hourly'?measurementsWithGaps:dailyReadings} initValue={sensorCode==='80053'?initValue:undefined} level1Upper={sensorCode==='80053' ? (sensor.criteria?.depthCriteria?.[depthLabel]?.upper ?? null) : (sensor.criteria?.level1Upper ?? null)} level1Lower={sensorCode==='80053' ? (sensor.criteria?.depthCriteria?.[depthLabel]?.lower ?? null) : (sensor.criteria?.level1Lower ?? null)} />
             </div>
 
             {/* 보정값 */}
