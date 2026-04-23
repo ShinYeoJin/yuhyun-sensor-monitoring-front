@@ -230,7 +230,7 @@ export default function DashboardPage() {
                         onClick={() => router.push(`/sensors/${sensor.id}`)}
                         className="cursor-pointer transition-colors hover:bg-brand/5">
                         <td className="px-4 py-3">
-                        <p className="font-mono text-sm font-semibold text-brand">{sensor.name || sensor.sensor_code}</p>
+                        <p className="font-mono text-sm font-semibold text-brand">{sensor.name}</p>
                         <p className="font-mono text-[10px] text-ink-muted">{sensor.name}</p>
                         </td>
                         <td className="px-4 py-3 text-xs text-ink-sub">{sensor.site_name}</td>
