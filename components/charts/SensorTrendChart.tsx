@@ -60,15 +60,11 @@ export function SensorTrendChart({ sensor, readings, hideXAxis = false, initValu
 
   // 1차 관리기준
   const level1Lower = sensor.criteria?.level1Lower !== '' && sensor.criteria?.level1Lower != null
-    ? parseFloat(sensor.criteria.level1Lower) : null
+  ? parseFloat(sensor.criteria.level1Lower) : null
   const level1Upper = sensor.criteria?.level1Upper !== '' && sensor.criteria?.level1Upper != null
     ? parseFloat(sensor.criteria.level1Upper) : null
-  const refLine  = sensor.nameAbbr === '80053' && initValue !== undefined
-    ? parseFloat((initValue - 4).toFixed(2))
-    : (level1Lower !== null && !isNaN(level1Lower)) ? level1Lower : null
-  const refLine2 = sensor.nameAbbr === '80053' && initValue !== undefined
-    ? parseFloat((initValue + 4).toFixed(2))
-    : (level1Upper !== null && !isNaN(level1Upper)) ? level1Upper : null
+  const refLine  = (level1Lower !== null && !isNaN(level1Lower)) ? level1Lower : null
+  const refLine2 = (level1Upper !== null && !isNaN(level1Upper)) ? level1Upper : null
 
   // 가로 스크롤: 데이터 1건당 최소 12px, 최소 전체 너비
   const MIN_WIDTH_PER_POINT = 12
