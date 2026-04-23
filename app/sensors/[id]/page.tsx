@@ -476,7 +476,7 @@ export default function SensorDetailPage() {
         const curVal=parseFloat(parseFloat(String(row.value)).toFixed(4))
         const prevValid=sortedRows.slice(0,i).reverse().find((x:any)=>x.value!==null)
         const prevVal=prevValid?parseFloat(parseFloat(String(prevValid.value)).toFixed(4)):curVal
-        const prevDiff=parseFloat((curVal-prevVal).toFixed(2)), initDiff=parseFloat((curVal-parseFloat(initValue.toFixed(2))).toFixed(2))
+        const prevDiff=parseFloat((curVal-prevVal).toFixed(4)), initDiff=parseFloat((curVal-parseFloat(initValue.toFixed(4))).toFixed(4))
         setD(2,elapsed,font(false,9,BLACK)); setD(3,curVal,font(false,9,BLACK),'0.00')
         if(isFirst){setD(4,0,font(false,9,BLACK),'0.00');setD(5,0,font(false,9,BLACK),'0.00')}
         else{setD(4,prevDiff,font(false,9,prevDiff<0?RED:BLUE),'+0.00;-0.00;0.00');setD(5,initDiff,font(false,9,initDiff<0?RED:BLUE),'+0.00;-0.00;0.00')}
@@ -637,7 +637,7 @@ export default function SensorDetailPage() {
       const cv=parseFloat(parseFloat(String(r.value)).toFixed(4))
       const prevValid=pdfSortedRows.slice(0,i).reverse().find((x:any)=>x.value!==null)
       const pv=prevValid?parseFloat(parseFloat(String(prevValid.value)).toFixed(4)):cv
-      const pd=parseFloat((cv-pv).toFixed(2)),id_=parseFloat((cv-initValue).toFixed(4))
+      const pd=parseFloat((cv-pv).toFixed(4)),id_=parseFloat((cv-initValue).toFixed(4))
       const isFirst=pdfSortedRows.findIndex((x:any)=>x.value!==null)===i
       return[dk,el,cv.toFixed(4),isFirst?'0.0000':(pd>0?`+${pd}`:String(pd)),isFirst?'0.0000':(id_>0?`+${id_}`:String(id_)),isFirst?'초기치':(remarks[dk]||'')]
     }),theme:'grid',headStyles:{fillColor:[60,80,120],textColor:255,fontSize:8,font:'NanumGothic',fontStyle:'normal'},styles:{fontSize:8,cellPadding:2,font:'NanumGothic'}})
