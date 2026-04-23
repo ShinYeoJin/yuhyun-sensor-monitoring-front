@@ -477,9 +477,9 @@ export default function SensorDetailPage() {
         const prevValid=sortedRows.slice(0,i).reverse().find((x:any)=>x.value!==null)
         const prevVal=prevValid?parseFloat(parseFloat(String(prevValid.value)).toFixed(4)):curVal
         const prevDiff=parseFloat((curVal-prevVal).toFixed(4)), initDiff=parseFloat((curVal-parseFloat(initValue.toFixed(4))).toFixed(4))
-        setD(2,elapsed,font(false,9,BLACK)); setD(3,curVal,font(false,9,BLACK),'0.00')
-        if(isFirst){setD(4,0,font(false,9,BLACK),'0.00');setD(5,0,font(false,9,BLACK),'0.00')}
-        else{setD(4,prevDiff,font(false,9,prevDiff<0?RED:BLUE),'+0.00;-0.00;0.00');setD(5,initDiff,font(false,9,initDiff<0?RED:BLUE),'+0.00;-0.00;0.00')}
+        setD(2,elapsed,font(false,9,BLACK)); setD(3,curVal,font(false,9,BLACK),'0.0000')
+        if(isFirst){setD(4,0,font(false,9,BLACK),'0.0000');setD(5,0,font(false,9,BLACK),'0.0000')}
+        else{setD(4,prevDiff,font(false,9,prevDiff<0?RED:BLUE),'+0.0000;-0.0000;0.0000');setD(5,initDiff,font(false,9,initDiff<0?RED:BLUE),'+0.0000;-0.0000;0.0000')}
         const note=remarks[dateKey]||(isFirst?'초기치':''); const cn=ws2.getCell(r,6); cn.value=note; cn.font=font(isFirst,9,isFirst?RED:BLACK); cn.fill=fill(isFirst?YELL:rf); cn.border=TB; cn.alignment=aln()
       }
     })

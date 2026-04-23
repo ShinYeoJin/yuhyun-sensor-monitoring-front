@@ -198,14 +198,9 @@ function SensorModal({ mode, form, onChange, onSubmit, onClose, formulas, sites 
 
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
 
-          {/* 관리번호 + 구간-그룹 */}
+          {/* 구간-그룹 */}
           <ModalSection title="기본 식별">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <label className={labelCls}>관리번호</label>
-                <input type="text" value={form.manageNo} onChange={e => set('manageNo', e.target.value)}
-                  placeholder="예: MN-001" className={inputCls} />
-              </div>
+            <div className="grid grid-cols-1 gap-4">
               <div>
                 <label className={labelCls}>구간-그룹</label>
                 <select value={form.group} onChange={e => set('group', e.target.value)} className={selectCls}>
@@ -247,18 +242,10 @@ function SensorModal({ mode, form, onChange, onSubmit, onClose, formulas, sites 
 
           {/* 기본 정보 */}
           <ModalSection title="기본 정보">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4">
               <div>
                 <label className={labelCls}>센서명 *</label>
                 <input type="text" value={form.name} onChange={e => set('name', e.target.value)} placeholder="경사계 A-1" className={inputCls} />
-              </div>
-              <div>
-                <label className={labelCls}>영문명</label>
-                <input type="text" value={form.nameEn} onChange={e => set('nameEn', e.target.value)} placeholder="Inclinometer A-1" className={inputCls} />
-              </div>
-              <div>
-                <label className={labelCls}>센서명 약어</label>
-                <input type="text" value={form.nameAbbr} onChange={e => set('nameAbbr', e.target.value)} placeholder="INC-A1" className={inputCls} />
               </div>
             </div>
           </ModalSection>
@@ -357,32 +344,68 @@ function SensorModal({ mode, form, onChange, onSubmit, onClose, formulas, sites 
 
           {/* 관리 기준 */}
           <ModalSection title="관리 기준">
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div>
-                <label className={`${labelCls} text-sensor-warningtext`}>1차 기준 상한값</label>
-                <input type="text" value={form.criteria.level1Upper}
-                  onChange={e => onChange({ ...form, criteria: { ...form.criteria, level1Upper: e.target.value } })}
-                  placeholder="0.000" className={inputCls} />
+            {form.nameAbbr === '80053' ? (
+              <div className="space-y-4">
+                <p className="font-mono text-[10px] text-ink-muted">depth별 개별 설정 (센서 상세 페이지에서도 수정 가능)</p>
+                {(['1','2','3'] as const).map(depth => {
+                  const dc = (form.criteria as any).depthCriteria?.[depth] || {}
+                  return (
+                    <div key={depth} className="rounded-lg border border-line bg-surface-subtle p-3">
+                      <p className="font-mono text-[10px] font-semibold text-ink mb-2">
+                       {`${depth}번 수위계`}
+                      </p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className={`${labelCls} text-sensor-warningtext`}>1차 상한값</label>
+                          <input type="text" value={dc.upper ?? ''}
+                            onChange={e => {
+                              const prevDc = (form.criteria as any).depthCriteria || {}
+                              onChange({ ...form, criteria: { ...form.criteria, depthCriteria: { ...prevDc, [depth]: { ...dc, upper: e.target.value } } } as any })
+                            }}
+                            placeholder="예: -1.00" className={inputCls} />
+                        </div>
+                        <div>
+                          <label className={`${labelCls} text-sensor-warningtext`}>1차 하한값</label>
+                          <input type="text" value={dc.lower ?? ''}
+                            onChange={e => {
+                              const prevDc = (form.criteria as any).depthCriteria || {}
+                              onChange({ ...form, criteria: { ...form.criteria, depthCriteria: { ...prevDc, [depth]: { ...dc, lower: e.target.value } } } as any })
+                            }}
+                            placeholder="예: -5.00" className={inputCls} />
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
-              <div>
-                <label className={`${labelCls} text-sensor-warningtext`}>1차 기준 하한값</label>
-                <input type="text" value={form.criteria.level1Lower}
-                  onChange={e => onChange({ ...form, criteria: { ...form.criteria, level1Lower: e.target.value } })}
-                  placeholder="0.000" className={inputCls} />
+            ) : (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div>
+                  <label className={`${labelCls} text-sensor-warningtext`}>1차 기준 상한값</label>
+                  <input type="text" value={form.criteria.level1Upper}
+                    onChange={e => onChange({ ...form, criteria: { ...form.criteria, level1Upper: e.target.value } })}
+                    placeholder="0.000" className={inputCls} />
+                </div>
+                <div>
+                  <label className={`${labelCls} text-sensor-warningtext`}>1차 기준 하한값</label>
+                  <input type="text" value={form.criteria.level1Lower}
+                    onChange={e => onChange({ ...form, criteria: { ...form.criteria, level1Lower: e.target.value } })}
+                    placeholder="0.000" className={inputCls} />
+                </div>
+                <div>
+                  <label className={`${labelCls} text-sensor-dangertext`}>2차 기준 상한값</label>
+                  <input type="text" value={form.criteria.level2Upper}
+                    onChange={e => onChange({ ...form, criteria: { ...form.criteria, level2Upper: e.target.value } })}
+                    placeholder="0.000" className={inputCls} />
+                </div>
+                <div>
+                  <label className={`${labelCls} text-sensor-dangertext`}>2차 기준 하한값</label>
+                  <input type="text" value={form.criteria.level2Lower}
+                    onChange={e => onChange({ ...form, criteria: { ...form.criteria, level2Lower: e.target.value } })}
+                    placeholder="0.000" className={inputCls} />
+                </div>
               </div>
-              <div>
-                <label className={`${labelCls} text-sensor-dangertext`}>2차 기준 상한값</label>
-                <input type="text" value={form.criteria.level2Upper}
-                  onChange={e => onChange({ ...form, criteria: { ...form.criteria, level2Upper: e.target.value } })}
-                  placeholder="0.000" className={inputCls} />
-              </div>
-              <div>
-                <label className={`${labelCls} text-sensor-dangertext`}>2차 기준 하한값</label>
-                <input type="text" value={form.criteria.level2Lower}
-                  onChange={e => onChange({ ...form, criteria: { ...form.criteria, level2Lower: e.target.value } })}
-                  placeholder="0.000" className={inputCls} />
-              </div>
-            </div>
+            )}
             <div className="mt-3 grid grid-cols-2 gap-3">
               <div>
                 <label className={labelCls}>단위</label>
@@ -727,7 +750,8 @@ export default function SensorsPage() {
           criteriaUnitName: fresh.criteria_unit_name ?? '',
           noAlarm: false,
           noSms: false,
-        },
+          depthCriteria: fresh.depth_criteria || {},
+        } as any,
         threshold: {
           normalMax: fresh.threshold_normal_max ?? '',
           warningMax: fresh.threshold_warning_max ?? '',
@@ -827,6 +851,7 @@ export default function SensorsPage() {
         level2_lower: form.criteria.level2Lower !== '' ? form.criteria.level2Lower : null,
         criteria_unit: form.criteria.criteriaUnit || null,
         criteria_unit_name: form.criteria.criteriaUnitName || null,
+        ...((form.criteria as any).depthCriteria ? { depth_criteria: (form.criteria as any).depthCriteria } : {}),
         install_date: form.installDate || null,
         location_desc: form.location.description || null,
       })
@@ -1277,7 +1302,7 @@ export default function SensorsPage() {
       )}
 
       {addOpen && <SensorModal mode="add" form={form} onChange={setForm} onSubmit={handleAdd} onClose={() => setAddOpen(false)} formulas={formulas} sites={sites} />}
-      {editTarget && <SensorModal mode="edit" form={form} onChange={setForm} onSubmit={handleEdit} onClose={() => setEditTarget(null)} formulas={formulas} sites={sites} />}
+      {editTarget && <SensorModal mode="edit" form={form} onChange={setForm} onSubmit={handleEdit} onClose={() => setEditTarget(null)} formulas={formulas} sites={sites} editTarget={editTarget} />}
       {deleteTarget && <DeleteModal sensorName={deleteTarget.name} onConfirm={handleDelete} onClose={() => setDeleteTarget(null)} />}
       {formulaAddOpen && <FormulaModal mode="add" form={formulaForm} onChange={setFormulaForm} onSubmit={handleFormulaAdd} onClose={() => setFormulaAddOpen(false)} />}
       {formulaEditTarget && <FormulaModal mode="edit" form={formulaForm} onChange={setFormulaForm} onSubmit={handleFormulaEdit} onClose={() => setFormulaEditTarget(null)} />}
