@@ -219,7 +219,7 @@ export default function DashboardPage() {
                 <table className="w-full min-w-[480px] text-sm">
                   <thead>
                     <tr className="border-b border-line bg-surface-subtle">
-                      {['센서코드 / 센서명', '현장', '현재값', '상태', '마지막 측정'].map(h => (
+                      {['센서명', '현장', '현재값', '상태', '마지막 측정'].map(h => (
                         <th key={h} className="px-4 py-2.5 text-left font-mono text-[10px] font-semibold uppercase tracking-wide text-ink-muted">{h}</th>
                       ))}
                     </tr>
@@ -231,7 +231,6 @@ export default function DashboardPage() {
                         className="cursor-pointer transition-colors hover:bg-brand/5">
                         <td className="px-4 py-3">
                         <p className="font-mono text-sm font-semibold text-brand">{sensor.name}</p>
-                        <p className="font-mono text-[10px] text-ink-muted">{sensor.name}</p>
                         </td>
                         <td className="px-4 py-3 text-xs text-ink-sub">{sensor.site_name}</td>
                         <td className="px-4 py-3 font-mono text-sm font-medium text-ink">
