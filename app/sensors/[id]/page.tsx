@@ -20,10 +20,11 @@ function dateDiffDays(from: string, to: string): number {
 }
 
 // ─── 센서 아이콘 ─────────────────────────────────────────────────────────────
-function SensorIcon({ icon, isSelected, status, onMouseDown, onClick }: {
+function SensorIcon({ icon, isSelected, status, onMouseDown, onClick, onEdit, onDelete, isMultiMonitor }: {
   icon: { key: string; label: string; x: number; y: number }
   isSelected: boolean; status: string
   onMouseDown: (e: React.MouseEvent) => void; onClick: () => void
+  onEdit: () => void; onDelete: () => void; isMultiMonitor: boolean
 }) {
   const color = status === 'danger' ? '#ef4444' : status === 'warning' ? '#f97316' : '#22c55e'
   return (
@@ -33,6 +34,22 @@ function SensorIcon({ icon, isSelected, status, onMouseDown, onClick }: {
         <span style={{ width: 7, height: 7, borderRadius: '50%', background: status === 'danger' ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.8)', display: 'inline-block', animation: status === 'danger' ? 'pulse 1.2s infinite' : 'none' }} />
         <span style={{ color: '#fff', fontSize: 11, fontWeight: 600, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{icon.label}</span>
       </div>
+      {/* 선택된 아이콘에만 수정/삭제 버튼 표시 */}
+      {isSelected && !isMultiMonitor && (
+        <div style={{ position: 'absolute', top: -28, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 3, background: 'rgba(15,15,20,0.85)', borderRadius: 6, padding: '3px 5px', boxShadow: '0 2px 8px rgba(0,0,0,0.4)', whiteSpace: 'nowrap' }}>
+          <button
+            onMouseDown={e => e.stopPropagation()}
+            onClick={e => { e.stopPropagation(); onEdit() }}
+            style={{ color: '#93c5fd', fontSize: 10, fontFamily: 'monospace', background: 'none', border: 'none', cursor: 'pointer', padding: '1px 4px', borderRadius: 3 }}
+          >✏️ 수정</button>
+          <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: 10 }}>|</span>
+          <button
+            onMouseDown={e => e.stopPropagation()}
+            onClick={e => { e.stopPropagation(); onDelete() }}
+            style={{ color: '#fca5a5', fontSize: 10, fontFamily: 'monospace', background: 'none', border: 'none', cursor: 'pointer', padding: '1px 4px', borderRadius: 3 }}
+          >🗑️ 삭제</button>
+        </div>
+      )}
     </div>
   )
 }
@@ -98,6 +115,8 @@ export default function SensorDetailPage() {
   const [showAddIcon, setShowAddIcon] = useState(false)
   const [addIconSensor, setAddIconSensor] = useState<string>('')
   const [addIconDepth, setAddIconDepth] = useState<string>('1')
+  const [editingIcon, setEditingIcon] = useState<{ key: string; label: string } | null>(null)
+  const [editingLabel, setEditingLabel] = useState<string>('')
 
   useEffect(() => {
     if (!sensor?.sensor_positions) return
@@ -171,10 +190,22 @@ export default function SensorDetailPage() {
     await saveIconPositions(next)
   }
 
-  const handleDeleteIcon = async (key: string) => {
+  const handleDeleteIcon = useCallback((key: string) => {
+    if (!confirm('이 아이콘을 삭제하시겠습니까?')) return
     const next = icons.filter(i => i.key !== key)
-    setIcons(next); await saveIconPositions(next)
-  }
+    setIcons(next)
+    saveIconPositions(next)
+  }, [icons, saveIconPositions])
+  
+  const handleEditIcon = useCallback((key: string, newLabel: string) => {
+    if (!newLabel.trim()) return
+    const next = icons.map(i => i.key === key ? { ...i, label: newLabel.trim() } : i)
+    setIcons(next)
+    saveIconPositions(next)
+    setEditingIcon(null)
+    setEditingLabel('')
+  }, [icons, saveIconPositions])
+
 
   const iconStatuses = useMemo(() => {
     const map: Record<string, string> = {}
@@ -765,7 +796,10 @@ export default function SensorDetailPage() {
                   <SensorIcon key={icon.key} icon={icon} isSelected={icon.key === currentIconKey}
                     status={iconStatuses[icon.key] || 'offline'}
                     onMouseDown={e => handleIconMouseDown(icon.key, e)}
-                    onClick={() => handleIconClick(icon.key)} />
+                    onClick={() => handleIconClick(icon.key)}
+                    onEdit={() => { setEditingIcon({ key: icon.key, label: icon.label }); setEditingLabel(icon.label) }}
+                    onDelete={() => handleDeleteIcon(icon.key)}
+                    isMultiMonitor={isMultiMonitor} />
                 ))}
                 {icons.length > 0 && (
                   <div className="absolute bottom-2 right-2 bg-surface-card/90 rounded-lg border border-line px-2.5 py-1.5 backdrop-blur-sm space-y-0.5">
@@ -989,6 +1023,33 @@ export default function SensorDetailPage() {
         </div>
       )}
       {qrOpen&&<QRModal sensorId={sensor.id} onClose={()=>setQrOpen(false)} />}
+
+      {/* 아이콘 수정 모달 */}
+      {editingIcon && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 backdrop-blur-sm p-4" onClick={() => setEditingIcon(null)}>
+          <div className="geo-card w-full max-w-xs p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-ink">아이콘 이름 수정</h2>
+              <button onClick={() => setEditingIcon(null)} className="text-ink-muted hover:text-ink">✕</button>
+            </div>
+            <div className="space-y-3">
+              <label className="mb-1.5 block font-mono text-[10px] font-semibold uppercase tracking-wider text-ink-muted">아이콘 이름</label>
+              <input
+                type="text"
+                value={editingLabel}
+                onChange={e => setEditingLabel(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleEditIcon(editingIcon.key, editingLabel) }}
+                className="w-full rounded-lg border border-line bg-surface-subtle px-3 py-2 text-sm text-ink outline-none focus:border-brand/50"
+                autoFocus
+              />
+            </div>
+            <div className="flex gap-2 mt-5">
+              <button onClick={() => setEditingIcon(null)} className="flex-1 rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-sub">취소</button>
+              <button onClick={() => handleEditIcon(editingIcon.key, editingLabel)} disabled={!editingLabel.trim()} className="flex-1 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-50">저장</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 아이콘 추가 모달 */}
       {showAddIcon&&(
