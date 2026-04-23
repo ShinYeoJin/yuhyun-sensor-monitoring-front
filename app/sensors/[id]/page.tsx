@@ -166,7 +166,7 @@ export default function SensorDetailPage() {
     const s = allSensors.find((s: any) => String(s.id) === addIconSensor); if (!s) return
     const is80053 = s.sensor_code === '80053'
     const key = is80053 ? `${addIconSensor}:${addIconDepth}` : addIconSensor
-    const label = is80053 ? `${s.name || s.manage_no} ${addIconDepth}번` : (s.name || s.manage_no)
+    const label = is80053 ? `${s.name || s.id} ${addIconDepth}번` : (s.name || String(s.id))
     if (icons.find(i => i.key === key)) { setShowAddIcon(false); return }
     const next = [...icons, { key, label, x: 0.5, y: 0.5 }]
     setIcons(next); setShowAddIcon(false)
@@ -758,12 +758,12 @@ export default function SensorDetailPage() {
                     <button
                       onClick={() => { const icon = icons.find(i => i.key === currentIconKey); if (icon) { setEditingIcon({ key: icon.key, label: icon.label }); setEditingLabel(icon.label) } }}
                       className="flex items-center gap-1 rounded-md border border-line bg-surface-card px-2.5 py-1 font-mono text-[10px] text-ink-muted hover:border-brand/40 hover:text-brand">
-                      ✏️ 수정
+                      ✏️ 센서 아이콘 수정
                     </button>
                     <button
                       onClick={() => handleDeleteIcon(currentIconKey)}
                       className="flex items-center gap-1 rounded-md border border-line bg-surface-card px-2.5 py-1 font-mono text-[10px] text-ink-muted hover:border-red-400/40 hover:text-red-400">
-                      🗑️ 삭제
+                      🗑️ 센서 아이콘 삭제
                     </button>
                   </>
                 )}
@@ -1063,7 +1063,7 @@ export default function SensorDetailPage() {
                 <label className="mb-1.5 block font-mono text-[10px] font-semibold uppercase tracking-wider text-ink-muted">센서 선택</label>
                 <select value={addIconSensor} onChange={e=>setAddIconSensor(e.target.value)} className="w-full rounded-lg border border-line bg-surface-subtle px-3 py-2 text-sm text-ink outline-none focus:border-brand/50">
                   <option value="">센서를 선택하세요</option>
-                  {siteSensors.map((s:any)=>(<option key={s.id} value={String(s.id)}>{s.manage_no||s.name} — {s.name}</option>))}
+                  {siteSensors.map((s:any)=>(<option key={s.id} value={String(s.id)}>{s.name || s.id}</option>))}
                 </select>
               </div>
               {addIconSensor&&allSensors.find((s:any)=>String(s.id)===addIconSensor)?.sensor_code==='80053'&&(

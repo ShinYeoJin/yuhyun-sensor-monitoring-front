@@ -222,7 +222,7 @@ function SiteModal({ mode, form, onChange, onSubmit, onClose, users, sensors, si
                         {isSelected && !isDisabled && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                       </span>
                       <span className={`flex-1 text-sm font-medium ${isDisabled ? 'text-ink-muted' : isSelected ? 'text-brand' : 'text-ink'}`}>
-                        {sensor.manage_no} — {sensor.name}
+                       {sensor.name || sensor.id}
                       </span>
                       {isCurrent && (
                         <span className="font-mono text-[10px] text-sensor-normaltext border border-sensor-normalborder bg-sensor-normalbg px-1.5 py-0.5 rounded-full">현재</span>
@@ -327,7 +327,7 @@ function SensorListModal({ site, sensors, onClose }: { site: any; sensors: any[]
                     onClick={() => { onClose(); router.push(`/sensors/${sensor.id}`) }}
                     className="flex w-full items-center gap-4 px-6 py-3.5 text-left transition-colors hover:bg-surface-subtle">
                     <div className="flex-1 min-w-0">
-                      <p className="font-mono text-sm font-semibold text-brand">{sensor.manage_no || sensor.id}</p>
+                      <p className="font-mono text-sm font-semibold text-brand">{sensor.name || sensor.id}</p>
                       <p className="text-xs text-ink-muted truncate">{sensor.name}</p>
                     </div>
                     <div className="text-right shrink-0">
