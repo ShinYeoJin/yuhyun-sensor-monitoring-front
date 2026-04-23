@@ -223,6 +223,9 @@ export default function SensorDetailPage() {
   const TABLE_PAGE_SIZE = 15
   const chartRef = useRef<HTMLDivElement>(null)
   const printRef = useRef<HTMLDivElement>(null)
+  const [criteriaEditing, setCriteriaEditing] = useState(false)
+  const [criteriaInput, setCriteriaInput] = useState({ upper: '', lower: '' })
+  const [criteriaSaving, setCriteriaSaving] = useState(false)
 
   // ─── 측정값 로딩 ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -323,15 +326,11 @@ export default function SensorDetailPage() {
 
   // ─── 1차 상하한 ───────────────────────────────────────────────────────────
   const { level1Upper, level1Lower } = useMemo(() => {
-    if (sensorCode === '80053' && globalInitReading) {
-      const iv = parseFloat(String(calcMode === 'linear' ? (globalInitReading.linear_value ?? globalInitReading.value) : globalInitReading.value))
-      return { level1Upper: parseFloat((iv + 4).toFixed(2)), level1Lower: parseFloat((iv - 4).toFixed(2)) }
-    }
     return {
       level1Upper: sensor?.criteria?.level1Upper !== '' && sensor?.criteria?.level1Upper != null ? parseFloat(sensor.criteria.level1Upper) : null,
       level1Lower: sensor?.criteria?.level1Lower !== '' && sensor?.criteria?.level1Lower != null ? parseFloat(sensor.criteria.level1Lower) : null,
     }
-  }, [sensorCode, globalInitReading, calcMode, sensor])
+  }, [sensor])
 
   const initValue = useMemo(() => {
     if (!globalInitReading) return 0
@@ -466,9 +465,9 @@ export default function SensorDetailPage() {
         setD(4,'—',font(false,9,BLACK)); setD(5,'—',font(false,9,BLACK))
         const cn=ws2.getCell(r,6); cn.value=''; cn.font=font(false,9,BLACK); cn.fill=fill(rf); cn.border=TB; cn.alignment=aln()
       } else {
-        const curVal=parseFloat(parseFloat(String(row.value)).toFixed(2))
+        const curVal=parseFloat(parseFloat(String(row.value)).toFixed(4))
         const prevValid=sortedRows.slice(0,i).reverse().find((x:any)=>x.value!==null)
-        const prevVal=prevValid?parseFloat(parseFloat(String(prevValid.value)).toFixed(2)):curVal
+        const prevVal=prevValid?parseFloat(parseFloat(String(prevValid.value)).toFixed(4)):curVal
         const prevDiff=parseFloat((curVal-prevVal).toFixed(2)), initDiff=parseFloat((curVal-parseFloat(initValue.toFixed(2))).toFixed(2))
         setD(2,elapsed,font(false,9,BLACK)); setD(3,curVal,font(false,9,BLACK),'0.00')
         if(isFirst){setD(4,0,font(false,9,BLACK),'0.00');setD(5,0,font(false,9,BLACK),'0.00')}
@@ -627,12 +626,12 @@ export default function SensorDetailPage() {
     autoTable(doc,{startY:cy+75,head:[['측정일','경과일',`지하수위 G.L(${sensor.unit})`,'전측정대비','초기치대비','비고']],body:pdfSortedRows.map((r:any,i:number)=>{
       const rd=new Date(r.timestamp),cm=new Date(rd.getFullYear(),rd.getMonth(),rd.getDate()),im=new Date(pdfInitDate.getFullYear(),pdfInitDate.getMonth(),pdfInitDate.getDate()),el=Math.round((cm.getTime()-im.getTime())/86400000),dk=rd.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'})
       if(r.value===null) return[dk,'—','미수신','—','—','']
-      const cv=parseFloat(parseFloat(String(r.value)).toFixed(2))
+      const cv=parseFloat(parseFloat(String(r.value)).toFixed(4))
       const prevValid=pdfSortedRows.slice(0,i).reverse().find((x:any)=>x.value!==null)
-      const pv=prevValid?parseFloat(parseFloat(String(prevValid.value)).toFixed(2)):cv
-      const pd=parseFloat((cv-pv).toFixed(2)),id_=parseFloat((cv-initValue).toFixed(2))
+      const pv=prevValid?parseFloat(parseFloat(String(prevValid.value)).toFixed(4)):cv
+      const pd=parseFloat((cv-pv).toFixed(2)),id_=parseFloat((cv-initValue).toFixed(4))
       const isFirst=pdfSortedRows.findIndex((x:any)=>x.value!==null)===i
-      return[dk,el,cv.toFixed(2),isFirst?'0.00':(pd>0?`+${pd}`:String(pd)),isFirst?'0.00':(id_>0?`+${id_}`:String(id_)),isFirst?'초기치':(remarks[dk]||'')]
+      return[dk,el,cv.toFixed(4),isFirst?'0.0000':(pd>0?`+${pd}`:String(pd)),isFirst?'0.0000':(id_>0?`+${id_}`:String(id_)),isFirst?'초기치':(remarks[dk]||'')]
     }),theme:'grid',headStyles:{fillColor:[60,80,120],textColor:255,fontSize:8,font:'NanumGothic',fontStyle:'normal'},styles:{fontSize:8,cellPadding:2,font:'NanumGothic'}})
     doc.save(`${sensor.manageNo||sensor.name}_${dateFrom}_${dateTo}.pdf`)
   }
@@ -710,16 +709,74 @@ export default function SensorDetailPage() {
                 <dt className="w-16 shrink-0 font-mono text-[10px] text-ink-muted">계산식</dt>
                 <dd className="flex-1 font-mono text-[10px] text-ink break-all">{formulaDisplay}</dd>
               </div>
-              {level1Upper !== null && (
-                <div className="flex gap-1">
-                  <dt className="w-16 shrink-0 font-mono text-[10px] text-ink-muted">1차 상한</dt>
-                  <dd className="flex-1 font-mono text-[10px] text-ink">{(level1Upper as number).toFixed(2)} m{sensorCode==='80053'&&<span className="text-ink-muted"> (+4m)</span>}</dd>
+              {/* 1차 상하한 인라인 편집 */}
+              {!isMultiMonitor && (
+                <div className="mt-2 rounded-lg border border-line bg-surface-subtle p-2">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="font-mono text-[9px] font-semibold uppercase tracking-wider text-ink-muted">1차 관리기준</span>
+                    {!criteriaEditing ? (
+                      <button onClick={() => { setCriteriaEditing(true); setCriteriaInput({ upper: sensor.criteria?.level1Upper ?? '', lower: sensor.criteria?.level1Lower ?? '' }) }}
+                        className="font-mono text-[9px] text-brand hover:underline">수정</button>
+                    ) : (
+                      <div className="flex gap-1">
+                        <button onClick={async () => {
+                          setCriteriaSaving(true)
+                          try {
+                            await sensorApi.updateInfo(Number(id), {
+                              level1_upper: criteriaInput.upper !== '' ? parseFloat(criteriaInput.upper) : null,
+                              level1_lower: criteriaInput.lower !== '' ? parseFloat(criteriaInput.lower) : null,
+                            })
+                            setSensor((prev: any) => ({ ...prev, criteria: { ...prev.criteria, level1Upper: criteriaInput.upper, level1Lower: criteriaInput.lower } }))
+                            setCriteriaEditing(false)
+                          } catch { alert('저장 실패') } finally { setCriteriaSaving(false) }
+                        }} disabled={criteriaSaving} className="font-mono text-[9px] text-brand hover:underline disabled:opacity-50">{criteriaSaving ? '저장중' : '저장'}</button>
+                        <button onClick={() => setCriteriaEditing(false)} className="font-mono text-[9px] text-ink-muted hover:underline">취소</button>
+                      </div>
+                    )}
+                  </div>
+                  {!criteriaEditing ? (
+                    <div className="space-y-1">
+                      <div className="flex gap-1">
+                        <span className="w-16 shrink-0 font-mono text-[10px] text-ink-muted">1차 상한</span>
+                        <span className="font-mono text-[10px] text-ink">{level1Upper !== null ? `${(level1Upper as number).toFixed(2)} m` : '—'}</span>
+                      </div>
+                      <div className="flex gap-1">
+                        <span className="w-16 shrink-0 font-mono text-[10px] text-ink-muted">1차 하한</span>
+                        <span className="font-mono text-[10px] text-ink">{level1Lower !== null ? `${(level1Lower as number).toFixed(2)} m` : '—'}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-1">
+                        <span className="w-16 shrink-0 font-mono text-[10px] text-ink-muted">1차 상한</span>
+                        <input type="number" step="0.01" value={criteriaInput.upper}
+                          onChange={e => setCriteriaInput(p => ({ ...p, upper: e.target.value }))}
+                          className="flex-1 rounded border border-line bg-surface-card px-1.5 py-0.5 font-mono text-[10px] text-ink outline-none focus:border-brand/50"
+                          placeholder="예: -3.00" />
+                        <span className="font-mono text-[9px] text-ink-muted">m</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="w-16 shrink-0 font-mono text-[10px] text-ink-muted">1차 하한</span>
+                        <input type="number" step="0.01" value={criteriaInput.lower}
+                          onChange={e => setCriteriaInput(p => ({ ...p, lower: e.target.value }))}
+                          className="flex-1 rounded border border-line bg-surface-card px-1.5 py-0.5 font-mono text-[10px] text-ink outline-none focus:border-brand/50"
+                          placeholder="예: -11.00" />
+                        <span className="font-mono text-[9px] text-ink-muted">m</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
-              {level1Lower !== null && (
+              {isMultiMonitor && level1Upper !== null && (
+                <div className="flex gap-1">
+                  <dt className="w-16 shrink-0 font-mono text-[10px] text-ink-muted">1차 상한</dt>
+                  <dd className="flex-1 font-mono text-[10px] text-ink">{(level1Upper as number).toFixed(2)} m</dd>
+                </div>
+              )}
+              {isMultiMonitor && level1Lower !== null && (
                 <div className="flex gap-1">
                   <dt className="w-16 shrink-0 font-mono text-[10px] text-ink-muted">1차 하한</dt>
-                  <dd className="flex-1 font-mono text-[10px] text-ink">{(level1Lower as number).toFixed(2)} m{sensorCode==='80053'&&<span className="text-ink-muted"> (-4m)</span>}</dd>
+                  <dd className="flex-1 font-mono text-[10px] text-ink">{(level1Lower as number).toFixed(2)} m</dd>
                 </div>
               )}
               <div className="flex gap-1">
