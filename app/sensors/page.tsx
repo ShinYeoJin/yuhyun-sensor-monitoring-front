@@ -969,7 +969,7 @@ export default function SensorsPage() {
             <table className="w-full min-w-[640px] text-sm">
               <thead>
                 <tr className="border-b border-line bg-surface-subtle">
-                  {[['관리번호','text-left'],['현장','text-left'],['관련분야','text-left'],['현재값','text-right'],['임계 W/D','text-right'],['상태','text-center'],['업데이트','text-left'],['QR','text-center']].map(([th,a]) => (
+                 {[['센서명','text-left'],['현장','text-left'],['관련분야','text-left'],['현재값','text-right'],['임계 W/D','text-right'],['상태','text-center'],['업데이트','text-left'],['QR','text-center']].map(([th,a]) => (
                     <th key={th} className={`px-4 py-3 font-mono text-[10px] font-semibold uppercase tracking-wide text-ink-muted ${a}`}>{th}</th>
                   ))}
                 </tr>
@@ -986,9 +986,8 @@ export default function SensorsPage() {
                         {/* 관리번호 클릭 → 상세 페이지 */}
                         <Link href={`/sensors/${sensor.id}`}
                           className="font-mono text-sm font-semibold text-brand hover:underline">
-                          {sensor.manageNo || sensor.id}
+                          {sensor.name || sensor.id}
                         </Link>
-                        <p className="font-mono text-[10px] text-ink-muted">{sensor.name}</p>
                       </td>
                       <td className="px-4 py-3 text-sm text-ink-sub">{sensor.siteName}</td>
                       <td className="px-4 py-3">
@@ -1042,7 +1041,7 @@ export default function SensorsPage() {
               <table className="w-full min-w-[580px] text-sm">
                 <thead>
                   <tr className="border-b border-line bg-surface-subtle">
-                    {[['관리번호 / 센서명','text-left'],['현장 / 설치위치','text-left'],['관련분야','text-left'],['단위','text-left'],['임계값','text-left'],['설치일','text-left'],['','text-right']].map(([th,a]) => (
+                    {[['센서명','text-left'],['현장 / 설치위치','text-left'],['관련분야','text-left'],['단위','text-left'],['임계값','text-left'],['설치일','text-left'],['','text-right']].map(([th,a]) => (
                       <th key={th} className={`px-4 py-3 font-mono text-[10px] font-semibold uppercase tracking-wide text-ink-muted ${a}`}>{th}</th>
                     ))}
                   </tr>
@@ -1051,17 +1050,11 @@ export default function SensorsPage() {
                   {sensors.map(s => (
                     <tr key={s.id} className="transition-colors hover:bg-surface-subtle">
                       <td className="px-4 py-3">
-                        {/* 관리번호 또는 ID 클릭 → 상세 페이지 */}
-                        <Link href={`/sensors/${s.id}`}
-                          className="font-mono text-sm font-semibold text-brand hover:underline">
-                          {s.manageNo || s.id}
-                        </Link>
-                        {/* 센서명 클릭도 상세 페이지로 */}
-                        <Link href={`/sensors/${s.id}`}
-                          className="mt-0.5 block text-sm font-medium text-ink hover:text-brand hover:underline">
-                          {s.name}
-                        </Link>
-                        {s.nameAbbr && <p className="font-mono text-[10px] text-ink-muted">{s.nameAbbr}</p>}
+                      <Link href={`/sensors/${s.id}`}
+                        className="font-mono text-sm font-semibold text-brand hover:underline">
+                        {s.name || s.id}
+                      </Link>
+                      {s.nameAbbr && <p className="font-mono text-[10px] text-ink-muted">{s.nameAbbr}</p>}
                       </td>
                       <td className="px-4 py-3">
                         <p className="text-sm text-ink-sub">{s.siteName}</p>

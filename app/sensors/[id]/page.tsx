@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { getThresholds } from '@/lib/mock-data'
 import { sensorApi, userApi } from '@/lib/api'
 import { StatusBadge } from '@/components/ui/StatusBadge'
@@ -41,6 +41,8 @@ export default function SensorDetailPage() {
   const params = useParams()
   const id = Array.isArray(params.id) ? params.id[0] : params.id
   const [sensor, setSensor] = useState<any>(null)
+  const searchParams = useSearchParams()
+  const iconLabel = searchParams.get('iconLabel')
   const [loading, setLoading] = useState(true)
   const [measurements, setMeasurements] = useState<any[]>([])
   const { user } = useAuth()
@@ -140,7 +142,12 @@ export default function SensorDetailPage() {
     if (draggingKey.current) return
     const parts = key.split(':')
     const clickedSensorId = parts[0]; const clickedDepth = parts[1] as '1' | '2' | '3' | undefined
-    if (clickedSensorId !== String(sensor?.id)) { window.location.href = `/sensors/${clickedSensorId}`; return }
+    if (clickedSensorId !== String(sensor?.id)) {
+      const clickedIcon = icons.find(i => i.key === key)
+      const labelParam = clickedIcon ? `?iconLabel=${encodeURIComponent(clickedIcon.label)}` : ''
+      window.location.href = `/sensors/${clickedSensorId}${labelParam}`
+      return
+    }
     if (clickedDepth) setDepthLabel(clickedDepth)
   }, [sensor])
 
@@ -640,7 +647,7 @@ export default function SensorDetailPage() {
           <div className="flex items-center gap-2.5">
             <Link href="/sensors" className="text-sm text-ink-muted hover:text-ink">← 센서 목록</Link>
             <span className="text-line-strong">/</span>
-            <h1 className="font-mono text-[15px] font-semibold text-ink">{sensor.manageNo || sensor.id}</h1>
+            <h1 className="font-mono text-[15px] font-semibold text-ink">{sensor.name || sensor.id}</h1>
             <span className="font-mono text-xs text-ink-muted">{sensor.nameAbbr}</span>
             <StatusBadge status={sensor.status} />
           </div>
@@ -663,7 +670,7 @@ export default function SensorDetailPage() {
             </div>
             <dl className="space-y-2">
               {[
-                { l: '관리번호', v: sensor.manageNo || '—' },
+                { l: '관리번호', v: iconLabel || '' },
                 { l: '센서명',   v: sensor.name },
                 { l: '현장',     v: sensor.siteName || '—' },
                 { l: '설치 위치', v: sensor.location.description || '—' },
