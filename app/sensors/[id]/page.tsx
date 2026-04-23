@@ -20,11 +20,10 @@ function dateDiffDays(from: string, to: string): number {
 }
 
 // ─── 센서 아이콘 ─────────────────────────────────────────────────────────────
-function SensorIcon({ icon, isSelected, status, onMouseDown, onClick, onEdit, onDelete, isMultiMonitor }: {
+function SensorIcon({ icon, isSelected, status, onMouseDown, onClick }: {
   icon: { key: string; label: string; x: number; y: number }
   isSelected: boolean; status: string
   onMouseDown: (e: React.MouseEvent) => void; onClick: () => void
-  onEdit: () => void; onDelete: () => void; isMultiMonitor: boolean
 }) {
   const color = status === 'danger' ? '#ef4444' : status === 'warning' ? '#f97316' : '#22c55e'
   return (
@@ -34,22 +33,6 @@ function SensorIcon({ icon, isSelected, status, onMouseDown, onClick, onEdit, on
         <span style={{ width: 7, height: 7, borderRadius: '50%', background: status === 'danger' ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.8)', display: 'inline-block', animation: status === 'danger' ? 'pulse 1.2s infinite' : 'none' }} />
         <span style={{ color: '#fff', fontSize: 11, fontWeight: 600, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{icon.label}</span>
       </div>
-      {/* 선택된 아이콘에만 수정/삭제 버튼 표시 */}
-      {isSelected && !isMultiMonitor && (
-        <div style={{ position: 'absolute', top: -28, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 3, background: 'rgba(15,15,20,0.85)', borderRadius: 6, padding: '3px 5px', boxShadow: '0 2px 8px rgba(0,0,0,0.4)', whiteSpace: 'nowrap' }}>
-          <button
-            onMouseDown={e => e.stopPropagation()}
-            onClick={e => { e.stopPropagation(); onEdit() }}
-            style={{ color: '#93c5fd', fontSize: 10, fontFamily: 'monospace', background: 'none', border: 'none', cursor: 'pointer', padding: '1px 4px', borderRadius: 3 }}
-          >✏️ 수정</button>
-          <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: 10 }}>|</span>
-          <button
-            onMouseDown={e => e.stopPropagation()}
-            onClick={e => { e.stopPropagation(); onDelete() }}
-            style={{ color: '#fca5a5', fontSize: 10, fontFamily: 'monospace', background: 'none', border: 'none', cursor: 'pointer', padding: '1px 4px', borderRadius: 3 }}
-          >🗑️ 삭제</button>
-        </div>
-      )}
     </div>
   )
 }
@@ -770,8 +753,22 @@ export default function SensorDetailPage() {
             {!isMultiMonitor && (
               <div className="flex items-center gap-1">
                 <button onClick={() => setShowAddIcon(true)} className="flex items-center gap-1 rounded-md border border-brand/30 bg-brand/10 px-2.5 py-1 font-mono text-[10px] text-brand hover:bg-brand/20">+ 추가</button>
+                {currentIconKey && icons.find(i => i.key === currentIconKey) && (
+                  <>
+                    <button
+                      onClick={() => { const icon = icons.find(i => i.key === currentIconKey); if (icon) { setEditingIcon({ key: icon.key, label: icon.label }); setEditingLabel(icon.label) } }}
+                      className="flex items-center gap-1 rounded-md border border-line bg-surface-card px-2.5 py-1 font-mono text-[10px] text-ink-muted hover:border-brand/40 hover:text-brand">
+                      ✏️ 수정
+                    </button>
+                    <button
+                      onClick={() => handleDeleteIcon(currentIconKey)}
+                      className="flex items-center gap-1 rounded-md border border-line bg-surface-card px-2.5 py-1 font-mono text-[10px] text-ink-muted hover:border-red-400/40 hover:text-red-400">
+                      🗑️ 삭제
+                    </button>
+                  </>
+                )}
                 <label className="cursor-pointer rounded-md border border-line bg-surface-card px-2 py-1 font-mono text-[10px] text-ink-muted hover:border-brand/40 hover:text-brand">
-                  📎 {hasFloorPlan ? '변경' : '업로드'}
+                  📎 {hasFloorPlan ? '평면도 변경' : '평면도 업로드'}
                   <input type="file" accept="image/jpeg,image/png,image/gif,image/webp,application/pdf" className="hidden"
                     onChange={async (e) => {
                       const file = e.target.files?.[0]; if (!file) return
@@ -796,10 +793,7 @@ export default function SensorDetailPage() {
                   <SensorIcon key={icon.key} icon={icon} isSelected={icon.key === currentIconKey}
                     status={iconStatuses[icon.key] || 'offline'}
                     onMouseDown={e => handleIconMouseDown(icon.key, e)}
-                    onClick={() => handleIconClick(icon.key)}
-                    onEdit={() => { setEditingIcon({ key: icon.key, label: icon.label }); setEditingLabel(icon.label) }}
-                    onDelete={() => handleDeleteIcon(icon.key)}
-                    isMultiMonitor={isMultiMonitor} />
+                    onClick={() => handleIconClick(icon.key)} />
                 ))}
                 {icons.length > 0 && (
                   <div className="absolute bottom-2 right-2 bg-surface-card/90 rounded-lg border border-line px-2.5 py-1.5 backdrop-blur-sm space-y-0.5">
@@ -881,9 +875,13 @@ export default function SensorDetailPage() {
             {/* depth 버튼 */}
             {sensorCode==='80053'&&(
               <div className="flex gap-1">
-                {(['1','2','3'] as const).map(d=>(
-                  <button key={d} onClick={()=>setDepthLabel(d)} className={['flex-1 rounded-md border py-1.5 font-mono text-[10px]',depthLabel===d?'border-brand/30 bg-brand/10 text-brand font-medium':'border-line text-ink-muted hover:bg-surface-subtle'].join(' ')}>{d}번 수위계</button>
-                ))}
+                {(['1','2','3'] as const).map(d=>{
+                  const depthIcon = icons.find(i => i.key === `${sensor.id}:${d}`)
+                  const btnLabel = depthIcon ? depthIcon.label : `${d}번 수위계`
+                  return (
+                    <button key={d} onClick={()=>setDepthLabel(d)} className={['flex-1 rounded-md border py-1.5 font-mono text-[10px]',depthLabel===d?'border-brand/30 bg-brand/10 text-brand font-medium':'border-line text-ink-muted hover:bg-surface-subtle'].join(' ')}>{btnLabel}</button>
+                  )
+                })}
               </div>
             )}
 
@@ -969,7 +967,11 @@ export default function SensorDetailPage() {
           <h2 className="text-xs font-semibold text-ink">
             측정 데이터 로그
             <span className="ml-2 font-mono text-[10px] text-ink-muted">총 {tableData.length}건</span>
-            {sensorCode==='80053'&&<span className="ml-1 font-mono text-[10px] text-brand">({depthLabel}번 수위계)</span>}
+            {sensorCode==='80053'&&(()=>{
+              const depthIcon = icons.find(i => i.key === `${sensor.id}:${depthLabel}`)
+              const logLabel = depthIcon ? depthIcon.label : `${depthLabel}번 수위계`
+              return <span className="ml-1 font-mono text-[10px] text-brand">({logLabel})</span>
+            })()}
           </h2>
           {totalPages>1&&(
             <div className="flex items-center gap-1">
