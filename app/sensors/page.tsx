@@ -179,11 +179,12 @@ function FormulaModal({ mode, form, onChange, onSubmit, onClose }: {
 }
 
 // ─── 센서 추가/편집 모달 ──────────────────────────────────────────────────────
-function SensorModal({ mode, form, onChange, onSubmit, onClose, formulas, sites, editTarget }: {
+function SensorModal({ mode, form, onChange, onSubmit, onClose, formulas, sites, sensorPositions, sensorId }: {
   mode: 'add' | 'edit'; form: SensorForm
   onChange: (f: SensorForm) => void; onSubmit: () => void; onClose: () => void
   formulas: any[]; sites: any[]
-  editTarget?: any
+  sensorPositions?: Record<string, any>
+  sensorId?: string
 }) {
   const isValid = form.name.trim() !== ''
   const set = (key: keyof SensorForm, val: string) => onChange({ ...form, [key]: val })
@@ -353,7 +354,7 @@ function SensorModal({ mode, form, onChange, onSubmit, onClose, formulas, sites,
                   return (
                     <div key={depth} className="rounded-lg border border-line bg-surface-subtle p-3">
                       <p className="font-mono text-[10px] font-semibold text-ink mb-2">
-                       {`${depth}번 수위계`}
+                        {sensorPositions?.[`${sensorId}:${depth}`]?.label || `${depth}번 수위계`}
                       </p>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
@@ -633,6 +634,7 @@ export default function SensorsPage() {
   const [addOpen,      setAddOpen]     = useState(false)
   const [editTarget,   setEditTarget]  = useState<UnifiedSensor | null>(null)
   const [deleteTarget, setDeleteTarget]= useState<UnifiedSensor | null>(null)
+  const [editSensorPositions, setEditSensorPositions] = useState<Record<string, any>>({})
   const [form,         setForm]        = useState<SensorForm>(emptyForm)
   const [toast,        setToast]       = useState<string | null>(null)
 
@@ -772,6 +774,7 @@ export default function SensorsPage() {
           extRef: (fresh as any).formula_params.extRef || '',
         } : { coeffA: '', coeffB: '', coeffC: '', coeffD: '', coeffE: '', coeffG: '', initVal: '', currentTemp: '', tempCoeff: '', initTemp: '', extRef: '' },
       }
+      setEditSensorPositions((fresh as any).sensor_positions || {})
       setForm({
         manageNo: freshSensor.manageNo ?? '', field: freshSensor.field, measureMethod: freshSensor.measureMethod,
         formula: freshSensor.formula, group: freshSensor.group ?? '',
@@ -1303,7 +1306,7 @@ export default function SensorsPage() {
       )}
 
       {addOpen && <SensorModal mode="add" form={form} onChange={setForm} onSubmit={handleAdd} onClose={() => setAddOpen(false)} formulas={formulas} sites={sites} />}
-      {editTarget && <SensorModal mode="edit" form={form} onChange={setForm} onSubmit={handleEdit} onClose={() => setEditTarget(null)} formulas={formulas} sites={sites} />}
+      {editTarget && <SensorModal mode="edit" form={form} onChange={setForm} onSubmit={handleEdit} onClose={() => setEditTarget(null)} formulas={formulas} sites={sites} sensorPositions={editSensorPositions} sensorId={editTarget.id} />}
       {deleteTarget && <DeleteModal sensorName={deleteTarget.name} onConfirm={handleDelete} onClose={() => setDeleteTarget(null)} />}
       {formulaAddOpen && <FormulaModal mode="add" form={formulaForm} onChange={setFormulaForm} onSubmit={handleFormulaAdd} onClose={() => setFormulaAddOpen(false)} />}
       {formulaEditTarget && <FormulaModal mode="edit" form={formulaForm} onChange={setFormulaForm} onSubmit={handleFormulaEdit} onClose={() => setFormulaEditTarget(null)} />}
