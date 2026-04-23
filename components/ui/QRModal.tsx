@@ -6,10 +6,11 @@ import Link from 'next/link'
 
 interface QRModalProps {
   sensorId: string
+  sensorName?: string
   onClose: () => void
 }
 
-export function QRModal({ sensorId, onClose }: QRModalProps) {
+export function QRModal({ sensorId, sensorName, onClose }: QRModalProps) {
   const [qrUrl, setQrUrl] = useState('')
 
   useEffect(() => {
@@ -60,7 +61,7 @@ export function QRModal({ sensorId, onClose }: QRModalProps) {
           target="_blank"
           className="mt-3 block rounded-lg border border-line py-2 font-mono text-xs text-ink-sub transition-colors hover:border-brand/40 hover:text-brand"
         >
-          QR 상세 페이지 열기 →
+          {sensorName || sensorId} QR 상세 페이지 열기 →
         </Link>
       </div>
     </div>

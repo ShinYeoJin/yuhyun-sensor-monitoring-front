@@ -60,6 +60,22 @@ export default function QRSensorPage() {
     })
   }, [id, sensor])
 
+  const [iconLabels, setIconLabels] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    if (!sensor || sensor.sensorCode !== '80053') return
+    // sensor_positions는 sites에 저장되어 있으므로 sensor API에서 site_id로 접근
+    sensorApi.getById(Number(id)).then((data: any) => {
+      const positions = data.sensor_positions || {}
+      const labels: Record<string, string> = {}
+      ;(['1', '2', '3'] as const).forEach(depth => {
+        const key = `${id}:${depth}`
+        if (positions[key]?.label) labels[depth] = positions[key].label
+      })
+      setIconLabels(labels)
+    }).catch(() => {})
+  }, [id, sensor])
+
   if (loading) return (
     <div className="flex min-h-screen items-center justify-center">
       <p className="font-mono text-sm text-ink-muted">불러오는 중...</p>
@@ -107,9 +123,8 @@ export default function QRSensorPage() {
 
             <div>
               <p className="font-mono text-2xl font-medium tracking-tight text-ink">
-                {sensor.manageNo || sensor.sensorCode}
+                {sensor.name}
               </p>
-              <p className="mt-0.5 text-sm font-medium text-ink-sub">{sensor.name}</p>
               <p className="mt-1 font-mono text-xs text-ink-muted">
                 {sensor.siteName} · {sensor.locationDesc || '—'}
               </p>
@@ -127,7 +142,7 @@ export default function QRSensorPage() {
                     const val = latestValues[depth]
                     return (
                       <div key={depth} className="rounded-lg border border-line bg-surface-card px-3 py-2">
-                        <p className="font-mono text-[10px] text-ink-muted mb-1">{depth}번 수위계</p>
+                        <p className="font-mono text-[10px] text-ink-muted mb-1">{iconLabels[depth] || `${depth}번 수위계`}</p>
                         {val ? (
                           <div className="flex justify-around">
                             <div>
