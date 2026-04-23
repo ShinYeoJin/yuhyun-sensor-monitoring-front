@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
-import { useParams, useSearchParams } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { getThresholds } from '@/lib/mock-data'
 import { sensorApi, userApi } from '@/lib/api'
 import { StatusBadge } from '@/components/ui/StatusBadge'
@@ -41,8 +41,14 @@ export default function SensorDetailPage() {
   const params = useParams()
   const id = Array.isArray(params.id) ? params.id[0] : params.id
   const [sensor, setSensor] = useState<any>(null)
-  const searchParams = useSearchParams()
-  const iconLabel = searchParams.get('iconLabel')
+  const [iconLabel, setIconLabel] = useState<string>('')
+  useEffect(() => {
+    const stored = sessionStorage.getItem('gm_iconLabel')
+    if (stored) {
+      setIconLabel(stored)
+      sessionStorage.removeItem('gm_iconLabel')
+    }
+  }, [])
   const [loading, setLoading] = useState(true)
   const [measurements, setMeasurements] = useState<any[]>([])
   const { user } = useAuth()
@@ -144,8 +150,8 @@ export default function SensorDetailPage() {
     const clickedSensorId = parts[0]; const clickedDepth = parts[1] as '1' | '2' | '3' | undefined
     if (clickedSensorId !== String(sensor?.id)) {
       const clickedIcon = icons.find(i => i.key === key)
-      const labelParam = clickedIcon ? `?iconLabel=${encodeURIComponent(clickedIcon.label)}` : ''
-      window.location.href = `/sensors/${clickedSensorId}${labelParam}`
+      if (clickedIcon) sessionStorage.setItem('gm_iconLabel', clickedIcon.label)
+      window.location.href = `/sensors/${clickedSensorId}`
       return
     }
     if (clickedDepth) setDepthLabel(clickedDepth)
