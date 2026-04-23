@@ -29,7 +29,7 @@ export function QRModal({ sensorId, sensorName, onClose }: QRModalProps) {
         <div className="mb-4 flex items-center justify-between">
           <div className="text-left">
             <h2 className="text-sm font-semibold text-ink">QR 코드</h2>
-            <p className="font-mono text-[10px] text-ink-muted">{sensorId}</p>
+            <p className="font-mono text-[10px] text-ink-muted">{sensorName}</p>
           </div>
           <button
             onClick={onClose}
