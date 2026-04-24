@@ -715,7 +715,7 @@ export default function SensorDetailPage() {
       <div className="flex flex-1 min-h-0">
 
         {/* 좌: 센서 정보 */}
-        <div className="hidden lg:flex shrink-0 flex-col border-r border-line bg-surface-card overflow-y-auto">
+        <div style={{ width: leftWidth, minWidth: 160, maxWidth: 360 }} className="hidden lg:flex shrink-0 flex-col border-r border-line bg-surface-card overflow-y-auto">
           <div className="p-4">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-xs font-semibold text-ink">센서 정보</h2>
@@ -827,10 +827,12 @@ export default function SensorDetailPage() {
                   <dd className="flex-1 font-mono text-[10px] text-ink">{(level1Lower as number).toFixed(2)} m</dd>
                 </div>
               )}
-              <div className="flex gap-1">
-                <dt className="w-16 shrink-0 font-mono text-[10px] text-ink-muted">마지막 수신</dt>
-                <dd className="flex-1 font-mono text-[10px] text-ink">{sensor.lastUpdated?new Date(sensor.lastUpdated).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'—'}</dd>
-              </div>
+              {!isMultiMonitor && (
+                <div className="flex gap-1">
+                  <dt className="w-16 shrink-0 font-mono text-[10px] text-ink-muted">마지막 수신</dt>
+                  <dd className="flex-1 font-mono text-[10px] text-ink">{sensor.lastUpdated?new Date(sensor.lastUpdated).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'—'}</dd>
+                </div>
+              )}
             </dl>
 
             {sensorCode === '80053' && (
@@ -858,7 +860,7 @@ export default function SensorDetailPage() {
           <div className="shrink-0 flex items-center justify-between border-b border-line px-3 py-2">
             <div className="flex items-center gap-2">
               <h2 className="text-xs font-semibold text-ink">계측계획 평면도</h2>
-              <span className="font-mono text-[10px] text-ink-muted hidden sm:inline">(센서를 드래그하여 이동)</span>
+              {!isMultiMonitor && <span className="font-mono text-[10px] text-ink-muted hidden sm:inline">(센서를 드래그하여 이동)</span>}
             </div>
             {!isMultiMonitor && (
               <div className="flex items-center gap-1">
@@ -929,7 +931,7 @@ export default function SensorDetailPage() {
 
 
         {/* 우: 시간별 트렌드 */}
-        <div className="hidden xl:flex w-80 shrink-0 flex-col overflow-y-auto bg-surface-card">
+        <div style={{ width: rightWidth, minWidth: 280, maxWidth: 520 }} className="hidden xl:flex shrink-0 flex-col overflow-y-auto bg-surface-card">
           <div className="shrink-0 flex items-center justify-between border-b border-line px-3 py-2">
             <h2 className="text-xs font-semibold text-ink">시간별 트렌드</h2>
             <span className="font-mono text-[11px] font-medium text-brand">{sensor.name}</span>
