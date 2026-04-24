@@ -972,7 +972,7 @@ export default function SensorsPage() {
                   ⚠ 데이터 수신 지연 감지
                 </p>
                 <p className="mt-1 text-sm text-sensor-warningtext/80">
-                  {sensors.filter(s => isDataDelayed(s.lastUpdated)).map(s => s.manageNo || s.nameAbbr).join(', ')} 센서에서 2시간 이상 데이터가 수신되지 않고 있습니다.
+                  {sensors.filter(s => isDataDelayed(s.lastUpdated)).map(s => s.name || s.nameAbbr).join(', ')} 센서에서 2시간 이상 데이터가 수신되지 않고 있습니다.
                 </p>
               </div>
             )}
