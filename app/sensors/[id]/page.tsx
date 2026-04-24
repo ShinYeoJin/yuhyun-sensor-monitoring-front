@@ -864,7 +864,7 @@ export default function SensorDetailPage() {
             </div>
             {!isMultiMonitor && (
               <div className="flex items-center gap-1">
-                <button onClick={() => setShowAddIcon(true)} className="flex items-center gap-1 rounded-md border border-brand/30 bg-brand/10 px-2.5 py-1 font-mono text-[10px] text-brand hover:bg-brand/20">+ 추가</button>
+                <button onClick={() => setShowAddIcon(true)} className="flex items-center gap-1 rounded-md border border-brand/30 bg-brand/10 px-2.5 py-1 font-mono text-[10px] text-brand hover:bg-brand/20">+ 센서 아이콘 추가</button>
                 {currentIconKey && icons.find(i => i.key === currentIconKey) && (
                   <>
                     <button
