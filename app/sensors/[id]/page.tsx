@@ -46,6 +46,11 @@ export default function SensorDetailPage() {
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
+      if (isResizingLeft.current || isResizingRight.current) {
+        e.preventDefault()
+        document.body.style.userSelect = 'none'
+        document.body.style.cursor = 'col-resize'
+      }
       if (isResizingLeft.current) {
         const newW = Math.max(160, Math.min(360, e.clientX))
         setLeftWidth(newW)
@@ -55,7 +60,12 @@ export default function SensorDetailPage() {
         setRightWidth(newW)
       }
     }
-    const onUp = () => { isResizingLeft.current = false; isResizingRight.current = false }
+    const onUp = () => {
+      isResizingLeft.current = false
+      isResizingRight.current = false
+      document.body.style.userSelect = ''
+      document.body.style.cursor = ''
+    }
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
@@ -852,7 +862,7 @@ export default function SensorDetailPage() {
         </div>
 
         {/* 좌↔중앙 리사이즈 핸들 */}
-        <div onMouseDown={() => { isResizingLeft.current = true }}
+        <div onMouseDown={e => { e.preventDefault(); isResizingLeft.current = true }}
           className="hidden lg:block w-1 shrink-0 cursor-col-resize bg-transparent hover:bg-brand/30 transition-colors" />
 
         {/* 중: 평면도 */}
@@ -926,7 +936,7 @@ export default function SensorDetailPage() {
         </div>
 
         {/* 중앙↔우 리사이즈 핸들 */}
-        <div onMouseDown={() => { isResizingRight.current = true }}
+        <div onMouseDown={e => { e.preventDefault(); isResizingRight.current = true }}
           className="hidden xl:block w-1 shrink-0 cursor-col-resize bg-transparent hover:bg-brand/30 transition-colors" />
 
 
