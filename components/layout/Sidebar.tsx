@@ -16,7 +16,7 @@ const navGroups = [
     ],
   },
   {
-    label: '현장',
+    label: '기타',
     items: [
       { href: '/users', label: '사용자 관리', icon: '◎', showBadge: false },
       { href: '/files', label: '파일 관리',  icon: '□',  showBadge: false },
@@ -117,73 +117,66 @@ function SidebarContent({
               const isActive = pathname.startsWith(item.href)
               const badge = item.showBadge ? unreadCount : 0
               return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={onClose}
-                  className={[
-                    'flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] transition-colors',
-                    isActive
-                      ? 'border border-brand/20 bg-brand/10 font-medium text-brand'
-                      : 'border border-transparent text-ink-sub hover:bg-surface-subtle hover:text-ink',
-                  ].join(' ')}
-                >
-                  <span className="w-4 shrink-0 text-center text-[13px] leading-none">{item.icon}</span>
-                  <span className="flex-1">{item.label}</span>
-                  {badge > 0 && (
-                    <span className="ml-auto flex h-4 min-w-[16px] items-center justify-center rounded-full bg-sensor-danger px-1 font-mono text-[10px] font-medium text-white">
-                      {badge}
-                    </span>
+                <>
+                  <Link key={item.href} href={item.href} onClick={onClose}
+                    className={[
+                      'flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] transition-colors',
+                      isActive
+                        ? 'border border-brand/20 bg-brand/10 font-medium text-brand'
+                        : 'border border-transparent text-ink-sub hover:bg-surface-subtle hover:text-ink',
+                    ].join(' ')}
+                  >
+                    <span className="w-4 shrink-0 text-center text-[13px] leading-none">{item.icon}</span>
+                    <span>{item.label}</span>
+                    {badge > 0 && (
+                      <span className="ml-auto flex h-4 min-w-[16px] items-center justify-center rounded-full bg-sensor-danger px-1 font-mono text-[10px] font-medium text-white">
+                        {badge}
+                      </span>
+                    )}
+                  </Link>
+                  {/* 대시보드 다음에 현장 관리 토글 삽입 */}
+                  {group.label === '모니터링' && item.href === '/dashboard' && (
+                    <div>
+                      <button onClick={handleSitesToggle}
+                        className={[
+                          'flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-[13px] transition-colors',
+                          pathname.startsWith('/sites')
+                            ? 'border border-brand/20 bg-brand/10 font-medium text-brand'
+                            : 'border border-transparent text-ink-sub hover:bg-surface-subtle hover:text-ink',
+                        ].join(' ')}
+                      >
+                        <span className="w-4 shrink-0 text-center text-[13px] leading-none">⊞</span>
+                        <span>현장 관리</span>
+                        <span className="ml-auto text-[10px] text-ink-muted">{sitesOpen ? '▲' : '▼'}</span>
+                      </button>
+                      {sitesOpen && (
+                        <div className="ml-3 mt-0.5 border-l border-line pl-2">
+                          {sitesLoading ? (
+                            <p className="px-3 py-2 font-mono text-[11px] text-ink-muted">불러오는 중...</p>
+                          ) : sites.length === 0 ? (
+                            <p className="px-3 py-2 font-mono text-[11px] text-ink-muted">등록된 현장 없음</p>
+                          ) : (
+                            sites.map((site: any) => (
+                              <Link key={site.id} href={`/sites?id=${site.id}`} onClick={onClose}
+                                className={[
+                                  'flex items-center gap-2 rounded-md px-3 py-1.5 text-[12px] transition-colors',
+                                  pathname.startsWith('/sites') && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('id') === String(site.id)
+                                    ? 'bg-brand/10 font-medium text-brand'
+                                    : 'text-ink-muted hover:bg-surface-subtle hover:text-ink',
+                                ].join(' ')}
+                              >
+                                <span className="text-[10px]">•</span>
+                                <span className="truncate">{site.name}</span>
+                              </Link>
+                            ))
+                          )}
+                        </div>
+                      )}
+                    </div>
                   )}
-                </Link>
+                </>
               )
             })}
-
-            {/* 현장 관리 토글 — 현장 그룹 아래에만 삽입 */}
-            {group.label === '현장' && (
-              <div>
-                <button
-                  onClick={handleSitesToggle}
-                  className={[
-                    'flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-[13px] transition-colors',
-                    pathname.startsWith('/sites')
-                      ? 'border border-brand/20 bg-brand/10 font-medium text-brand'
-                      : 'border border-transparent text-ink-sub hover:bg-surface-subtle hover:text-ink',
-                  ].join(' ')}
-                >
-                  <span className="w-4 shrink-0 text-center text-[13px] leading-none">⊞</span>
-                  <span className="flex-1">현장 관리</span>
-                  <span className="text-[10px] text-ink-muted">{sitesOpen ? '▲' : '▼'}</span>
-                </button>
-
-                {sitesOpen && (
-                  <div className="ml-3 mt-0.5 border-l border-line pl-2">
-                    {sitesLoading ? (
-                      <p className="px-3 py-2 font-mono text-[11px] text-ink-muted">불러오는 중...</p>
-                    ) : sites.length === 0 ? (
-                      <p className="px-3 py-2 font-mono text-[11px] text-ink-muted">등록된 현장 없음</p>
-                    ) : (
-                      sites.map((site: any) => (
-                        <Link
-                          key={site.id}
-                          href={`/sites?id=${site.id}`}
-                          onClick={onClose}
-                          className={[
-                            'flex items-center gap-2 rounded-md px-3 py-1.5 text-[12px] transition-colors',
-                            pathname.startsWith('/sites') && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('id') === String(site.id)
-                              ? 'bg-brand/10 font-medium text-brand'
-                              : 'text-ink-muted hover:bg-surface-subtle hover:text-ink',
-                          ].join(' ')}
-                        >
-                          <span className="text-[10px]">•</span>
-                          <span className="truncate">{site.name}</span>
-                        </Link>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         ))}
       </nav>

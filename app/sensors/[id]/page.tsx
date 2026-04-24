@@ -38,6 +38,29 @@ function SensorIcon({ icon, isSelected, status, onMouseDown, onClick }: {
 }
 
 export default function SensorDetailPage() {
+
+  const [leftWidth, setLeftWidth] = useState(220)   // 좌측 패널 너비 (px)
+  const [rightWidth, setRightWidth] = useState(380)  // 우측 패널 너비 (px)
+  const isResizingLeft = useRef(false)
+  const isResizingRight = useRef(false)
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (isResizingLeft.current) {
+        const newW = Math.max(160, Math.min(360, e.clientX))
+        setLeftWidth(newW)
+      }
+      if (isResizingRight.current) {
+        const newW = Math.max(280, Math.min(520, window.innerWidth - e.clientX))
+        setRightWidth(newW)
+      }
+    }
+    const onUp = () => { isResizingLeft.current = false; isResizingRight.current = false }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
+  }, [])
+
   const params = useParams()
   const id = Array.isArray(params.id) ? params.id[0] : params.id
   const [sensor, setSensor] = useState<any>(null)
@@ -692,7 +715,7 @@ export default function SensorDetailPage() {
       <div className="flex flex-1 min-h-0">
 
         {/* 좌: 센서 정보 */}
-        <div className="hidden lg:flex w-52 shrink-0 flex-col border-r border-line bg-surface-card overflow-y-auto">
+        <div className="hidden lg:flex shrink-0 flex-col border-r border-line bg-surface-card overflow-y-auto">
           <div className="p-4">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-xs font-semibold text-ink">센서 정보</h2>
@@ -826,6 +849,10 @@ export default function SensorDetailPage() {
           </div>
         </div>
 
+        {/* 좌↔중앙 리사이즈 핸들 */}
+        <div onMouseDown={() => { isResizingLeft.current = true }}
+          className="hidden lg:block w-1 shrink-0 cursor-col-resize bg-transparent hover:bg-brand/30 transition-colors" />
+
         {/* 중: 평면도 */}
         <div className="flex flex-1 flex-col border-r border-line min-w-0">
           <div className="shrink-0 flex items-center justify-between border-b border-line px-3 py-2">
@@ -895,6 +922,11 @@ export default function SensorDetailPage() {
             )}
           </div>
         </div>
+
+        {/* 중앙↔우 리사이즈 핸들 */}
+        <div onMouseDown={() => { isResizingRight.current = true }}
+          className="hidden xl:block w-1 shrink-0 cursor-col-resize bg-transparent hover:bg-brand/30 transition-colors" />
+
 
         {/* 우: 시간별 트렌드 */}
         <div className="hidden xl:flex w-80 shrink-0 flex-col overflow-y-auto bg-surface-card">

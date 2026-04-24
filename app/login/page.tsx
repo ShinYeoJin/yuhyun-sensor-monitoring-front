@@ -151,9 +151,9 @@ export default function LoginPage() {
             <div className="rounded-lg bg-surface-subtle px-3 py-2.5">
               <p className="font-mono text-[10px] text-ink-muted mb-1">테스트 계정</p>
               <button type="button"
-                onClick={() => { setEmail('admin@geomonitor.com'); setPassword('admin1234') }}
+                onClick={() => { setEmail('qwer4321@qwer4321.com'); setPassword('qwer4321') }}
                 className="block font-mono text-[11px] text-brand hover:underline">
-                admin@geomonitor.com / admin1234 (관리자)
+                qwer4321@qwer4321.com / qwer4321 (MultiMonitor)
               </button>
             </div>
           )}
