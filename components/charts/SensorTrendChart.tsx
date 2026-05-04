@@ -68,10 +68,10 @@ export function SensorTrendChart({ sensor, readings, hideXAxis = false, initValu
   const refLine  = (level1Lower !== null && level1Lower !== undefined && !isNaN(level1Lower)) ? level1Lower : null
   const refLine2 = (level1Upper !== null && level1Upper !== undefined && !isNaN(level1Upper)) ? level1Upper : null
 
-  // 가로 스크롤: 데이터 1건당 최소 12px, 최소 전체 너비
+  // chartHeight 증가 + chartWidth 컨테이너 너비 기준으로 확대
   const MIN_WIDTH_PER_POINT = 12
-  const chartWidth = Math.max(data.length * MIN_WIDTH_PER_POINT, 500)
-  const chartHeight = 200
+  const chartWidth = Math.max(data.length * MIN_WIDTH_PER_POINT, 800)
+  const chartHeight = 220
 
   // x축 틱: 너무 많으면 간격 조정
   const maxTicks = Math.floor(chartWidth / 60)
@@ -81,10 +81,10 @@ export function SensorTrendChart({ sensor, readings, hideXAxis = false, initValu
     <div>
       {/* 가로 스크롤 컨테이너 */}
       <div
-        style={{ overflowX: 'auto', overflowY: 'hidden', width: '100%', cursor: 'default' }}
+        style={{ overflowX: 'auto', overflowY: 'hidden', width: '100%', height: '100%', cursor: 'default' }}
         className="scrollbar-thin"
       >
-        <div style={{ width: chartWidth, minWidth: '100%' }}>
+        <div style={{ width: chartWidth, minWidth: '100%', height: '100%' }}>
           <LineChart
             width={chartWidth}
             height={chartHeight}
