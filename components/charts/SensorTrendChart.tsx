@@ -71,7 +71,7 @@ export function SensorTrendChart({ sensor, readings, hideXAxis = false, initValu
   // chartHeight 증가 + chartWidth 컨테이너 너비 기준으로 확대
   const MIN_WIDTH_PER_POINT = 12
   const chartWidth = Math.max(data.length * MIN_WIDTH_PER_POINT, 800)
-  const chartHeight = 200
+  const chartHeight = 210
 
   // x축 틱: 너무 많으면 간격 조정
   const maxTicks = Math.floor(chartWidth / 60)
@@ -89,7 +89,7 @@ export function SensorTrendChart({ sensor, readings, hideXAxis = false, initValu
             width={chartWidth}
             height={chartHeight}
             data={data}
-            margin={{ top: 20, right: 70, bottom: hideXAxis ? 4 : 28, left: 8 }}
+            margin={{ top: 20, right: 70, bottom: hideXAxis ? 4 : 50, left: 8 }}
           >
             <CartesianGrid strokeDasharray="" stroke="#e5e9f0" horizontal={true} vertical={false} />
             <XAxis
