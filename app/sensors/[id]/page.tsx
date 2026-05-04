@@ -770,7 +770,7 @@ export default function SensorDetailPage() {
       </div>
 
       {/* 상단: 2단 레이아웃 (센서정보 + 평면도) */}
-      <div className="flex shrink-0" style={{ height: '37vh', minHeight: '240px' }}>
+      <div className="flex shrink-0" style={{ height: '45vh', minHeight: '280px' }}>
 
         {/* 좌: 센서 정보 */}
         <div style={{ width: leftWidth, minWidth: 160, maxWidth: 360 }} className="hidden lg:flex shrink-0 flex-col border-r border-line bg-surface-card overflow-y-auto">
@@ -977,7 +977,7 @@ export default function SensorDetailPage() {
       </div>
 
       {/* 중단: 시간별 트렌드 */}
-      <div className="border-t border-line bg-surface-card flex flex-col shrink-0" style={{ height: '38vh', minHeight: '320px'}}>
+      <div className="border-t border-line bg-surface-card flex flex-col shrink-0" style={{ height: '45vh', minHeight: '350px'}}>
 
         {/* 트렌드 헤더 */}
         <div className="shrink-0 flex items-center justify-between border-b border-line px-3 py-2">
@@ -1112,7 +1112,7 @@ export default function SensorDetailPage() {
         })()}
 
         {/* 차트 — 나머지 공간 전부 */}
-        <div ref={chartRef} className="overflow-hidden" style={{ height: '260px' }}>
+        <div ref={chartRef} className="overflow-hidden" style={{ height: '300px' }}>
           <SensorTrendChart sensor={sensor} readings={chartMode==='hourly'?measurementsWithGaps:dailyReadings} initValue={sensorCode==='80053'?initValue:undefined} level1Upper={sensorCode==='80053'?(sensor.criteria?.depthCriteria?.[depthLabel]?.upper??null):(sensor.criteria?.level1Upper??null)} level1Lower={sensorCode==='80053'?(sensor.criteria?.depthCriteria?.[depthLabel]?.lower??null):(sensor.criteria?.level1Lower??null)} />
         </div>
 
