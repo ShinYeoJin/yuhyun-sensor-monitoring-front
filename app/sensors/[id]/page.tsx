@@ -260,6 +260,8 @@ export default function SensorDetailPage() {
   const [criteriaEditing, setCriteriaEditing] = useState(false)
   const [criteriaInput, setCriteriaInput] = useState({ upper: '', lower: '' })
   const [criteriaSaving, setCriteriaSaving] = useState(false)
+  const [depth1Data, setDepth1Data] = useState<any[]>([])
+  const [depth3Data, setDepth3Data] = useState<any[]>([])
 
   // ─── 측정값 로딩 ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -280,9 +282,48 @@ export default function SensorDetailPage() {
     }).catch(() => {})
   }, [id, sensorCode, dateFrom, dateTo, depthLabel, calcMode, correctionParams, chartMode, selectedHour])
 
+  // WL-02 평균 계산용 depth 1/3번 데이터 로드
+  useEffect(() => {
+    if (sensorCode !== '80053' || depthLabel !== '2') {
+      setDepth1Data([]); setDepth3Data([]); return
+    }
+    const params = {
+      from: chartMode === 'daily' ? `${dateFrom}T${String(selectedHour).padStart(2,'0')}:00:00` : dateFrom,
+      to:   chartMode === 'daily' ? `${dateTo}T${String(selectedHour).padStart(2,'0')}:59:59` : dateTo,
+      limit: 2000,
+    }
+    const toVal = (m: any) => parseFloat(((calcMode === 'linear' ? parseFloat(m.linear_value ?? m.value) : parseFloat(m.value)) + (correctionParams['1'] ?? 0)).toFixed(4))
+    const toVal3 = (m: any) => parseFloat(((calcMode === 'linear' ? parseFloat(m.linear_value ?? m.value) : parseFloat(m.value)) + (correctionParams['3'] ?? 0)).toFixed(4))
+    sensorApi.getMeasurements(Number(id), { ...params, depthLabel: '1' })
+      .then((data: any[]) => setDepth1Data(data.map((m: any) => ({ timestamp: m.measured_at, value: toVal(m) }))))
+      .catch(() => {})
+    sensorApi.getMeasurements(Number(id), { ...params, depthLabel: '3' })
+      .then((data: any[]) => setDepth3Data(data.map((m: any) => ({ timestamp: m.measured_at, value: toVal3(m) }))))
+      .catch(() => {})
+  }, [id, sensorCode, depthLabel, dateFrom, dateTo, calcMode, correctionParams, chartMode, selectedHour])
+
   const [globalInitReading, setGlobalInitReading] = useState<any>(null)
   useEffect(() => {
     if (!id || !sensorCode) return
+    if (sensorCode === '80053' && depthLabel === '2') {
+      // WL-02: depth1/3 가장 오래된 데이터 평균으로 초기값 계산
+      Promise.all([
+        sensorApi.getMeasurements(Number(id), { limit: 2000, depthLabel: '1' }),
+        sensorApi.getMeasurements(Number(id), { limit: 2000, depthLabel: '3' }),
+      ]).then(([d1, d3]) => {
+        const corr1 = correctionParams['1'] ?? 0, corr3 = correctionParams['3'] ?? 0
+        const oldest1 = [...d1].sort((a: any, b: any) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime())[0]
+        const oldest3 = [...d3].sort((a: any, b: any) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime())[0]
+        if (oldest1 && oldest3) {
+          const v1 = parseFloat(oldest1.linear_value ?? oldest1.value) + corr1
+          const v3 = parseFloat(oldest3.linear_value ?? oldest3.value) + corr3
+          const avg = (v1 + v3) / 2
+          const ts = new Date(oldest1.measured_at).getTime() < new Date(oldest3.measured_at).getTime() ? oldest1.measured_at : oldest3.measured_at
+          setGlobalInitReading({ value: avg, linear_value: avg, timestamp: ts })
+        }
+      }).catch(() => {})
+      return
+    }
     sensorApi.getMeasurements(Number(id), { limit: 2000, depthLabel: sensorCode === '80053' ? depthLabel : undefined })
       .then((data: any[]) => {
         if (data.length > 0) {
@@ -293,10 +334,26 @@ export default function SensorDetailPage() {
       }).catch(() => {})
   }, [id, sensorCode, depthLabel, correctionParams])
 
+  // WL-02: depth1/3 평균값으로 measurements 교체
+  const activeMeasurements = useMemo(() => {
+    if (sensorCode !== '80053' || depthLabel !== '2') return measurements
+    const d1Map = new Map(depth1Data.map(m => [new Date(m.timestamp).toISOString().slice(0, 13), m.value]))
+    const d3Map = new Map(depth3Data.map(m => [new Date(m.timestamp).toISOString().slice(0, 13), m.value]))
+    const allKeys = Array.from(new Set([...d1Map.keys(), ...d3Map.keys()])).sort()
+    return allKeys.map(key => {
+      const v1 = d1Map.get(key), v3 = d3Map.get(key)
+      let avg: number
+      if (v1 != null && v3 != null) avg = parseFloat(((v1 + v3) / 2).toFixed(4))
+      else avg = (v1 ?? v3 ?? 0)
+      const ts = new Date(key + ':00:00.000Z').toISOString()
+      return { timestamp: ts, value: avg, unit: sensor?.unit || '', status: 'normal', calc_status: 'WL-01+WL-03 평균' }
+    })
+  }, [sensorCode, depthLabel, depth1Data, depth3Data, measurements, sensor?.unit])
+
   // ─── 데이터 공백 구간 처리 ────────────────────────────────────────────────
   const measurementsWithGaps = useMemo(() => {
     const dataMap = new Map<number, any>()
-    measurements.forEach(m => {
+    activeMeasurements.forEach(m => {
       const t = new Date(m.timestamp)
       dataMap.set(new Date(t.getFullYear(), t.getMonth(), t.getDate(), t.getHours()).getTime(), m)
     })
@@ -313,7 +370,7 @@ export default function SensorDetailPage() {
       cur = new Date(cur.getTime() + 3600000)
     }
     return slots
-  }, [measurements, sensor?.unit, dateFrom, dateTo])
+  }, [activeMeasurements, sensor?.unit, dateFrom, dateTo])
 
   const dailyReadings = useMemo(() => {
     if (chartMode !== 'daily') {
@@ -329,7 +386,7 @@ export default function SensorDetailPage() {
     // 일별 모드: 선택한 시간(selectedHour)에 해당하는 데이터만
     const targetHour = selectedHour
     const dataMap = new Map<string, any>()
-    measurements.forEach(m => {
+    activeMeasurements.forEach(m => {
       const t = new Date(m.timestamp)
       if (t.getHours() === targetHour) {
         const dateKey = t.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
@@ -356,7 +413,7 @@ export default function SensorDetailPage() {
       cur.setDate(cur.getDate() + 1)
     }
     return slots
-  }, [measurements, chartMode, selectedHour, dateFrom, dateTo, sensor?.unit])
+  }, [activeMeasurements, chartMode, selectedHour, dateFrom, dateTo, sensor?.unit])
 
   // ─── 1차 상하한 ───────────────────────────────────────────────────────────
   const { level1Upper, level1Lower } = useMemo(() => {
@@ -379,9 +436,9 @@ export default function SensorDetailPage() {
   }, [globalInitReading, sensorCode, calcMode])
 
   const latestMeasurement = useMemo(() => {
-    if (measurements.length === 0) return null
-    return [...measurements].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]
-  }, [measurements])
+    if (activeMeasurements.length === 0) return null
+    return [...activeMeasurements].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]
+  }, [activeMeasurements])
 
   const { thresholdWarning, thresholdDanger } = sensor ? getThresholds(sensor) : { thresholdWarning: 0, thresholdDanger: 0 }
 
