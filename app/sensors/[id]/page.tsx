@@ -495,7 +495,7 @@ export default function SensorDetailPage() {
         managerText = managerUsernames.map((u: string) => { const f = users.find((x: any) => x.username === u); return f ? `${f.username} (${f.role})` : u }).join(', ')
       } catch { managerText = managerUsernames.join(', ') }
     }
-    const excelSourceRows = chartMode === 'hourly' ? measurements : dailyReadings
+    const excelSourceRows = chartMode === 'hourly' ? activeMeasurements : dailyReadings
     const sortedRows = [...excelSourceRows].sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
     const initDate = globalInitReading ? new Date(globalInitReading.timestamp) : (sortedRows.length > 0 ? new Date(sortedRows[0].timestamp) : new Date())
     const ExcelJSModule = await import('exceljs') as any
@@ -587,7 +587,7 @@ export default function SensorDetailPage() {
     const managers=(() => { try{return JSON.parse((sensor as any).site_managers||'[]')}catch{return []} })()
     let mt='—'; if(managers.length>0){try{const u=await userApi.getList();mt=managers.map((m:string)=>{const f=u.find((x:any)=>x.username===m);return f?`${f.username} (${f.role})`:m}).join(', ')}catch{mt=managers.join(', ')}}
     const pdfSourceRows = chartMode === 'hourly'
-      ? measurements
+      ? activeMeasurements
       : dailyReadings
     const pdfSortedRows=[...pdfSourceRows].sort((a:any,b:any)=>new Date(a.timestamp).getTime()-new Date(b.timestamp).getTime())
     const pdfInitDate=globalInitReading?new Date(globalInitReading.timestamp):(pdfSortedRows.length>0?new Date(pdfSortedRows[0].timestamp):new Date())
