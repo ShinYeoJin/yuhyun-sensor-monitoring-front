@@ -977,7 +977,7 @@ export default function SensorDetailPage() {
       </div>
 
       {/* 중단: 시간별 트렌드 */}
-      <div className="border-t border-line bg-surface-card flex flex-col shrink-0" style={{ height: '45vh', minHeight: '350px'}}>
+      <div className="border-t border-line bg-surface-card flex flex-col shrink-0" style={{ height: '55vh', minHeight: '440px'}}>
 
         {/* 트렌드 헤더 */}
         <div className="shrink-0 flex items-center justify-between border-b border-line px-3 py-2">
@@ -1112,7 +1112,7 @@ export default function SensorDetailPage() {
         })()}
 
         {/* 차트 — 나머지 공간 전부 */}
-        <div ref={chartRef} className="overflow-hidden" style={{ height: '300px' }}>
+        <div ref={chartRef} className="overflow-hidden" style={{ height: '380px' }}>
           <SensorTrendChart sensor={sensor} readings={chartMode==='hourly'?measurementsWithGaps:dailyReadings} initValue={sensorCode==='80053'?initValue:undefined} level1Upper={sensorCode==='80053'?(sensor.criteria?.depthCriteria?.[depthLabel]?.upper??null):(sensor.criteria?.level1Upper??null)} level1Lower={sensorCode==='80053'?(sensor.criteria?.depthCriteria?.[depthLabel]?.lower??null):(sensor.criteria?.level1Lower??null)} />
         </div>
 

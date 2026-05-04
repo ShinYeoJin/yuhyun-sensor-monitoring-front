@@ -1,5 +1,6 @@
 'use client'
 
+import { useRef, useState, useEffect } from 'react'
 import {
   LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip,
@@ -42,6 +43,21 @@ interface Props {
 }
 
 export function SensorTrendChart({ sensor, readings, hideXAxis = false, initValue, level1Upper: propLevel1Upper, level1Lower: propLevel1Lower }: Props) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [containerSize, setContainerSize] = useState({ width: 800, height: 300 })
+
+  useEffect(() => {
+    if (!containerRef.current) return
+    const observer = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect
+        if (width > 0 && height > 0) setContainerSize({ width, height })
+      }
+    })
+    observer.observe(containerRef.current)
+    return () => observer.disconnect()
+  }, [])
+
   const source = readings ?? sensor.readings ?? []
 
   const sortedSource = [...source].sort((a, b) =>
@@ -68,17 +84,17 @@ export function SensorTrendChart({ sensor, readings, hideXAxis = false, initValu
   const refLine  = (level1Lower !== null && level1Lower !== undefined && !isNaN(level1Lower)) ? level1Lower : null
   const refLine2 = (level1Upper !== null && level1Upper !== undefined && !isNaN(level1Upper)) ? level1Upper : null
 
-  // chartHeight 증가 + chartWidth 컨테이너 너비 기준으로 확대
+  // chartWidth/chartHeight 계산 변경
   const MIN_WIDTH_PER_POINT = 12
-  const chartWidth = Math.max(data.length * MIN_WIDTH_PER_POINT, 800)
-  const chartHeight = 300
+  const chartWidth = Math.max(data.length * MIN_WIDTH_PER_POINT, containerSize.width)
+  const chartHeight = containerSize.height
 
   // x축 틱: 너무 많으면 간격 조정
   const maxTicks = Math.floor(chartWidth / 60)
   const tickStep = Math.max(1, Math.ceil(data.length / maxTicks))
 
   return (
-    <div>
+    <div ref={containerRef} style={{ width: '100%', height: '100%' }}>
       {/* 가로 스크롤 컨테이너 */}
       <div
         style={{ overflowX: 'auto', overflowY: 'hidden', width: '100%', height: '100%', cursor: 'default' }}
