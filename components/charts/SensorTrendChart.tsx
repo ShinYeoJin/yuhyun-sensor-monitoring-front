@@ -94,10 +94,10 @@ export function SensorTrendChart({ sensor, readings, hideXAxis = false, initValu
   const tickStep = Math.max(1, Math.ceil(data.length / maxTicks))
 
   return (
-    <div ref={containerRef} style={{ width: '100%', height: '100%' }}>
+    <div ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* 가로 스크롤 컨테이너 */}
       <div
-        style={{ overflowX: 'auto', overflowY: 'hidden', width: '100%', height: '100%', cursor: 'default' }}
+        style={{ overflowX: 'auto', overflowY: 'hidden', width: '100%', flex: 1, cursor: 'default' }}
         className="scrollbar-thin"
       >
         <div style={{ width: chartWidth, minWidth: '100%', height: '100%' }}>

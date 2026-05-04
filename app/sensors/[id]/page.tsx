@@ -986,19 +986,19 @@ export default function SensorDetailPage() {
         </div>
 
         {/* 컨트롤 영역 — 한 줄 */}
-        <div className="shrink-0 flex items-center gap-2 px-3 py-2 border-b border-line flex-wrap">
+        <div className="shrink-0 flex items-center gap-2 px-3 py-2.5 border-b border-line flex-wrap">
           {/* 날짜 범위 */}
           <div className="flex items-center gap-1">
             {[['오늘',1],['7일',7],['30일',30]].map(([label,days])=>(
               <button key={String(label)} onClick={()=>setPreset(Number(days))}
-                className="rounded-md border border-line px-2 py-0.5 font-mono text-[10px] text-ink-muted hover:bg-surface-subtle hover:text-ink">{label}</button>
+              className="rounded-md border border-line px-3 py-1 font-mono text-[11px] text-ink-muted hover:bg-surface-subtle hover:text-ink">{label}</button>
             ))}
           </div>
           <input type="date" value={dateFrom} max={today} onChange={e=>{setDateFrom(e.target.value);setTablePage(1)}}
-            className="rounded-md border border-line bg-surface-card px-2 py-0.5 font-mono text-[10px] text-ink focus:outline-none" />
+            className="rounded-md border border-line bg-surface-card px-2 py-1 font-mono text-[11px] text-ink focus:outline-none" />
           <span className="font-mono text-[10px] text-ink-muted">~</span>
           <input type="date" value={dateTo} min={dateFrom} max={today} onChange={e=>{setDateTo(e.target.value);setTablePage(1)}}
-            className="rounded-md border border-line bg-surface-card px-2 py-0.5 font-mono text-[10px] text-ink focus:outline-none" />
+            className="rounded-md border border-line bg-surface-card px-2 py-1 font-mono text-[11px] text-ink focus:outline-none" />
 
           <div className="w-px h-4 bg-line shrink-0" />
 
@@ -1007,7 +1007,7 @@ export default function SensorDetailPage() {
           <div className="flex gap-1">
             {['시간별','일별'].map(m=>(
               <button key={m} onClick={()=>setChartMode(m==='시간별'?'hourly':'daily')}
-                className={['rounded-md border px-2 py-0.5 font-mono text-[10px]', chartMode===(m==='시간별'?'hourly':'daily')?'border-brand/30 bg-brand/10 text-brand':'border-line text-ink-muted hover:bg-surface-subtle'].join(' ')}>{m}</button>
+                className={['rounded-md border px-3 py-1 font-mono text-[11px]', chartMode===(m==='시간별'?'hourly':'daily')?'border-brand/30 bg-brand/10 text-brand':'border-line text-ink-muted hover:bg-surface-subtle'].join(' ')}>{m}</button>
             ))}
           </div>
 
@@ -1029,18 +1029,18 @@ export default function SensorDetailPage() {
               <div className="flex gap-1">
                 {(isMultiMonitor ? [['Linear','linear']] : [['Linear','linear'],['Polynomial','poly']]).map(([l,v])=>(
                   <button key={v} onClick={()=>setCalcMode(v as 'linear'|'poly')}
-                    className={['rounded-md border px-2 py-0.5 font-mono text-[10px]', calcMode===v?'border-brand/30 bg-brand/10 text-brand':'border-line text-ink-muted hover:bg-surface-subtle'].join(' ')}>{l}</button>
+                    className={['rounded-md border px-3 py-1 font-mono text-[11px]', calcMode===v?'border-brand/30 bg-brand/10 text-brand':'border-line text-ink-muted hover:bg-surface-subtle'].join(' ')}>{l}</button>
                 ))}
               </div>
               {/* 보정값 입력 — 계산식 옆 */}
               <div className="flex items-center gap-1">
-                <span className="font-mono text-[10px] text-ink-muted shrink-0">보정값</span>
+                <span className="font-mono text-[11px] text-ink shrink-0 font-medium">보정값</span>
                 <input type="number" step="0.01" min="-100" max="100" placeholder="0.00"
                   value={correctionInput[depthLabel]??(correctionParams[depthLabel]!==undefined&&correctionParams[depthLabel]!==0?String(correctionParams[depthLabel]):'')}
                   onChange={e=>setCorrectionInput(prev=>({...prev,[depthLabel]:e.target.value}))}
                   onWheel={e=>e.currentTarget.blur()}
-                  className="w-20 rounded-md border border-line bg-surface-card px-2 py-0.5 font-mono text-[10px] text-ink text-right focus:outline-none focus:ring-1 focus:ring-brand/40" />
-                <span className="font-mono text-[10px] text-ink-muted shrink-0">{sensor.unit}</span>
+                  className="w-24 rounded-md border border-brand/40 bg-surface-card px-2 py-1 font-mono text-[11px] text-ink text-right focus:outline-none focus:ring-1 focus:ring-brand/40" />
+                <span className="font-mono text-[11px] text-ink-muted shrink-0">{sensor.unit}</span>
                 <button disabled={correctionSaving}
                   onClick={async()=>{
                     const s=correctionInput[depthLabel]??'', v=s===''?0:parseFloat(s)
@@ -1048,7 +1048,7 @@ export default function SensorDetailPage() {
                     const next={...correctionParams,[depthLabel]:v}; setCorrectionSaving(true)
                     try{await sensorApi.updateInfo(Number(id),{correction_params:next});setCorrectionParams(next);setCorrectionInput(prev=>({...prev,[depthLabel]:String(v)}))}catch{}finally{setCorrectionSaving(false)}
                   }}
-                  className="rounded-md bg-sensor-normal px-2 py-0.5 font-mono text-[10px] text-white disabled:opacity-50 whitespace-nowrap">
+                  className="rounded-md bg-sensor-normal px-3 py-1 font-mono text-[11px] text-white disabled:opacity-50 whitespace-nowrap">
                   {correctionSaving?'저장중':'✓ 적용'}
                 </button>
               </div>
@@ -1065,7 +1065,7 @@ export default function SensorDetailPage() {
                   const btnLabel = depthIcon ? depthIcon.label : `${d}번 수위계`
                   return (
                     <button key={d} onClick={()=>{ setDepthLabel(d); setCriteriaEditing(false) }}
-                      className={['rounded-md border px-2 py-0.5 font-mono text-[10px]', depthLabel===d?'border-brand/30 bg-brand/10 text-brand font-medium':'border-line text-ink-muted hover:bg-surface-subtle'].join(' ')}>{btnLabel}</button>
+                      className={['rounded-md border px-3 py-1 font-mono text-[11px]', depthLabel===d?'border-brand/30 bg-brand/10 text-brand font-medium':'border-line text-ink-muted hover:bg-surface-subtle'].join(' ')}>{btnLabel}</button>
                   )
                 })}
               </div>
