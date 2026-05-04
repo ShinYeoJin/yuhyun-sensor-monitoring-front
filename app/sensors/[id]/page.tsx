@@ -877,18 +877,6 @@ export default function SensorDetailPage() {
                   )}
                 </div>
               )}
-              {isMultiMonitor && level1Upper !== null && (
-                <div className="flex gap-1">
-                  <dt className="w-16 shrink-0 font-mono text-[10px] text-ink-muted">1차 상한</dt>
-                  <dd className="flex-1 font-mono text-[10px] text-ink">{(level1Upper as number).toFixed(2)} m</dd>
-                </div>
-              )}
-              {isMultiMonitor && level1Lower !== null && (
-                <div className="flex gap-1">
-                  <dt className="w-16 shrink-0 font-mono text-[10px] text-ink-muted">1차 하한</dt>
-                  <dd className="flex-1 font-mono text-[10px] text-ink">{(level1Lower as number).toFixed(2)} m</dd>
-                </div>
-              )}
               {!isMultiMonitor && (
                 <div className="flex gap-1">
                   <dt className="w-16 shrink-0 font-mono text-[10px] text-ink-muted">마지막 수신</dt>
@@ -897,7 +885,7 @@ export default function SensorDetailPage() {
               )}
             </dl>
 
-            {sensorCode === '80053' && (
+            {sensorCode === '80053' && !isMultiMonitor && (
               <div className="mt-3 rounded-lg border border-line bg-surface-subtle p-2">
                 <p className="mb-1.5 font-mono text-[9px] font-semibold text-ink-muted uppercase tracking-wider">계산식 상수값</p>
                 <div className="flex flex-col gap-1">
@@ -986,30 +974,31 @@ export default function SensorDetailPage() {
             )}
           </div>
         </div>
+      </div>
 
-        {/* 중단: 시간별 트렌드 */}
-        <div className="shrink-0 border-t border-line bg-surface-card overflow-y-auto" style={{ height: '44vh' }}>
-          <div className="shrink-0 flex items-center justify-between border-b border-line px-3 py-2">
-            <h2 className="text-xs font-semibold text-ink">시간별 트렌드</h2>
-            <span className="font-mono text-[11px] font-medium text-brand">{sensor.name}</span>
-          </div>
-          <div className="p-3 space-y-3">
-            {/* 조회 기간 */}
-            <div className="rounded-lg border border-line bg-surface-subtle p-2.5">
-              <p className="mb-2 font-mono text-[10px] font-semibold text-ink-muted">□ 조회 기간 설정</p>
-              <div className="flex gap-1 mb-2">
-                {[['오늘',1],['7일',7],['30일',30]].map(([label,days])=>(
-                  <button key={String(label)} onClick={()=>setPreset(Number(days))} className="flex-1 rounded-md border border-line py-1 font-mono text-[11px] text-ink-muted hover:bg-surface-card hover:text-ink">{label}</button>
-                ))}
-              </div>
-              <div className="flex items-center gap-1">
-                <input type="date" value={dateFrom} max={today} onChange={e=>{setDateFrom(e.target.value);setTablePage(1)}} className="flex-1 rounded-md border border-line bg-surface-card px-2 py-1 font-mono text-[11px] text-ink focus:outline-none" />
-                <span className="font-mono text-[10px] text-ink-muted">~</span>
-                <input type="date" value={dateTo} min={dateFrom} max={today} onChange={e=>{setDateTo(e.target.value);setTablePage(1)}} className="flex-1 rounded-md border border-line bg-surface-card px-2 py-1 font-mono text-[11px] text-ink focus:outline-none" />
-              </div>
-              {chartMode === 'daily' && (
-                <div className="flex items-center gap-1.5 mt-1">
-                  <span className="font-mono text-[10px] text-ink-muted shrink-0">조회 시간</span>
+      {/* 중단: 시간별 트렌드 */}
+      <div className="shrink-0 border-t border-line bg-surface-card overflow-y-auto" style={{ height: '44vh' }}>
+        <div className="shrink-0 flex items-center justify-between border-b border-line px-3 py-2">
+          <h2 className="text-xs font-semibold text-ink">시간별 트렌드</h2>
+          <span className="font-mono text-[11px] font-medium text-brand">{sensor.name}</span>
+        </div>
+        <div className="p-3 space-y-3">
+          {/* 조회 기간 */}
+          <div className="rounded-lg border border-line bg-surface-subtle p-2.5">
+            <p className="mb-2 font-mono text-[10px] font-semibold text-ink-muted">□ 조회 기간 설정</p>
+            <div className="flex gap-1 mb-2">
+              {[['오늘',1],['7일',7],['30일',30]].map(([label,days])=>(
+                <button key={String(label)} onClick={()=>setPreset(Number(days))} className="flex-1 rounded-md border border-line py-1 font-mono text-[11px] text-ink-muted hover:bg-surface-card hover:text-ink">{label}</button>
+              ))}
+            </div>
+            <div className="flex items-center gap-1">
+              <input type="date" value={dateFrom} max={today} onChange={e=>{setDateFrom(e.target.value);setTablePage(1)}} className="flex-1 rounded-md border border-line bg-surface-card px-2 py-1 font-mono text-[11px] text-ink focus:outline-none" />
+              <span className="font-mono text-[10px] text-ink-muted">~</span>
+              <input type="date" value={dateTo} min={dateFrom} max={today} onChange={e=>{setDateTo(e.target.value);setTablePage(1)}} className="flex-1 rounded-md border border-line bg-surface-card px-2 py-1 font-mono text-[11px] text-ink focus:outline-none" />
+            </div>
+            {chartMode === 'daily' && (
+              <div className="flex items-center gap-1.5 mt-1">
+                <span className="font-mono text-[10px] text-ink-muted shrink-0">조회 시간</span>
                   <select value={selectedHour} onChange={e => setSelectedHour(Number(e.target.value))}
                     className="flex-1 rounded-md border border-line bg-surface-card px-2 py-1 font-mono text-[11px] text-ink focus:outline-none focus:ring-1 focus:ring-brand/40">
                     {Array.from({length:24},(_,i)=>(
@@ -1018,10 +1007,10 @@ export default function SensorDetailPage() {
                       </option>
                     ))}
                   </select>
-                  <span className="font-mono text-[10px] text-ink-muted shrink-0">데이터</span>
-                </div>
-              )}
-            </div>
+                <span className="font-mono text-[10px] text-ink-muted shrink-0">데이터</span>
+              </div>
+            )}
+          </div>
 
             {/* 조회 단위 + 계산식 */}
             <div className="grid grid-cols-2 gap-2">
@@ -1132,7 +1121,6 @@ export default function SensorDetailPage() {
             )}
           </div>
         </div>
-      </div>
 
       {/* 하단: 측정 데이터 로그 */}
       <div className="shrink-0 border-t border-line" style={{maxHeight:'35vh',overflowY:'auto'}}>

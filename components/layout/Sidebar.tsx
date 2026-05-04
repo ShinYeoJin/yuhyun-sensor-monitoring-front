@@ -108,8 +108,10 @@ function SidebarContent({
 
       {/* 네비게이션 */}
       <nav className="flex-1 overflow-y-auto px-2 py-3">
-        {navGroups.map((group) => (
-          <div key={group.label} className="mb-1">
+      {navGroups
+        .filter(group => !(group.label === '기타' && currentUser.role === 'MultiMonitor'))
+        .map((group) => (
+        <div key={group.label} className="mb-1">
             <p className="px-3 pb-1 pt-3 font-mono text-[10px] font-semibold uppercase tracking-[1.5px] text-ink-muted">
               {group.label}
             </p>
