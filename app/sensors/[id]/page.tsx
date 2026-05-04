@@ -770,7 +770,7 @@ export default function SensorDetailPage() {
       </div>
 
       {/* 상단: 2단 레이아웃 (센서정보 + 평면도) */}
-      <div className="flex" style={{ height: '45vh', minHeight: '300px' }}>
+      <div className="flex" style={{ height: '55vh', minHeight: '380px' }}>
 
         {/* 좌: 센서 정보 */}
         <div style={{ width: leftWidth, minWidth: 160, maxWidth: 360 }} className="hidden lg:flex shrink-0 flex-col border-r border-line bg-surface-card overflow-y-auto">
@@ -977,7 +977,7 @@ export default function SensorDetailPage() {
       </div>
 
       {/* 중단: 시간별 트렌드 */}
-      <div className="flex-1 border-t border-line bg-surface-card flex flex-col min-h-0" style={{ minHeight: '380px' }}>
+      <div className="border-t border-line bg-surface-card flex flex-col" style={{ minHeight: '420px' }}>
 
         {/* 트렌드 헤더 */}
         <div className="shrink-0 flex items-center justify-between border-b border-line px-3 py-2">
@@ -1031,6 +1031,26 @@ export default function SensorDetailPage() {
                   <button key={v} onClick={()=>setCalcMode(v as 'linear'|'poly')}
                     className={['rounded-md border px-2 py-0.5 font-mono text-[10px]', calcMode===v?'border-brand/30 bg-brand/10 text-brand':'border-line text-ink-muted hover:bg-surface-subtle'].join(' ')}>{l}</button>
                 ))}
+              </div>
+              {/* 보정값 입력 — 계산식 옆 */}
+              <div className="flex items-center gap-1">
+                <span className="font-mono text-[10px] text-ink-muted shrink-0">보정값</span>
+                <input type="number" step="0.01" min="-100" max="100" placeholder="0.00"
+                  value={correctionInput[depthLabel]??(correctionParams[depthLabel]!==undefined&&correctionParams[depthLabel]!==0?String(correctionParams[depthLabel]):'')}
+                  onChange={e=>setCorrectionInput(prev=>({...prev,[depthLabel]:e.target.value}))}
+                  onWheel={e=>e.currentTarget.blur()}
+                  className="w-20 rounded-md border border-line bg-surface-card px-2 py-0.5 font-mono text-[10px] text-ink text-right focus:outline-none focus:ring-1 focus:ring-brand/40" />
+                <span className="font-mono text-[10px] text-ink-muted shrink-0">{sensor.unit}</span>
+                <button disabled={correctionSaving}
+                  onClick={async()=>{
+                    const s=correctionInput[depthLabel]??'', v=s===''?0:parseFloat(s)
+                    if(isNaN(v)||v<-100||v>100){alert('보정값은 -100 ~ 100 사이의 숫자만 입력 가능합니다.');return}
+                    const next={...correctionParams,[depthLabel]:v}; setCorrectionSaving(true)
+                    try{await sensorApi.updateInfo(Number(id),{correction_params:next});setCorrectionParams(next);setCorrectionInput(prev=>({...prev,[depthLabel]:String(v)}))}catch{}finally{setCorrectionSaving(false)}
+                  }}
+                  className="rounded-md bg-sensor-normal px-2 py-0.5 font-mono text-[10px] text-white disabled:opacity-50 whitespace-nowrap">
+                  {correctionSaving?'저장중':'✓ 적용'}
+                </button>
               </div>
             </>
           )}
@@ -1092,32 +1112,9 @@ export default function SensorDetailPage() {
         })()}
 
         {/* 차트 — 나머지 공간 전부 */}
-        <div ref={chartRef} className="flex-1 min-h-0 overflow-hidden">
+        <div ref={chartRef} className="flex-1 overflow-hidden" style={{ minHeight: '200px' }}>
           <SensorTrendChart sensor={sensor} readings={chartMode==='hourly'?measurementsWithGaps:dailyReadings} initValue={sensorCode==='80053'?initValue:undefined} level1Upper={sensorCode==='80053'?(sensor.criteria?.depthCriteria?.[depthLabel]?.upper??null):(sensor.criteria?.level1Upper??null)} level1Lower={sensorCode==='80053'?(sensor.criteria?.depthCriteria?.[depthLabel]?.lower??null):(sensor.criteria?.level1Lower??null)} />
         </div>
-
-        {/* 보정값 (80053 전용) */}
-        {sensorCode==='80053'&&(
-          <div className="shrink-0 flex items-center gap-2 px-3 py-2 border-t border-line">
-            <span className="font-mono text-[10px] text-ink-muted shrink-0">📊 보정값 ({depthLabel}번)</span>
-            <input type="number" step="0.01" min="-100" max="100" placeholder="0.00"
-              value={correctionInput[depthLabel]??(correctionParams[depthLabel]!==undefined&&correctionParams[depthLabel]!==0?String(correctionParams[depthLabel]):'')}
-              onChange={e=>setCorrectionInput(prev=>({...prev,[depthLabel]:e.target.value}))}
-              onWheel={e=>e.currentTarget.blur()}
-              className="w-24 rounded-md border border-line bg-surface-card px-2 py-1 font-mono text-sm text-ink text-right focus:outline-none focus:ring-1 focus:ring-brand/40" />
-            <span className="font-mono text-[10px] text-ink-muted shrink-0">{sensor.unit}</span>
-            <button disabled={correctionSaving}
-              onClick={async()=>{
-                const s=correctionInput[depthLabel]??'', v=s===''?0:parseFloat(s)
-                if(isNaN(v)||v<-100||v>100){alert('보정값은 -100 ~ 100 사이의 숫자만 입력 가능합니다.');return}
-                const next={...correctionParams,[depthLabel]:v}; setCorrectionSaving(true)
-                try{await sensorApi.updateInfo(Number(id),{correction_params:next});setCorrectionParams(next);setCorrectionInput(prev=>({...prev,[depthLabel]:String(v)}))}catch{}finally{setCorrectionSaving(false)}
-              }}
-              className="rounded-md bg-sensor-normal px-2.5 py-1 font-mono text-[10px] text-white disabled:opacity-50 whitespace-nowrap">
-              {correctionSaving?'저장 중…':'✓ 적용하기'}
-            </button>
-          </div>
-        )}
 
       </div>
 
