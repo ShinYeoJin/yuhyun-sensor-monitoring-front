@@ -950,7 +950,7 @@ export default function SensorDetailPage() {
           <div className="flex-1 relative bg-surface-subtle overflow-hidden" ref={floorPlanRef}>
             {floorPlanUrl ? (
               <>
-                <img src={floorPlanUrl} alt="계측계획 평면도" className="w-full h-full object-contain select-none" style={{ background: '#f8f9fb' }} draggable={false} />
+                <img src={floorPlanUrl} alt="계측계획 평면도" className="w-full h-full select-none" style={{ objectFit: 'fill', background: '#f8f9fb' }} draggable={false} />
                 {icons.map(icon => (
                   <SensorIcon key={icon.key} icon={icon} isSelected={icon.key === currentIconKey}
                     status={iconStatuses[icon.key] || 'offline'}
@@ -1112,7 +1112,7 @@ export default function SensorDetailPage() {
         })()}
 
         {/* 차트 — 나머지 공간 전부 */}
-        <div ref={chartRef} className="overflow-visible" style={{ height: '160px' }}>
+        <div ref={chartRef} className="overflow-visible" style={{ height: '200px' }}>
           <SensorTrendChart sensor={sensor} readings={chartMode==='hourly'?measurementsWithGaps:dailyReadings} initValue={sensorCode==='80053'?initValue:undefined} level1Upper={sensorCode==='80053'?(sensor.criteria?.depthCriteria?.[depthLabel]?.upper??null):(sensor.criteria?.level1Upper??null)} level1Lower={sensorCode==='80053'?(sensor.criteria?.depthCriteria?.[depthLabel]?.lower??null):(sensor.criteria?.level1Lower??null)} />
         </div>
 
