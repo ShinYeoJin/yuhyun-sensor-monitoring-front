@@ -770,7 +770,7 @@ export default function SensorDetailPage() {
       </div>
 
       {/* 상단: 2단 레이아웃 (센서정보 + 평면도) */}
-      <div className="flex min-h-0" style={{ height: '48vh' }}>
+      <div className="flex" style={{ height: '45vh', minHeight: '300px' }}>
 
         {/* 좌: 센서 정보 */}
         <div style={{ width: leftWidth, minWidth: 160, maxWidth: 360 }} className="hidden lg:flex shrink-0 flex-col border-r border-line bg-surface-card overflow-y-auto">
@@ -950,7 +950,7 @@ export default function SensorDetailPage() {
           <div className="flex-1 relative bg-surface-subtle overflow-hidden" ref={floorPlanRef}>
             {floorPlanUrl ? (
               <>
-                <img src={floorPlanUrl} alt="계측계획 평면도" className="w-full h-full object-contain select-none" draggable={false} />
+                <img src={floorPlanUrl} alt="계측계획 평면도" className="w-full h-full object-contain select-none" style={{ maxHeight: '100%' }} draggable={false} />
                 {icons.map(icon => (
                   <SensorIcon key={icon.key} icon={icon} isSelected={icon.key === currentIconKey}
                     status={iconStatuses[icon.key] || 'offline'}
@@ -977,12 +977,12 @@ export default function SensorDetailPage() {
       </div>
 
       {/* 중단: 시간별 트렌드 */}
-      <div className="shrink-0 border-t border-line bg-surface-card overflow-y-auto" style={{ height: '44vh' }}>
+      <div className="flex-1 border-t border-line bg-surface-card overflow-y-auto" style={{ minHeight: '380px' }}>
         <div className="shrink-0 flex items-center justify-between border-b border-line px-3 py-2">
           <h2 className="text-xs font-semibold text-ink">시간별 트렌드</h2>
           <span className="font-mono text-[11px] font-medium text-brand">{sensor.name}</span>
         </div>
-        <div className="p-3 space-y-3">
+        <div className="p-3 space-y-3 overflow-y-auto flex-1">
           {/* 조회 기간 */}
           <div className="rounded-lg border border-line bg-surface-subtle p-2.5">
             <p className="mb-2 font-mono text-[10px] font-semibold text-ink-muted">□ 조회 기간 설정</p>
