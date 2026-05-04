@@ -87,7 +87,7 @@ export function SensorTrendChart({ sensor, readings, hideXAxis = false, initValu
   // chartWidth/chartHeight 계산 변경
   const MIN_WIDTH_PER_POINT = 12
   const chartWidth = Math.max(data.length * MIN_WIDTH_PER_POINT, containerSize.width)
-  const chartHeight = containerSize.height - 35
+  const chartHeight = containerSize.height - 25
 
   // x축 틱: 너무 많으면 간격 조정
   const maxTicks = Math.floor(chartWidth / 60)
@@ -181,7 +181,7 @@ export function SensorTrendChart({ sensor, readings, hideXAxis = false, initValu
       </div>
 
       {/* 범례 */}
-      <div className="mt-1 flex items-center justify-center gap-6 font-mono text-[11px] text-ink-muted">
+      <div className="flex items-center justify-center gap-6 font-mono text-[11px] text-ink-muted">
         <div className="flex items-center gap-1.5">
           <svg width="24" height="10">
             <line x1="0" y1="5" x2="16" y2="5" stroke="#1D9E75" strokeWidth="2" />
