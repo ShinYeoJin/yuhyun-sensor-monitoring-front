@@ -977,150 +977,149 @@ export default function SensorDetailPage() {
       </div>
 
       {/* 중단: 시간별 트렌드 */}
-      <div className="flex-1 border-t border-line bg-surface-card overflow-y-auto" style={{ minHeight: '380px' }}>
+      <div className="flex-1 border-t border-line bg-surface-card flex flex-col min-h-0" style={{ minHeight: '380px' }}>
+
+        {/* 트렌드 헤더 */}
         <div className="shrink-0 flex items-center justify-between border-b border-line px-3 py-2">
           <h2 className="text-xs font-semibold text-ink">시간별 트렌드</h2>
           <span className="font-mono text-[11px] font-medium text-brand">{sensor.name}</span>
         </div>
-        <div className="p-3 space-y-3 overflow-y-auto flex-1">
-          {/* 조회 기간 */}
-          <div className="rounded-lg border border-line bg-surface-subtle p-2.5">
-            <p className="mb-2 font-mono text-[10px] font-semibold text-ink-muted">□ 조회 기간 설정</p>
-            <div className="flex gap-1 mb-2">
-              {[['오늘',1],['7일',7],['30일',30]].map(([label,days])=>(
-                <button key={String(label)} onClick={()=>setPreset(Number(days))} className="flex-1 rounded-md border border-line py-1 font-mono text-[11px] text-ink-muted hover:bg-surface-card hover:text-ink">{label}</button>
-              ))}
-            </div>
-            <div className="flex items-center gap-1">
-              <input type="date" value={dateFrom} max={today} onChange={e=>{setDateFrom(e.target.value);setTablePage(1)}} className="flex-1 rounded-md border border-line bg-surface-card px-2 py-1 font-mono text-[11px] text-ink focus:outline-none" />
-              <span className="font-mono text-[10px] text-ink-muted">~</span>
-              <input type="date" value={dateTo} min={dateFrom} max={today} onChange={e=>{setDateTo(e.target.value);setTablePage(1)}} className="flex-1 rounded-md border border-line bg-surface-card px-2 py-1 font-mono text-[11px] text-ink focus:outline-none" />
-            </div>
-            {chartMode === 'daily' && (
-              <div className="flex items-center gap-1.5 mt-1">
-                <span className="font-mono text-[10px] text-ink-muted shrink-0">조회 시간</span>
-                  <select value={selectedHour} onChange={e => setSelectedHour(Number(e.target.value))}
-                    className="flex-1 rounded-md border border-line bg-surface-card px-2 py-1 font-mono text-[11px] text-ink focus:outline-none focus:ring-1 focus:ring-brand/40">
-                    {Array.from({length:24},(_,i)=>(
-                      <option key={i} value={i}>
-                        {i < 12 ? `오전 ${i === 0 ? 12 : i}시` : `오후 ${i === 12 ? 12 : i-12}시`}
-                      </option>
-                    ))}
-                  </select>
-                <span className="font-mono text-[10px] text-ink-muted shrink-0">데이터</span>
-              </div>
-            )}
+
+        {/* 컨트롤 영역 — 한 줄 */}
+        <div className="shrink-0 flex items-center gap-2 px-3 py-2 border-b border-line flex-wrap">
+          {/* 날짜 범위 */}
+          <div className="flex items-center gap-1">
+            {[['오늘',1],['7일',7],['30일',30]].map(([label,days])=>(
+              <button key={String(label)} onClick={()=>setPreset(Number(days))}
+                className="rounded-md border border-line px-2 py-0.5 font-mono text-[10px] text-ink-muted hover:bg-surface-subtle hover:text-ink">{label}</button>
+            ))}
+          </div>
+          <input type="date" value={dateFrom} max={today} onChange={e=>{setDateFrom(e.target.value);setTablePage(1)}}
+            className="rounded-md border border-line bg-surface-card px-2 py-0.5 font-mono text-[10px] text-ink focus:outline-none" />
+          <span className="font-mono text-[10px] text-ink-muted">~</span>
+          <input type="date" value={dateTo} min={dateFrom} max={today} onChange={e=>{setDateTo(e.target.value);setTablePage(1)}}
+            className="rounded-md border border-line bg-surface-card px-2 py-0.5 font-mono text-[10px] text-ink focus:outline-none" />
+
+          <div className="w-px h-4 bg-line shrink-0" />
+
+          {/* 조회 단위 */}
+          <span className="font-mono text-[10px] text-ink-muted shrink-0">△ 조회 단위</span>
+          <div className="flex gap-1">
+            {['시간별','일별'].map(m=>(
+              <button key={m} onClick={()=>setChartMode(m==='시간별'?'hourly':'daily')}
+                className={['rounded-md border px-2 py-0.5 font-mono text-[10px]', chartMode===(m==='시간별'?'hourly':'daily')?'border-brand/30 bg-brand/10 text-brand':'border-line text-ink-muted hover:bg-surface-subtle'].join(' ')}>{m}</button>
+            ))}
           </div>
 
-            {/* 조회 단위 + 계산식 */}
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <p className="mb-1 font-mono text-[10px] text-ink-muted">△ 조회 단위</p>
-                <div className="flex gap-1">
-                  {['시간별','일별'].map(m=>(
-                    <button key={m} onClick={()=>setChartMode(m==='시간별'?'hourly':'daily')} className={['flex-1 rounded-md border py-1 font-mono text-[10px]',chartMode===(m==='시간별'?'hourly':'daily')?'border-brand/30 bg-brand/10 text-brand':'border-line text-ink-muted hover:bg-surface-subtle'].join(' ')}>{m}</button>
-                  ))}
-                </div>
-              </div>
-              {sensorCode==='80053'&&(
-                <div>
-                  <p className="mb-1 font-mono text-[10px] text-ink-muted">∧ 계산식 적용</p>
-                  <div className="flex gap-1">
-                    {(isMultiMonitor ? [['Linear','linear']] : [['Linear','linear'],['Polynomial','poly']]).map(([l,v])=>(
-                      <button key={v} onClick={()=>setCalcMode(v as 'linear'|'poly')} className={['flex-1 rounded-md border py-1 font-mono text-[10px]',calcMode===v?'border-brand/30 bg-brand/10 text-brand':'border-line text-ink-muted hover:bg-surface-subtle'].join(' ')}>{l}</button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+          {/* 일별 시간 선택 */}
+          {chartMode === 'daily' && (
+            <select value={selectedHour} onChange={e=>setSelectedHour(Number(e.target.value))}
+              className="rounded-md border border-line bg-surface-card px-2 py-0.5 font-mono text-[10px] text-ink focus:outline-none">
+              {Array.from({length:24},(_,i)=>(
+                <option key={i} value={i}>{i < 12 ? `오전 ${i===0?12:i}시` : `오후 ${i===12?12:i-12}시`}</option>
+              ))}
+            </select>
+          )}
 
-            {/* depth 버튼 */}
-            {sensorCode==='80053'&&(
+          {/* 계산식 (80053 전용) */}
+          {sensorCode==='80053' && (
+            <>
+              <div className="w-px h-4 bg-line shrink-0" />
+              <span className="font-mono text-[10px] text-ink-muted shrink-0">∧ 계산식</span>
+              <div className="flex gap-1">
+                {(isMultiMonitor ? [['Linear','linear']] : [['Linear','linear'],['Polynomial','poly']]).map(([l,v])=>(
+                  <button key={v} onClick={()=>setCalcMode(v as 'linear'|'poly')}
+                    className={['rounded-md border px-2 py-0.5 font-mono text-[10px]', calcMode===v?'border-brand/30 bg-brand/10 text-brand':'border-line text-ink-muted hover:bg-surface-subtle'].join(' ')}>{l}</button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* depth 버튼 (80053 전용) */}
+          {sensorCode==='80053' && (
+            <>
+              <div className="w-px h-4 bg-line shrink-0" />
               <div className="flex gap-1">
                 {(['1','2','3'] as const).map(d=>{
                   const depthIcon = icons.find(i => i.key === `${sensor.id}:${d}`)
                   const btnLabel = depthIcon ? depthIcon.label : `${d}번 수위계`
                   return (
-                    <button key={d} onClick={()=>{ setDepthLabel(d); setCriteriaEditing(false) }} className={['flex-1 rounded-md border py-1.5 font-mono text-[10px]',depthLabel===d?'border-brand/30 bg-brand/10 text-brand font-medium':'border-line text-ink-muted hover:bg-surface-subtle'].join(' ')}>{btnLabel}</button>
+                    <button key={d} onClick={()=>{ setDepthLabel(d); setCriteriaEditing(false) }}
+                      className={['rounded-md border px-2 py-0.5 font-mono text-[10px]', depthLabel===d?'border-brand/30 bg-brand/10 text-brand font-medium':'border-line text-ink-muted hover:bg-surface-subtle'].join(' ')}>{btnLabel}</button>
                   )
                 })}
               </div>
-            )}
-
-            {/* 측정값 카드 */}
-            <div className="grid grid-cols-2 gap-1.5">
-              {[
-                {label:'기간 내 최신값', value:latestMeasurement?.value},
-                {label:'초기측정값', value:initValue},
-                {label:'최솟값', value:measurements.length>0?Math.min(...measurements.filter(m=>m.value!==null).map(m=>m.value)):null},
-                {label:'최댓값', value:measurements.length>0?Math.max(...measurements.filter(m=>m.value!==null).map(m=>m.value)):null},
-              ].map(({label,value})=>(
-                <div key={label} className="rounded-lg border border-line bg-surface-subtle p-2 text-center">
-                  <p className="font-mono text-[9px] text-ink-muted">{label}</p>
-                  <p className={`font-mono text-sm font-semibold mt-0.5 ${sensor.status==='danger'?'text-sensor-danger':sensor.status==='warning'?'text-sensor-warning':'text-sensor-normal'}`}>
-                    {value!==null&&value!==undefined?Number(value).toFixed(2):'—'}<span className="text-[10px] text-ink-muted ml-0.5">{sensor.unit}</span>
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            {/* 게이지 */}
-            {(level1Lower!==null||level1Upper!==null)&&latestMeasurement&&(()=>{
-              const lo = level1Lower as number, hi = level1Upper as number
-              const val = latestMeasurement.value
-              // 0~1 사이 위치
-              const pct = lo !== null && hi !== null
-                ? Math.max(0, Math.min(1, (val - lo) / (hi - lo)))
-                : 0.5
-              const isNormalRange = pct >= 0 && pct <= 1
-              return (
-                <div className="rounded-lg border border-line bg-surface-subtle px-3 py-2">
-                  <div className="flex justify-between font-mono text-[10px] mb-1.5">
-                    <span className="text-sensor-normaltext font-medium">정상 구간</span>
-                    <span className="text-sensor-warningtext font-medium">경고</span>
-                  </div>
-                  <div className="relative h-3 rounded-full overflow-hidden" style={{background:'#f9d0d0'}}>
-                    {/* 정상 구간 (녹색) */}
-                    <div className="absolute left-0 top-0 h-full rounded-full bg-sensor-normal/30" style={{width:'100%'}} />
-                    {/* 현재값 위치 마커 */}
-                    <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 rounded-full border-2 border-white shadow-md transition-all"
-                      style={{left:`${pct*100}%`, background: isNormalRange ? '#22c55e' : '#ef4444'}} />
-                  </div>
-                </div>
-              )
-            })()}
-
-            {/* 차트 */}
-            <div ref={chartRef} className="rounded-lg border border-line bg-surface-card overflow-hidden" style={{height:240}}>
-             <SensorTrendChart sensor={sensor} readings={chartMode==='hourly'?measurementsWithGaps:dailyReadings} initValue={sensorCode==='80053'?initValue:undefined} level1Upper={sensorCode==='80053' ? (sensor.criteria?.depthCriteria?.[depthLabel]?.upper ?? null) : (sensor.criteria?.level1Upper ?? null)} level1Lower={sensorCode==='80053' ? (sensor.criteria?.depthCriteria?.[depthLabel]?.lower ?? null) : (sensor.criteria?.level1Lower ?? null)} />
-            </div>
-
-            {/* 보정값 */}
-            {sensorCode==='80053'&&(
-              <div className="rounded-lg border border-line bg-surface-subtle p-2.5">
-                <p className="mb-2 font-mono text-[10px] font-semibold text-ink-muted">📊 초기값(기준점) 보정</p>
-                <div className="flex items-center gap-1.5">
-                  <input type="number" step="0.01" min="-100" max="100" placeholder="0.00"
-                    value={correctionInput[depthLabel]??(correctionParams[depthLabel]!==undefined&&correctionParams[depthLabel]!==0?String(correctionParams[depthLabel]):'')}
-                    onChange={e=>setCorrectionInput(prev=>({...prev,[depthLabel]:e.target.value}))}
-                    onWheel={e=>e.currentTarget.blur()}
-                    className="flex-1 rounded-md border border-line bg-surface-card px-2 py-1.5 font-mono text-sm text-ink text-right focus:outline-none focus:ring-1 focus:ring-brand/40" />
-                  <span className="font-mono text-xs text-ink-muted shrink-0">{sensor.unit}</span>
-                  <button disabled={correctionSaving}
-                    onClick={async()=>{
-                      const s=correctionInput[depthLabel]??'', v=s===''?0:parseFloat(s)
-                      if(isNaN(v)||v<-100||v>100){alert('보정값은 -100 ~ 100 사이의 숫자만 입력 가능합니다.');return}
-                      const next={...correctionParams,[depthLabel]:v}; setCorrectionSaving(true)
-                      try{await sensorApi.updateInfo(Number(id),{correction_params:next});setCorrectionParams(next);setCorrectionInput(prev=>({...prev,[depthLabel]:String(v)}))}catch{}finally{setCorrectionSaving(false)}
-                    }}
-                    className="rounded-md bg-sensor-normal px-2.5 py-1.5 font-mono text-[10px] text-white disabled:opacity-50 whitespace-nowrap">
-                    {correctionSaving?'저장 중…':'✓ 적용하기'}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+            </>
+          )}
         </div>
+
+        {/* 측정값 카드 — 한 줄 */}
+        <div className="shrink-0 grid grid-cols-4 gap-1.5 px-3 py-2 border-b border-line">
+          {[
+            {label:'기간 내 최신값', value:latestMeasurement?.value},
+            {label:'초기측정값', value:initValue},
+            {label:'최솟값', value:activeMeasurements.length>0?Math.min(...activeMeasurements.filter((m:any)=>m.value!==null).map((m:any)=>m.value)):null},
+            {label:'최댓값', value:activeMeasurements.length>0?Math.max(...activeMeasurements.filter((m:any)=>m.value!==null).map((m:any)=>m.value)):null},
+          ].map(({label,value})=>(
+            <div key={label} className="rounded-lg border border-line bg-surface-subtle px-2 py-1.5 text-center">
+              <p className="font-mono text-[9px] text-ink-muted">{label}</p>
+              <p className={`font-mono text-sm font-semibold mt-0.5 ${sensor.status==='danger'?'text-sensor-danger':sensor.status==='warning'?'text-sensor-warning':'text-sensor-normal'}`}>
+                {value!==null&&value!==undefined?Number(value).toFixed(2):'—'}<span className="text-[10px] text-ink-muted ml-0.5">{sensor.unit}</span>
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* 게이지 */}
+        {(level1Lower!==null||level1Upper!==null)&&latestMeasurement&&(()=>{
+          const lo = level1Lower as number, hi = level1Upper as number
+          const val = latestMeasurement.value
+          const pct = lo !== null && hi !== null ? Math.max(0, Math.min(1, (val - lo) / (hi - lo))) : 0.5
+          const isNormalRange = pct >= 0 && pct <= 1
+          return (
+            <div className="shrink-0 px-3 py-1.5 border-b border-line">
+              <div className="flex justify-between font-mono text-[9px] mb-1">
+                <span className="text-sensor-normaltext font-medium">정상 구간</span>
+                <span className="text-sensor-warningtext font-medium">경고</span>
+              </div>
+              <div className="relative h-2.5 rounded-full overflow-hidden" style={{background:'#f9d0d0'}}>
+                <div className="absolute left-0 top-0 h-full rounded-full bg-sensor-normal/30" style={{width:'100%'}} />
+                <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full border-2 border-white shadow-md transition-all"
+                  style={{left:`${pct*100}%`, background: isNormalRange ? '#22c55e' : '#ef4444'}} />
+              </div>
+            </div>
+          )
+        })()}
+
+        {/* 차트 — 나머지 공간 전부 */}
+        <div ref={chartRef} className="flex-1 min-h-0 overflow-hidden">
+          <SensorTrendChart sensor={sensor} readings={chartMode==='hourly'?measurementsWithGaps:dailyReadings} initValue={sensorCode==='80053'?initValue:undefined} level1Upper={sensorCode==='80053'?(sensor.criteria?.depthCriteria?.[depthLabel]?.upper??null):(sensor.criteria?.level1Upper??null)} level1Lower={sensorCode==='80053'?(sensor.criteria?.depthCriteria?.[depthLabel]?.lower??null):(sensor.criteria?.level1Lower??null)} />
+        </div>
+
+        {/* 보정값 (80053 전용) */}
+        {sensorCode==='80053'&&(
+          <div className="shrink-0 flex items-center gap-2 px-3 py-2 border-t border-line">
+            <span className="font-mono text-[10px] text-ink-muted shrink-0">📊 보정값 ({depthLabel}번)</span>
+            <input type="number" step="0.01" min="-100" max="100" placeholder="0.00"
+              value={correctionInput[depthLabel]??(correctionParams[depthLabel]!==undefined&&correctionParams[depthLabel]!==0?String(correctionParams[depthLabel]):'')}
+              onChange={e=>setCorrectionInput(prev=>({...prev,[depthLabel]:e.target.value}))}
+              onWheel={e=>e.currentTarget.blur()}
+              className="w-24 rounded-md border border-line bg-surface-card px-2 py-1 font-mono text-sm text-ink text-right focus:outline-none focus:ring-1 focus:ring-brand/40" />
+            <span className="font-mono text-[10px] text-ink-muted shrink-0">{sensor.unit}</span>
+            <button disabled={correctionSaving}
+              onClick={async()=>{
+                const s=correctionInput[depthLabel]??'', v=s===''?0:parseFloat(s)
+                if(isNaN(v)||v<-100||v>100){alert('보정값은 -100 ~ 100 사이의 숫자만 입력 가능합니다.');return}
+                const next={...correctionParams,[depthLabel]:v}; setCorrectionSaving(true)
+                try{await sensorApi.updateInfo(Number(id),{correction_params:next});setCorrectionParams(next);setCorrectionInput(prev=>({...prev,[depthLabel]:String(v)}))}catch{}finally{setCorrectionSaving(false)}
+              }}
+              className="rounded-md bg-sensor-normal px-2.5 py-1 font-mono text-[10px] text-white disabled:opacity-50 whitespace-nowrap">
+              {correctionSaving?'저장 중…':'✓ 적용하기'}
+            </button>
+          </div>
+        )}
+
+      </div>
 
       {/* 하단: 측정 데이터 로그 */}
       <div className="shrink-0 border-t border-line" style={{maxHeight:'35vh',overflowY:'auto'}}>
