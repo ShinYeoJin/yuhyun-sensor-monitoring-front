@@ -770,7 +770,7 @@ export default function SensorDetailPage() {
       </div>
 
       {/* 상단: 2단 레이아웃 (센서정보 + 평면도) */}
-      <div className="flex" style={{ height: '55vh', minHeight: '380px' }}>
+      <div className="flex shrink-0" style={{ height: '52vh' }}>
 
         {/* 좌: 센서 정보 */}
         <div style={{ width: leftWidth, minWidth: 160, maxWidth: 360 }} className="hidden lg:flex shrink-0 flex-col border-r border-line bg-surface-card overflow-y-auto">
@@ -950,7 +950,7 @@ export default function SensorDetailPage() {
           <div className="flex-1 relative bg-surface-subtle overflow-hidden" ref={floorPlanRef}>
             {floorPlanUrl ? (
               <>
-                <img src={floorPlanUrl} alt="계측계획 평면도" className="w-full h-full object-contain select-none" style={{ maxHeight: '100%' }} draggable={false} />
+                <img src={floorPlanUrl} alt="계측계획 평면도" className="w-full h-full object-contain select-none" style={{ background: '#f8f9fb' }} draggable={false} />
                 {icons.map(icon => (
                   <SensorIcon key={icon.key} icon={icon} isSelected={icon.key === currentIconKey}
                     status={iconStatuses[icon.key] || 'offline'}
@@ -977,7 +977,7 @@ export default function SensorDetailPage() {
       </div>
 
       {/* 중단: 시간별 트렌드 */}
-      <div className="border-t border-line bg-surface-card flex flex-col" style={{ height: '42vh', minHeight: '320px' }}>
+      <div className="border-t border-line bg-surface-card flex flex-col shrink-0" style={{ height: '38vh' }}>
 
         {/* 트렌드 헤더 */}
         <div className="shrink-0 flex items-center justify-between border-b border-line px-3 py-2">
@@ -1112,14 +1112,14 @@ export default function SensorDetailPage() {
         })()}
 
         {/* 차트 — 나머지 공간 전부 */}
-        <div ref={chartRef} className="flex-1 min-h-0 overflow-hidden">
+        <div ref={chartRef} className="flex-1 min-h-0 overflow-hidden" style={{ minHeight: '160px' }}>
           <SensorTrendChart sensor={sensor} readings={chartMode==='hourly'?measurementsWithGaps:dailyReadings} initValue={sensorCode==='80053'?initValue:undefined} level1Upper={sensorCode==='80053'?(sensor.criteria?.depthCriteria?.[depthLabel]?.upper??null):(sensor.criteria?.level1Upper??null)} level1Lower={sensorCode==='80053'?(sensor.criteria?.depthCriteria?.[depthLabel]?.lower??null):(sensor.criteria?.level1Lower??null)} />
         </div>
 
       </div>
 
       {/* 하단: 측정 데이터 로그 */}
-      <div className="shrink-0 border-t border-line" style={{maxHeight:'35vh',overflowY:'auto'}}>
+      <div className="flex-1 border-t border-line overflow-y-auto" style={{minHeight: '120px'}}>
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-surface-card px-4 py-2">
           <h2 className="text-xs font-semibold text-ink">
             측정 데이터 로그
