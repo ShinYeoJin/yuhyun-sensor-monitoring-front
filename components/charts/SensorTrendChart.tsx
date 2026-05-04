@@ -71,7 +71,7 @@ export function SensorTrendChart({ sensor, readings, hideXAxis = false, initValu
   // chartHeight 증가 + chartWidth 컨테이너 너비 기준으로 확대
   const MIN_WIDTH_PER_POINT = 12
   const chartWidth = Math.max(data.length * MIN_WIDTH_PER_POINT, 800)
-  const chartHeight = 140
+  const chartHeight = 160
 
   // x축 틱: 너무 많으면 간격 조정
   const maxTicks = Math.floor(chartWidth / 60)

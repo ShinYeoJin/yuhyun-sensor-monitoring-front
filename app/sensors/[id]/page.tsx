@@ -751,7 +751,7 @@ export default function SensorDetailPage() {
   const currentIconKey = sensorCode === '80053' ? `${sensor.id}:${depthLabel}` : sensor.id
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-surface-page">
+    <div className="flex h-full flex-col overflow-y-auto bg-surface-page">
       {/* 헤더 */}
       <div className="shrink-0 border-b border-line bg-surface-card/90 px-4 py-2.5 backdrop-blur-md">
         <div className="flex items-center justify-between">
@@ -1112,14 +1112,14 @@ export default function SensorDetailPage() {
         })()}
 
         {/* 차트 — 나머지 공간 전부 */}
-        <div ref={chartRef} className="overflow-hidden" style={{ height: '140px' }}>
+        <div ref={chartRef} className="overflow-visible" style={{ height: '160px' }}>
           <SensorTrendChart sensor={sensor} readings={chartMode==='hourly'?measurementsWithGaps:dailyReadings} initValue={sensorCode==='80053'?initValue:undefined} level1Upper={sensorCode==='80053'?(sensor.criteria?.depthCriteria?.[depthLabel]?.upper??null):(sensor.criteria?.level1Upper??null)} level1Lower={sensorCode==='80053'?(sensor.criteria?.depthCriteria?.[depthLabel]?.lower??null):(sensor.criteria?.level1Lower??null)} />
         </div>
 
       </div>
 
       {/* 하단: 측정 데이터 로그 */}
-      <div className="shrink-0 border-t border-line overflow-y-auto" style={{ height: '25vh', minHeight: '160px' }}>
+      <div className="shrink-0 border-t border-line">
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-surface-card px-4 py-2">
           <h2 className="text-xs font-semibold text-ink">
             측정 데이터 로그
