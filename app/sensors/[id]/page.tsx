@@ -39,30 +39,21 @@ function SensorIcon({ icon, isSelected, status, onMouseDown, onClick }: {
 
 export default function SensorDetailPage() {
 
-  const [leftWidth, setLeftWidth] = useState(220)   // 좌측 패널 너비 (px)
-  const [rightWidth, setRightWidth] = useState(380)  // 우측 패널 너비 (px)
+  const [leftWidth, setLeftWidth] = useState(220)
   const isResizingLeft = useRef(false)
-  const isResizingRight = useRef(false)
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
-      if (isResizingLeft.current || isResizingRight.current) {
+      if (isResizingLeft.current) {
         e.preventDefault()
         document.body.style.userSelect = 'none'
         document.body.style.cursor = 'col-resize'
-      }
-      if (isResizingLeft.current) {
         const newW = Math.max(160, Math.min(360, e.clientX))
         setLeftWidth(newW)
-      }
-      if (isResizingRight.current) {
-        const newW = Math.max(280, Math.min(520, window.innerWidth - e.clientX))
-        setRightWidth(newW)
       }
     }
     const onUp = () => {
       isResizingLeft.current = false
-      isResizingRight.current = false
       document.body.style.userSelect = ''
       document.body.style.cursor = ''
     }
@@ -778,8 +769,8 @@ export default function SensorDetailPage() {
         </div>
       </div>
 
-      {/* 3단 레이아웃 */}
-      <div className="flex flex-1 min-h-0">
+      {/* 상단: 2단 레이아웃 (센서정보 + 평면도) */}
+      <div className="flex min-h-0" style={{ height: '48vh' }}>
 
         {/* 좌: 센서 정보 */}
         <div style={{ width: leftWidth, minWidth: 160, maxWidth: 360 }} className="hidden lg:flex shrink-0 flex-col border-r border-line bg-surface-card overflow-y-auto">
@@ -789,24 +780,28 @@ export default function SensorDetailPage() {
               <StatusBadge status={sensor.status} />
             </div>
             <dl className="space-y-2">
-              {[
-                { l: '관리번호', v: iconLabel || '' },
-                { l: '센서명',   v: sensor.name },
-                { l: '현장',     v: sensor.siteName || '—' },
-                { l: '설치 위치', v: sensor.location.description || '—' },
+            {[
+              { l: '관리번호', v: iconLabel || '' },
+              { l: '센서명',   v: sensor.name },
+              { l: '현장',     v: sensor.siteName || '—' },
+              { l: '설치 위치', v: sensor.location?.description || '—' },
+              ...(!isMultiMonitor ? [
                 { l: '설치일',   v: sensor.installDate ? new Date(sensor.installDate).toLocaleDateString('ko-KR') : '—' },
                 { l: '측정단위', v: sensor.unit || '—' },
                 { l: '측정주기', v: '01:00' },
-              ].map(({ l, v }) => (
-                <div key={l} className="flex gap-1">
-                  <dt className="w-16 shrink-0 font-mono text-[10px] text-ink-muted">{l}</dt>
-                  <dd className="flex-1 font-mono text-[10px] text-ink break-all">{v}</dd>
-                </div>
-              ))}
+              ] : []),
+            ].map(({ l, v }) => (
+              <div className="flex gap-1" key={l}>
+                <dt className="w-16 shrink-0 font-mono text-[10px] text-ink-muted">{l}</dt>
+                <dd className="flex-1 font-mono text-[10px] text-ink break-all">{v}</dd>
+              </div>
+            ))}
+            {!isMultiMonitor && (
               <div className="flex gap-1">
                 <dt className="w-16 shrink-0 font-mono text-[10px] text-ink-muted">계산식</dt>
                 <dd className="flex-1 font-mono text-[10px] text-ink break-all">{formulaDisplay}</dd>
               </div>
+            )}
               {/* 1차 상하한 인라인 편집 */}
               {!isMultiMonitor && (
                 <div className="mt-2 rounded-lg border border-line bg-surface-subtle p-2">
@@ -918,12 +913,12 @@ export default function SensorDetailPage() {
           </div>
         </div>
 
-        {/* 좌↔중앙 리사이즈 핸들 */}
+        {/* 리사이즈 핸들 */}
         <div onMouseDown={e => { e.preventDefault(); isResizingLeft.current = true }}
           className="hidden lg:block w-1 shrink-0 cursor-col-resize bg-transparent hover:bg-brand/30 transition-colors" />
 
-        {/* 중: 평면도 */}
-        <div className="flex flex-1 flex-col border-r border-line min-w-0">
+        {/* 우: 평면도 */}
+        <div className="flex flex-1 flex-col border-line min-w-0">
           <div className="shrink-0 flex items-center justify-between border-b border-line px-3 py-2">
             <div className="flex items-center gap-2">
               <h2 className="text-xs font-semibold text-ink">계측계획 평면도</h2>
@@ -992,18 +987,12 @@ export default function SensorDetailPage() {
           </div>
         </div>
 
-        {/* 중앙↔우 리사이즈 핸들 */}
-        <div onMouseDown={e => { e.preventDefault(); isResizingRight.current = true }}
-          className="hidden xl:block w-1 shrink-0 cursor-col-resize bg-transparent hover:bg-brand/30 transition-colors" />
-
-
-        {/* 우: 시간별 트렌드 */}
-        <div style={{ width: rightWidth, minWidth: 280, maxWidth: 520 }} className="hidden xl:flex shrink-0 flex-col overflow-y-auto bg-surface-card">
+        {/* 중단: 시간별 트렌드 */}
+        <div className="shrink-0 border-t border-line bg-surface-card overflow-y-auto" style={{ height: '44vh' }}>
           <div className="shrink-0 flex items-center justify-between border-b border-line px-3 py-2">
             <h2 className="text-xs font-semibold text-ink">시간별 트렌드</h2>
             <span className="font-mono text-[11px] font-medium text-brand">{sensor.name}</span>
           </div>
-
           <div className="p-3 space-y-3">
             {/* 조회 기간 */}
             <div className="rounded-lg border border-line bg-surface-subtle p-2.5">
@@ -1048,7 +1037,7 @@ export default function SensorDetailPage() {
                 <div>
                   <p className="mb-1 font-mono text-[10px] text-ink-muted">∧ 계산식 적용</p>
                   <div className="flex gap-1">
-                    {[['Linear','linear'],['Polynomial','poly']].map(([l,v])=>(
+                    {(isMultiMonitor ? [['Linear','linear']] : [['Linear','linear'],['Polynomial','poly']]).map(([l,v])=>(
                       <button key={v} onClick={()=>setCalcMode(v as 'linear'|'poly')} className={['flex-1 rounded-md border py-1 font-mono text-[10px]',calcMode===v?'border-brand/30 bg-brand/10 text-brand':'border-line text-ink-muted hover:bg-surface-subtle'].join(' ')}>{l}</button>
                     ))}
                   </div>

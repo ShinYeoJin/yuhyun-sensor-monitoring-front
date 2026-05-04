@@ -170,6 +170,40 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {/* 지도 영역 (카카오맵 연동 예정) */}
+        <div className="rounded-xl border border-line bg-surface-card shadow-card overflow-hidden">
+          <div className="flex items-center justify-between border-b border-line px-4 py-3">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">🗺</span>
+              <h2 className="text-sm font-semibold text-ink">현장 위치</h2>
+            </div>
+            <span className="font-mono text-[10px] text-ink-muted">카카오맵 연동 예정</span>
+          </div>
+          <div className="relative flex items-center justify-center bg-surface-subtle"
+            style={{ height: 320 }}>
+            {/* 지도 배경 그리드 */}
+            <div className="absolute inset-0 opacity-20"
+              style={{ backgroundImage: 'linear-gradient(#c8d2e0 1px, transparent 1px), linear-gradient(90deg, #c8d2e0 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+            {/* 도로 느낌 선 */}
+            <div className="absolute inset-0 opacity-10">
+              <div className="absolute left-1/4 top-0 bottom-0 w-6 bg-white rounded" />
+              <div className="absolute left-2/3 top-0 bottom-0 w-4 bg-white rounded" />
+              <div className="absolute top-1/3 left-0 right-0 h-5 bg-white rounded" />
+              <div className="absolute top-2/3 left-0 right-0 h-3 bg-white rounded" />
+            </div>
+            {/* 중앙 안내 */}
+            <div className="relative z-10 flex flex-col items-center gap-3 text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-brand/10 border-2 border-brand/30">
+                <span className="text-2xl">📍</span>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-ink">카카오맵 연동 준비 중</p>
+                <p className="mt-1 font-mono text-[11px] text-ink-muted">카카오 계정 연동 후 현장 위치 및 센서 아이콘이 표시됩니다</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* KPI 카드 */}
         <div>
           <div className="mb-3 flex items-center gap-2">
