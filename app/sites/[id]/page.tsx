@@ -203,8 +203,8 @@ export default function SiteDetailPage() {
             initVal: data.formula_params.I,
           } : null,
           criteria: {
-            level1Upper: data.level1_upper ?? '',
-            level1Lower: data.level1_lower ?? '',
+            level1Upper: data.level1_upper != null ? parseFloat(data.level1_upper) : null,
+            level1Lower: data.level1_lower != null ? parseFloat(data.level1_lower) : null,
             depthCriteria: data.depth_criteria || {},
           },
           siteId: data.site_code || '',
@@ -287,8 +287,23 @@ export default function SiteDetailPage() {
     return slots
   }, [activeMeasurements, chartMode, dateFrom, dateTo])
 
-  const level1Upper = useMemo(() => { if (!sensor) return null; if (sensor.sensor_code === '80053') return sensor.criteria?.depthCriteria?.[depthLabel]?.upper ?? null; return sensor.criteria?.level1Upper ?? null }, [sensor, depthLabel])
-  const level1Lower = useMemo(() => { if (!sensor) return null; if (sensor.sensor_code === '80053') return sensor.criteria?.depthCriteria?.[depthLabel]?.lower ?? null; return sensor.criteria?.level1Lower ?? null }, [sensor, depthLabel])
+  const level1Upper = useMemo(() => {
+    if (!sensor) return null
+    const raw = sensor.sensor_code === '80053'
+      ? sensor.criteria?.depthCriteria?.[depthLabel]?.upper
+      : sensor.criteria?.level1Upper
+    if (raw == null || raw === '' || isNaN(Number(raw))) return null
+    return Number(raw)
+  }, [sensor, depthLabel])
+  
+  const level1Lower = useMemo(() => {
+    if (!sensor) return null
+    const raw = sensor.sensor_code === '80053'
+      ? sensor.criteria?.depthCriteria?.[depthLabel]?.lower
+      : sensor.criteria?.level1Lower
+    if (raw == null || raw === '' || isNaN(Number(raw))) return null
+    return Number(raw)
+  }, [sensor, depthLabel])
   const latestMeasurement = useMemo(() => { if (activeMeasurements.length === 0) return null; return [...activeMeasurements].filter(m => m.value !== null).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0] }, [activeMeasurements])
   const formulaDisplay = useMemo(() => { if (!sensor) return '—'; if (sensor.sensor_code === '80053') return 'Linear:G*(I-X)*0.703 / Poly:(A*X²+B*X+C)*0.703'; return sensor.formula || '—' }, [sensor])
   const sensorCode = sensor?.sensor_code || ''
