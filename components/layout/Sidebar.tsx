@@ -139,9 +139,10 @@ function SidebarContent({
                   {/* 대시보드 다음에 현장 관리 토글 삽입 */}
                   {group.label === '모니터링' && item.href === '/dashboard' && (
                     <div>
+                      <div className="flex items-center">
                       <button onClick={handleSitesToggle}
                         className={[
-                          'flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-[13px] transition-colors',
+                          'flex flex-1 items-center gap-2.5 rounded-md px-3 py-2 text-[13px] transition-colors',
                           pathname.startsWith('/sites')
                             ? 'border border-brand/20 bg-brand/10 font-medium text-brand'
                             : 'border border-transparent text-ink-sub hover:bg-surface-subtle hover:text-ink',
@@ -151,6 +152,7 @@ function SidebarContent({
                         <span>현장 관리</span>
                         <span className="ml-auto text-[10px] text-ink-muted">{sitesOpen ? '▲' : '▼'}</span>
                       </button>
+                    </div>
                       {sitesOpen && (
                         <div className="ml-3 mt-0.5 border-l border-line pl-2">
                           {sitesLoading ? (
@@ -158,19 +160,32 @@ function SidebarContent({
                           ) : sites.length === 0 ? (
                             <p className="px-3 py-2 font-mono text-[11px] text-ink-muted">등록된 현장 없음</p>
                           ) : (
-                            sites.map((site: any) => (
-                              <Link key={site.id} href={`/sites?id=${site.id}`} onClick={onClose}
+                            <>
+                              {sites.map((site: any) => (
+                                <Link key={site.id} href={`/sites/${site.id}`} onClick={onClose}
+                                  className={[
+                                    'flex items-center gap-2 rounded-md px-3 py-1.5 text-[12px] transition-colors',
+                                    pathname === `/sites/${site.id}`
+                                      ? 'bg-brand/10 font-medium text-brand'
+                                      : 'text-ink-muted hover:bg-surface-subtle hover:text-ink',
+                                  ].join(' ')}
+                                >
+                                  <span className="text-[10px]">•</span>
+                                  <span className="truncate">{site.name}</span>
+                                </Link>
+                              ))}
+                              <Link href="/sites" onClick={onClose}
                                 className={[
-                                  'flex items-center gap-2 rounded-md px-3 py-1.5 text-[12px] transition-colors',
-                                  pathname.startsWith('/sites') && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('id') === String(site.id)
+                                  'flex items-center gap-2 rounded-md px-3 py-1.5 text-[11px] transition-colors mt-0.5',
+                                  pathname === '/sites'
                                     ? 'bg-brand/10 font-medium text-brand'
                                     : 'text-ink-muted hover:bg-surface-subtle hover:text-ink',
                                 ].join(' ')}
                               >
-                                <span className="text-[10px]">•</span>
-                                <span className="truncate">{site.name}</span>
+                                <span className="text-[10px]">＋</span>
+                                <span>추가 및 편집</span>
                               </Link>
-                            ))
+                            </>
                           )}
                         </div>
                       )}

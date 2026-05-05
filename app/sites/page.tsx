@@ -499,7 +499,7 @@ function SitesPageInner() {
       <div className="border-b border-line bg-surface-card/90 px-4 md:px-6 py-3 md:sticky md:top-0 md:z-10 backdrop-blur-md">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
-            <h1 className="text-[15px] font-semibold text-ink">현장 관리</h1>
+            <h1 className="text-[15px] font-semibold text-ink">현장 추가 및 편집</h1>
             <div className="mt-0.5 flex items-center gap-3 font-mono text-xs">
               <span className="text-ink-muted">전체 <strong className="text-ink">{totalCount}</strong>개</span>
               {dangerCount  > 0 && <span className="flex items-center gap-1 text-sensor-dangertext"><span className="pulse-danger" />위험 <strong>{dangerCount}</strong>개</span>}
