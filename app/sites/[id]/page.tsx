@@ -574,7 +574,7 @@ export default function SiteDetailPage() {
                   <div className="mt-3 rounded-lg border border-line bg-surface-subtle p-2">
                     <p className="mb-1.5 font-mono text-[9px] font-semibold text-ink-muted uppercase tracking-wider">계산식 상수값</p>
                     <div className="flex flex-col gap-1">
-                      {[{ k: 'A', v: sensor.formulaParams?.coeffA }, { k: 'B', v: sensor.formulaParams?.coeffB }, { k: 'C', v: sensor.formulaParams?.coeffC }, { k: 'G(Linear)', v: sensor.formulaParams?.coeffG }, { k: 'I (초기값)', v: sensor.formulaParams?.initVal }].filter(x => x.v).map(({ k, v }) => (
+                     {[{k:'A',v:sensor.formulaParams?.coeffA},{k:'B',v:sensor.formulaParams?.coeffB},{k:'C',v:sensor.formulaParams?.coeffC},{k:'G(Linear)',v:sensor.formulaParams?.coeffG},{k:'I (초기값)',v:sensor.formulaParams?.initVal}].filter(x=>x.v!=null).map(({ k, v }) => (
                         <div key={k} className="flex gap-1"><span className="font-mono text-[10px] text-ink-muted w-16 shrink-0">{k}</span><span className="font-mono text-[10px] text-ink break-all">{v}</span></div>
                       ))}
                     </div>

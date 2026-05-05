@@ -130,9 +130,16 @@ export default function SensorDetailPage() {
   useEffect(() => {
     if (!sensor?.sensor_positions) return
     const pos = sensor.sensor_positions
-    const loaded = Object.entries(pos).map(([key, val]: any) => ({ key, label: val.label || key, x: val.x, y: val.y }))
+    const sensorId = String(sensor.id)
+    const loaded = Object.entries(pos)
+      .filter(([key]) => {
+        // 80053은 "7:1", "7:2" 형태 / 일반 센서는 "센서ID" 형태
+        const keyId = key.split(':')[0]
+        return keyId === sensorId
+      })
+      .map(([key, val]: any) => ({ key, label: val.label || key, x: val.x, y: val.y }))
     setIcons(loaded)
-  }, [sensor?.sensor_positions])
+  }, [sensor?.sensor_positions, sensor?.id])
 
   const saveIconPositions = useCallback(async (nextIcons: typeof icons) => {
     if (!sensor?.siteDbId) return
