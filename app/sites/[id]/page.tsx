@@ -188,7 +188,40 @@ export default function SiteDetailPage() {
 
   useEffect(() => {
     if (!activeSensorId) return
-    sensorApi.getById(activeSensorId).then((data: any) => { setSensor(data); setCorrectionParams(data.correctionParams || {}); setDepthLabel('1'); setMeasurements([]); setCriteriaEditing(false) })
+    sensorApi.getById(activeSensorId).then((data: any) => {
+        // 센서 상세페이지와 동일한 필드 매핑 적용
+        const mapped = {
+          ...data,
+          id: String(data.id),
+          manageNo: data.manage_no || '',
+          nameAbbr: data.sensor_code,
+          formulaParams: data.formula_params ? {
+            coeffA: data.formula_params.A,
+            coeffB: data.formula_params.B,
+            coeffC: data.formula_params.C,
+            coeffG: data.formula_params.G,
+            initVal: data.formula_params.I,
+          } : null,
+          criteria: {
+            level1Upper: data.level1_upper ?? '',
+            level1Lower: data.level1_lower ?? '',
+            depthCriteria: data.depth_criteria || {},
+          },
+          siteId: data.site_code || '',
+          siteDbId: data.site_db_id || null,
+          siteName: data.site_name || '',
+          installDate: data.install_date || '',
+          location: { description: data.location_desc || '' },
+          unit: data.unit || '',
+          formula: data.formula || '',
+          lastUpdated: data.last_measured || '',
+          status: data.status || 'offline',
+          site_managers: data.site_managers || '[]',
+        }
+        setSensor(mapped)
+        setCorrectionParams(data.correction_params || {})
+        setDepthLabel('1'); setMeasurements([]); setCriteriaEditing(false)
+      })
   }, [activeSensorId])
 
   useEffect(() => {
@@ -296,8 +329,21 @@ export default function SiteDetailPage() {
   const handleAddSensors = async (ids: number[]) => { if (!site) return; await Promise.all(ids.map(sensorId => sensorApi.updateSite(sensorId, site.site_code))); const updated = await sensorApi.getAll(); setAllSensors(updated); setShowAddSensor(false) }
   const handleRemoveSensor = async (sensorId: number) => {
     await sensorApi.updateSite(sensorId, '')
-    const updated = await sensorApi.getAll(); setAllSensors(updated)
-    if (activeSensorId === sensorId) { const remaining = updated.filter((s: any) => s.site_code === site.site_code); setActiveSensorId(remaining.length > 0 ? remaining[0].id : null); setSensor(null) }
+    // 해당 센서 관련 아이콘 모두 제거 (80053은 key가 "7:1", "7:2", "7:3" 형태)
+    const nextIcons = icons.filter(i => {
+      const iconSensorId = Number(i.key.split(':')[0])
+      return iconSensorId !== sensorId
+    })
+    setIcons(nextIcons)
+    await saveIconPositions(nextIcons)
+  
+    const updated = await sensorApi.getAll()
+    setAllSensors(updated)
+    if (activeSensorId === sensorId) {
+      const remaining = updated.filter((s: any) => s.site_code === site.site_code)
+      setActiveSensorId(remaining.length > 0 ? remaining[0].id : null)
+      setSensor(null)
+    }
   }
   const setPreset = (days: number) => { const to = new Date(), from = new Date(); from.setDate(from.getDate() - (days - 1)); setDateTo(to.toISOString().slice(0, 10)); setDateFrom(from.toISOString().slice(0, 10)); setTablePage(1) }
   const tableData = useMemo(() => { const source = chartMode === 'hourly' ? measurementsWithGaps : dailyReadings; return [...source].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()) }, [chartMode, measurementsWithGaps, dailyReadings])
