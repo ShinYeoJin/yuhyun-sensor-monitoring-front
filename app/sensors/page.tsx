@@ -78,6 +78,8 @@ const emptyForm: SensorForm = {
     '2': { A: '', B: '', C: '', G: '', K: '' },
     '3': { A: '', B: '', C: '', G: '', K: '' },
   },
+  previewRaw: '',
+  previewResult: null as number | null,
   criteria: { level1Upper: '', level1Lower: '', level2Upper: '', level2Lower: '', criteriaUnit: '', criteriaUnitName: '', noAlarm: false, noSms: false },
   siteId: '', siteName: '', installDate: '', location: { lat: 0, lng: 0, description: '' },
 }
