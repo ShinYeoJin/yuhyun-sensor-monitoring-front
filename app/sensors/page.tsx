@@ -374,7 +374,7 @@ function SensorModal({ mode, form, onChange, onSubmit, onClose, formulas, sites,
                             value={(form.depthParams?.[d]?.[key] || '')}
                             onChange={e => onChange({
                               ...form,
-                              depthParams: { ...form.depthParams, [d]: { ...form.depthParams[d], [key]: e.target.value } }
+                              depthParams: { ...(form.depthParams || {}), [d]: { ...((form.depthParams || {})[d] || {}), [key]: e.target.value } }
                             })}
                             className={inputCls} />
                         </div>
@@ -395,9 +395,9 @@ function SensorModal({ mode, form, onChange, onSubmit, onClose, formulas, sites,
                         onChange={e => onChange({
                           ...form,
                           depthParams: {
-                            '1': { ...form.depthParams['1'], [key]: e.target.value },
-                            '2': { ...form.depthParams['2'], [key]: e.target.value },
-                            '3': { ...form.depthParams['3'], [key]: e.target.value },
+                            '1': { ...(form.depthParams?.['1'] || {}), [key]: e.target.value },
+                            '2': { ...(form.depthParams?.['2'] || {}), [key]: e.target.value },
+                            '3': { ...(form.depthParams?.['3'] || {}), [key]: e.target.value },
                           }
                         })}
                         className={inputCls} />
@@ -422,13 +422,13 @@ function SensorModal({ mode, form, onChange, onSubmit, onClose, formulas, sites,
               </div>
               {form.initValMode === 'manual' && (
                 <input type="number" step="0.01" placeholder="초기 원시값 직접 입력"
-                  value={form.depthParams['1'].I || ''}
+                  value={form.depthParams?.['1']?.I || ''}
                   onChange={e => onChange({
                     ...form,
                     depthParams: {
-                      '1': { ...form.depthParams['1'], I: e.target.value },
-                      '2': { ...form.depthParams['2'], I: e.target.value },
-                      '3': { ...form.depthParams['3'], I: e.target.value },
+                      '1': { ...(form.depthParams?.['1'] || {}), I: e.target.value },
+                      '2': { ...(form.depthParams?.['2'] || {}), I: e.target.value },
+                      '3': { ...(form.depthParams?.['3'] || {}), I: e.target.value },
                     }
                   })}
                   className={inputCls} />
@@ -452,7 +452,7 @@ function SensorModal({ mode, form, onChange, onSubmit, onClose, formulas, sites,
                       let result: number | null = null
                       if (!isNaN(raw) && expr && expr !== '__custom__') {
                         try {
-                          const p1 = form.depthParams['1']
+                          const p1 = form.depthParams?.['1'] || {}
                           const scope: Record<string, number> = { R: raw, I: parseFloat(p1.I || p1.G || '0') || raw }
                           if (p1.G) scope.G = parseFloat(p1.G)
                           if (p1.A) scope.A = parseFloat(p1.A)
