@@ -100,6 +100,13 @@ export interface UnifiedSensor {
   operation:     OperationSettings
   // ── 수식 및 파라미터 ──
   formulaParams: FormulaParams
+  formulaId:          number | null
+  selectedExpression: string
+  useDepthParams:     boolean
+  initValMode:        'auto' | 'manual'
+  depthParams:        Record<string, Record<string, string>>
+  previewRaw:         string
+  previewResult:      number | null
   // ── 관리 기준 ──
   criteria:      ManagementCriteria
   // ── 설치 정보 ──

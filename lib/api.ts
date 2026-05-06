@@ -69,7 +69,8 @@ export const sensorApi = {
     formula_params?: Record<string, string> | null;
     correction_params?: Record<string, number> | null;
     depth_criteria?: Record<string, { upper: number | null; lower: number | null }> | null;
-  }) =>
+    formula_id?: number | null;
+    }) =>
   request(`/api/sensors/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   updateThreshold: (id: number, body: { threshold_normal_max: any; threshold_warning_max: any; threshold_danger_min: any }) =>
     request(`/api/sensors/${id}/threshold`, { method: 'PATCH', body: JSON.stringify(body) }),

@@ -69,6 +69,15 @@ const emptyForm: SensorForm = {
   threshold: { normalMax: '', warningMax: '', dangerMin: '' },
   operation: { measureCycle: '01:00', actionAfterMeasure: '저장송신', actionBeforeMeasure: '자동' },
   formulaParams: { coeffA: '', coeffB: '', coeffC: '', coeffD: '', coeffE: '', coeffG: '', initVal: '', currentTemp: '', tempCoeff: '', initTemp: '', extRef: '' },
+  formulaId: null as number | null,
+  selectedExpression: '',
+  useDepthParams: false,
+  initValMode: 'auto' as 'auto' | 'manual',
+  depthParams: {
+    '1': { A: '', B: '', C: '', G: '', K: '' },
+    '2': { A: '', B: '', C: '', G: '', K: '' },
+    '3': { A: '', B: '', C: '', G: '', K: '' },
+  },
   criteria: { level1Upper: '', level1Lower: '', level2Upper: '', level2Lower: '', criteriaUnit: '', criteriaUnitName: '', noAlarm: false, noSms: false },
   siteId: '', siteName: '', installDate: '', location: { lat: 0, lng: 0, description: '' },
 }
@@ -309,38 +318,161 @@ function SensorModal({ mode, form, onChange, onSubmit, onClose, formulas, sites,
 
           {/* 수식 및 파라미터 설정 */}
           <ModalSection title="수식 및 파라미터 설정">
-            <div className="mb-2 rounded-lg border border-line bg-surface-subtle px-3 py-2">
-              <p className="font-mono text-[10px] text-ink-muted">선택된 계산식: <span className="text-brand">{form.formula}</span></p>
+            {/* 계산식 선택 */}
+            <div className="mb-3">
+              <label className={labelCls}>계산식 선택</label>
+              <select
+                value={form.selectedExpression}
+                onChange={e => {
+                  const selected = formulas.find(f => f.expression === e.target.value)
+                  onChange({ ...form, selectedExpression: e.target.value, formulaId: selected?.id || null })
+                }}
+                className={selectCls}>
+                <option value="">계산식을 선택하세요</option>
+                {formulas.map(f => (
+                  <option key={f.id} value={f.expression}>{f.name} — {f.expression}</option>
+                ))}
+                <option value="__custom__">+ 직접 입력</option>
+              </select>
             </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-              {[
-                { key: 'coeffA', label: 'A 계수' }, { key: 'coeffB', label: 'B 계수' },
-                { key: 'coeffC', label: 'C 계수' }, { key: 'coeffD', label: 'D 계수' },
-                { key: 'coeffE', label: 'E 계수' }, { key: 'coeffG', label: 'G 계수 (Linear)' },
-              ].map(({ key, label }) => (
-                <div key={key}>
-                  <label className={labelCls}>{label}</label>
-                  <input type="text" value={form.formulaParams[key as keyof typeof form.formulaParams] as string}
-                    onChange={e => onChange({ ...form, formulaParams: { ...form.formulaParams, [key]: e.target.value } })}
-                    placeholder="0.000" className={inputCls} />
-                </div>
-              ))}
+
+            {/* 직접 입력 */}
+            {form.selectedExpression === '__custom__' && (
+              <div className="mb-3 rounded-lg border border-brand/20 bg-brand/5 p-3 space-y-2">
+                <label className={labelCls}>새 계산식 직접 입력</label>
+                <input type="text" placeholder="예: G * (I - R) * K"
+                  className={inputCls}
+                  onChange={e => onChange({ ...form, selectedExpression: e.target.value })} />
+                <p className="font-mono text-[10px] text-ink-muted">저장 시 계산식 목록에 자동 추가됩니다. 사용 변수: R(원시값), I(초기값), G, A, B, C, K</p>
+              </div>
+            )}
+
+            {/* depth별 파라미터 토글 */}
+            <div className="mb-3 flex items-center gap-2">
+              <button type="button"
+                onClick={() => onChange({ ...form, useDepthParams: !form.useDepthParams })}
+                className={['rounded-full border px-3 py-1 font-mono text-[10px] transition-colors',
+                  form.useDepthParams ? 'border-brand/30 bg-brand/10 text-brand' : 'border-line text-ink-muted hover:bg-surface-subtle'].join(' ')}>
+                {form.useDepthParams ? '✓ depth별 파라미터 설정 ON' : 'depth별 파라미터 설정 (토글)'}
+              </button>
+              <span className="font-mono text-[10px] text-ink-muted">depth마다 계수가 다른 경우 활성화</span>
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
-              {[
-                { key: 'initVal',     label: '초기값 (I)'   },
-                { key: 'currentTemp', label: '현재 온도 (Tc)' },
-                { key: 'tempCoeff',   label: '온도계수 (Tco)' },
-                { key: 'initTemp',    label: '초기온도 (Ti)'  },
-                { key: 'extRef',      label: '외부참조 (R)'  },
-              ].map(({ key, label }) => (
-                <div key={key}>
-                  <label className={labelCls}>{label}</label>
-                  <input type="text" value={form.formulaParams[key as keyof typeof form.formulaParams] as string}
-                    onChange={e => onChange({ ...form, formulaParams: { ...form.formulaParams, [key]: e.target.value } })}
-                    placeholder="0.000" className={inputCls} />
+
+            {/* 파라미터 입력 */}
+            {form.useDepthParams ? (
+              <div className="space-y-3">
+                {(['1', '2', '3'] as const).map(d => (
+                  <div key={d} className="rounded-lg border border-line bg-surface-subtle p-3">
+                    <p className="font-mono text-[10px] font-semibold text-ink mb-2">Depth {d}</p>
+                    <div className="grid grid-cols-5 gap-2">
+                      {['G', 'A', 'B', 'C', 'K'].map(key => (
+                        <div key={key}>
+                          <label className={labelCls}>{key}</label>
+                          <input type="text" placeholder="0.000"
+                            value={(form.depthParams?.[d]?.[key] || '')}
+                            onChange={e => onChange({
+                              ...form,
+                              depthParams: { ...form.depthParams, [d]: { ...form.depthParams[d], [key]: e.target.value } }
+                            })}
+                            className={inputCls} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-line bg-surface-subtle p-3">
+                <p className="font-mono text-[10px] font-semibold text-ink mb-2">파라미터 (단일 depth)</p>
+                <div className="grid grid-cols-5 gap-2">
+                  {['G', 'A', 'B', 'C', 'K'].map(key => (
+                    <div key={key}>
+                      <label className={labelCls}>{key}</label>
+                      <input type="text" placeholder="0.000"
+                        value={(form.depthParams?.['1']?.[key] || '')}
+                        onChange={e => onChange({
+                          ...form,
+                          depthParams: {
+                            '1': { ...form.depthParams['1'], [key]: e.target.value },
+                            '2': { ...form.depthParams['2'], [key]: e.target.value },
+                            '3': { ...form.depthParams['3'], [key]: e.target.value },
+                          }
+                        })}
+                        className={inputCls} />
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+            )}
+
+            {/* 초기값 설정 */}
+            <div className="mt-3 rounded-lg border border-line bg-surface-subtle p-3">
+              <p className="font-mono text-[10px] font-semibold text-ink mb-2">초기값 (I) 설정</p>
+              <div className="flex gap-2 mb-2">
+                {(['auto', 'manual'] as const).map(mode => (
+                  <button key={mode} type="button"
+                    onClick={() => onChange({ ...form, initValMode: mode })}
+                    className={['rounded-md border px-3 py-1 font-mono text-[10px]',
+                      form.initValMode === mode ? 'border-brand/30 bg-brand/10 text-brand' : 'border-line text-ink-muted hover:bg-surface-subtle'].join(' ')}>
+                    {mode === 'auto' ? '자동 (최초 수신값)' : '수동 입력'}
+                  </button>
+                ))}
+              </div>
+              {form.initValMode === 'manual' && (
+                <input type="number" step="0.01" placeholder="초기 원시값 직접 입력"
+                  value={form.depthParams['1'].I || ''}
+                  onChange={e => onChange({
+                    ...form,
+                    depthParams: {
+                      '1': { ...form.depthParams['1'], I: e.target.value },
+                      '2': { ...form.depthParams['2'], I: e.target.value },
+                      '3': { ...form.depthParams['3'], I: e.target.value },
+                    }
+                  })}
+                  className={inputCls} />
+              )}
+              {form.initValMode === 'auto' && (
+                <p className="font-mono text-[10px] text-ink-muted">센서에 저장된 최초 수신 원시값을 자동으로 사용합니다.</p>
+              )}
+            </div>
+
+            {/* 테스트 미리보기 */}
+            <div className="mt-3 rounded-lg border border-brand/20 bg-brand/5 p-3">
+              <p className="font-mono text-[10px] font-semibold text-ink mb-2">저장 전 테스트 계산</p>
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <label className={labelCls}>원시값 R 입력</label>
+                  <input type="number" step="0.01" placeholder="예: 8214.53"
+                    value={form.previewRaw}
+                    onChange={e => {
+                      const raw = parseFloat(e.target.value)
+                      const expr = form.selectedExpression === '__custom__' ? '' : form.selectedExpression
+                      let result: number | null = null
+                      if (!isNaN(raw) && expr && expr !== '__custom__') {
+                        try {
+                          const p1 = form.depthParams['1']
+                          const scope: Record<string, number> = { R: raw, I: parseFloat(p1.I || p1.G || '0') || raw }
+                          if (p1.G) scope.G = parseFloat(p1.G)
+                          if (p1.A) scope.A = parseFloat(p1.A)
+                          if (p1.B) scope.B = parseFloat(p1.B)
+                          if (p1.C) scope.C = parseFloat(p1.C)
+                          if (p1.K) scope.K = parseFloat(p1.K)
+                          // 간단한 eval 대신 표현식 파싱 (mathjs 미사용, 클라이언트 안전 계산)
+                          result = parseFloat((Function(...Object.keys(scope), `return ${expr.replace(/\^/g, '**')}`)(...Object.values(scope))).toFixed(4))
+                          if (!isFinite(result)) result = null
+                        } catch { result = null }
+                      }
+                      onChange({ ...form, previewRaw: e.target.value, previewResult: result })
+                    }}
+                    className={inputCls} />
+                </div>
+                <div className="flex-1">
+                  <label className={labelCls}>계산 결과</label>
+                  <div className={`${inputCls} bg-surface-card font-semibold ${form.previewResult !== null ? 'text-brand' : 'text-ink-muted'}`}>
+                    {form.previewResult !== null ? `${form.previewResult} ${form.unit}` : '—'}
+                  </div>
+                </div>
+              </div>
             </div>
           </ModalSection>
 
@@ -773,6 +905,26 @@ export default function SensorsPage() {
           initTemp: (fresh as any).formula_params.initTemp || '',
           extRef: (fresh as any).formula_params.extRef || '',
         } : { coeffA: '', coeffB: '', coeffC: '', coeffD: '', coeffE: '', coeffG: '', initVal: '', currentTemp: '', tempCoeff: '', initTemp: '', extRef: '' },
+        formulaId: (fresh as any).formula_id || null,
+        selectedExpression: (fresh as any).formula_params
+          ? (() => {
+              const fp = (fresh as any).formula_params
+              const isDepth = fp['1'] || fp['2'] || fp['3']
+              const base = isDepth ? (fp['1'] || Object.values(fp)[0]) : fp
+              return base.A !== undefined ? '(A * R^2 + B * R + C) * K' : 'G * (I - R) * K'
+            })()
+          : '',
+        useDepthParams: !!(fresh as any).formula_params?.['1'],
+        initValMode: 'auto' as 'auto' | 'manual',
+        depthParams: (fresh as any).formula_params?.['1']
+          ? {
+              '1': { A: String((fresh as any).formula_params['1']?.A || ''), B: String((fresh as any).formula_params['1']?.B || ''), C: String((fresh as any).formula_params['1']?.C || ''), G: String((fresh as any).formula_params['1']?.G || ''), K: String((fresh as any).formula_params['1']?.K || '') },
+              '2': { A: String((fresh as any).formula_params['2']?.A || ''), B: String((fresh as any).formula_params['2']?.B || ''), C: String((fresh as any).formula_params['2']?.C || ''), G: String((fresh as any).formula_params['2']?.G || ''), K: String((fresh as any).formula_params['2']?.K || '') },
+              '3': { A: String((fresh as any).formula_params['3']?.A || ''), B: String((fresh as any).formula_params['3']?.B || ''), C: String((fresh as any).formula_params['3']?.C || ''), G: String((fresh as any).formula_params['3']?.G || ''), K: String((fresh as any).formula_params['3']?.K || '') },
+            }
+          : { '1': { A: '', B: '', C: '', G: '', K: '' }, '2': { A: '', B: '', C: '', G: '', K: '' }, '3': { A: '', B: '', C: '', G: '', K: '' } },
+        previewRaw: '',
+        previewResult: null,
       }
       setEditSensorPositions((fresh as any).sensor_positions || {})
       setForm({
@@ -789,6 +941,21 @@ export default function SensorsPage() {
         siteId: freshSensor.siteId, siteName: freshSensor.siteName,
         installDate: freshSensor.installDate ? freshSensor.installDate.slice(0, 10) : '',
         location: { ...freshSensor.location },
+        formulaId: (fresh as any).formula_id || null,
+        selectedExpression: (fresh as any).formula_params?.['1']
+          ? ((fresh as any).formula_params['1']?.A !== undefined ? '(A * R^2 + B * R + C) * K' : 'G * (I - R) * K')
+          : '',
+        useDepthParams: !!(fresh as any).formula_params?.['1'],
+        initValMode: 'auto' as 'auto' | 'manual',
+        depthParams: (fresh as any).formula_params?.['1']
+          ? {
+              '1': { A: String((fresh as any).formula_params['1']?.A || ''), B: String((fresh as any).formula_params['1']?.B || ''), C: String((fresh as any).formula_params['1']?.C || ''), G: String((fresh as any).formula_params['1']?.G || ''), K: String((fresh as any).formula_params['1']?.K || '') },
+              '2': { A: String((fresh as any).formula_params['2']?.A || ''), B: String((fresh as any).formula_params['2']?.B || ''), C: String((fresh as any).formula_params['2']?.C || ''), G: String((fresh as any).formula_params['2']?.G || ''), K: String((fresh as any).formula_params['2']?.K || '') },
+              '3': { A: String((fresh as any).formula_params['3']?.A || ''), B: String((fresh as any).formula_params['3']?.B || ''), C: String((fresh as any).formula_params['3']?.C || ''), G: String((fresh as any).formula_params['3']?.G || ''), K: String((fresh as any).formula_params['3']?.K || '') },
+            }
+          : { '1': { A: '', B: '', C: '', G: '', K: '' }, '2': { A: '', B: '', C: '', G: '', K: '' }, '3': { A: '', B: '', C: '', G: '', K: '' } },
+        previewRaw: '',
+        previewResult: null,
       })
       setEditTarget(freshSensor)
     } catch (err) {
@@ -836,19 +1003,22 @@ export default function SensorsPage() {
         unit: form.unit,
         field: form.field,
         formula: form.formula,
-        formula_params: {
-          coeffA: form.formulaParams.coeffA,
-          coeffB: form.formulaParams.coeffB,
-          coeffC: form.formulaParams.coeffC,
-          coeffD: form.formulaParams.coeffD,
-          coeffE: form.formulaParams.coeffE,
-          coeffG: form.formulaParams.coeffG,
-          initVal: form.formulaParams.initVal,
-          currentTemp: form.formulaParams.currentTemp,
-          tempCoeff: form.formulaParams.tempCoeff,
-          initTemp: form.formulaParams.initTemp,
-          extRef: form.formulaParams.extRef,
-        },
+        formula_params: form.useDepthParams
+          ? {
+              '1': { A: Number(form.depthParams['1'].A) || undefined, B: Number(form.depthParams['1'].B) || undefined, C: Number(form.depthParams['1'].C) || undefined, G: Number(form.depthParams['1'].G) || undefined, K: Number(form.depthParams['1'].K) || undefined },
+              '2': { A: Number(form.depthParams['2'].A) || undefined, B: Number(form.depthParams['2'].B) || undefined, C: Number(form.depthParams['2'].C) || undefined, G: Number(form.depthParams['2'].G) || undefined, K: Number(form.depthParams['2'].K) || undefined },
+              '3': { A: Number(form.depthParams['3'].A) || undefined, B: Number(form.depthParams['3'].B) || undefined, C: Number(form.depthParams['3'].C) || undefined, G: Number(form.depthParams['3'].G) || undefined, K: Number(form.depthParams['3'].K) || undefined },
+            }
+          : (() => {
+              const base: Record<string, any> = {}
+              if (form.depthParams['1'].G) base.G = Number(form.depthParams['1'].G)
+              if (form.depthParams['1'].K) base.K = Number(form.depthParams['1'].K)
+              if (form.depthParams['1'].A) base.A = Number(form.depthParams['1'].A)
+              if (form.depthParams['1'].B) base.B = Number(form.depthParams['1'].B)
+              if (form.depthParams['1'].C) base.C = Number(form.depthParams['1'].C)
+              return base
+            })(),
+        formula_id: form.formulaId || undefined,
         level1_upper: form.criteria.level1Upper !== '' ? form.criteria.level1Upper : null,
         level1_lower: form.criteria.level1Lower !== '' ? form.criteria.level1Lower : null,
         level2_upper: form.criteria.level2Upper !== '' ? form.criteria.level2Upper : null,
@@ -1132,7 +1302,7 @@ export default function SensorsPage() {
               <table className="w-full min-w-[500px] text-sm">
                 <thead>
                   <tr className="border-b border-line bg-surface-subtle">
-                    {[['이름','text-left'],['계산식','text-left'],['설명','text-left'],['','text-right']].map(([th,a]) => (
+                    {[['이름','text-left'],['계산식','text-left'],['변수 설명','text-left'],['설명','text-left'],['','text-right']].map(([th,a]) => (
                       <th key={th} className={`px-4 py-3 font-mono text-[10px] font-semibold uppercase tracking-wide text-ink-muted ${a}`}>{th}</th>
                     ))}
                   </tr>
@@ -1142,6 +1312,11 @@ export default function SensorsPage() {
                     <tr key={f.id} className="transition-colors hover:bg-surface-subtle">
                       <td className="px-4 py-3 font-medium text-ink">{f.name}</td>
                       <td className="px-4 py-3 font-mono text-xs text-brand">{f.expression}</td>
+                      <td className="px-4 py-3 text-xs text-ink-muted">
+                        {f.variables
+                          ? Object.entries(f.variables).map(([k, v]) => `${k}: ${v}`).join(' / ')
+                          : '—'}
+                      </td>
                       <td className="px-4 py-3 text-xs text-ink-muted">{f.description || '—'}</td>
                       <td className="px-4 py-3 text-right">
                         {canManage && (
