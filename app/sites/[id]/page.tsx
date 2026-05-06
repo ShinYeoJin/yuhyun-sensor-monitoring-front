@@ -138,6 +138,7 @@ export default function SiteDetailPage() {
 
   const [leftWidth, setLeftWidth] = useState(220)
   const isResizingLeft = useRef(false)
+  const [queryTrigger, setQueryTrigger] = useState(0)
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
@@ -238,7 +239,7 @@ export default function SiteDetailPage() {
       const corr = correctionParams[depthLabel] ?? 0
       setMeasurements(data.map((m: any) => ({ ...m, timestamp: m.measured_at, value: parseFloat(((calcMode === 'linear' ? parseFloat(m.linear_value ?? m.value) : parseFloat(m.value)) + corr).toFixed(4)), unit: sensor.unit || '' })))
     }).catch(() => setMeasurements([]))
-  }, [sensor, dateFrom, dateTo, chartMode, selectedHour, calcMode, depthLabel, correctionParams])
+}, [id, sensorCode, depthLabel, calcMode, correctionParams, queryTrigger])
 
   useEffect(() => {
     if (!sensor || sensor.sensor_code !== '80053' || depthLabel !== '2') { setDepth1Data([]); setDepth3Data([]); return }
@@ -372,6 +373,7 @@ export default function SiteDetailPage() {
 
   const handleExcelDownload = async () => {
     if (!sensor) return
+    const iconLabel = icons.find(i => i.key === currentIconKey)?.label || ''
     let chartBase64: string | null = null
     if (chartRef.current) {
       try {
@@ -410,7 +412,7 @@ export default function SiteDetailPage() {
     setH(CR_END + 1, 14); setH(CR_END + 2, 4); setH(CR_END + 3, 18); setH(CR_END + 4, 18); setH(CR_END + 5, 18); setH(CR_END + 6, 3)
     const DS = CR_END + 7; sortedRows.forEach((_: any, i: number) => setH(DS + i, 17))
     ws2.mergeCells('A1:F1'); const t = ws2.getCell('A1'); t.value = 'Water Level Meter Report'; t.font = font(true, 15, BLACK); t.fill = fill(WHITE); t.alignment = aln(); t.border = MB
-    const infoRows = [['현   장   명', sensor.siteName || '—', '계측기 No.', sensor.manageNo || '—'], ['설 치 현 황', sensor.installDate ? `설치일자 (${sensor.installDate.slice(0, 10)})` : '—', '초기측정일', initDate.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })], ['관   리   자', managerText, '설치위치', sensor.location?.description || '—']]
+    const infoRows = [['현   장   명', sensor.siteName||'—', '계측기 No.', iconLabel || sensor.manageNo||'—'], ['설 치 현 황', sensor.installDate ? `설치일자 (${sensor.installDate.slice(0, 10)})` : '—', '초기측정일', initDate.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })], ['관   리   자', managerText, '설치위치', sensor.location?.description || '—']]
     infoRows.forEach(([l1, v1, l2, v2]: any, i: number) => { const r = 3 + i; ws2.mergeCells(r, 2, r, 3); ws2.mergeCells(r, 5, r, 6); const setC = (col: number, val: string, fnt: any, fil: any, al: any) => { const c = ws2.getCell(r, col); c.value = val; c.font = fnt; c.fill = fil; c.alignment = al; c.border = TB }; setC(1, l1, font(true, 9, BLACK), fill(DARK), aln()); setC(2, v1, font(false, 8, BLACK), fill(WHITE), aln('left')); setC(4, l2, font(true, 9, BLACK), fill(DARK), aln()); setC(5, v2, font(false, 8, BLACK), fill(WHITE), aln('left')) })
     if (chartBase64) { try { const b64data = (chartBase64 as string).split(',')[1]; if (b64data && b64data.length > 0) { const imgId = wb2.addImage({ base64: b64data, extension: 'png' }); ws2.addImage(imgId, { tl: { col: 0, row: CR_START - 1 } as any, br: { col: 6, row: CR_END } as any, editAs: 'oneCell' }) } } catch { } }
     const legendRow = CR_END + 1
@@ -438,6 +440,7 @@ export default function SiteDetailPage() {
 
   const handlePdfDownload = async () => {
     if (!sensor) return
+    const iconLabel = icons.find(i => i.key === currentIconKey)?.label || ''
     const doc = new jsPDF('p', 'mm', 'a4'), pageWidth = doc.internal.pageSize.getWidth()
     const fontRes = await fetch('/NanumGothic.ttf'), fontBuffer = await fontRes.arrayBuffer(), uint8 = new Uint8Array(fontBuffer)
     let bin = ''; for (let i = 0; i < uint8.byteLength; i++) bin += String.fromCharCode(uint8[i])

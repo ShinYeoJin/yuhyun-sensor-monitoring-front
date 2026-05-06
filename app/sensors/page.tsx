@@ -82,6 +82,7 @@ const emptyForm: SensorForm = {
   previewResult: null as number | null,
   criteria: { level1Upper: '', level1Lower: '', level2Upper: '', level2Lower: '', criteriaUnit: '', criteriaUnitName: '', noAlarm: false, noSms: false },
   siteId: '', siteName: '', installDate: '', location: { lat: 0, lng: 0, description: '' },
+  customExpression: '' as string,
 }
 
 // ─── 스타일 ───────────────────────────────────────────────────────────────────
@@ -197,6 +198,7 @@ function SensorModal({ mode, form, onChange, onSubmit, onClose, formulas, sites,
   sensorPositions?: Record<string, any>
   sensorId?: string
 }) {
+  const [customExpression, setCustomExpression] = useState('')
   const isValid = form.name.trim() !== ''
   const set = (key: keyof SensorForm, val: string) => onChange({ ...form, [key]: val })
 
@@ -337,9 +339,10 @@ function SensorModal({ mode, form, onChange, onSubmit, onClose, formulas, sites,
               <div className="mb-3 rounded-lg border border-brand/20 bg-brand/5 p-3 space-y-2">
                 <label className={labelCls}>새 계산식 직접 입력</label>
                 <input type="text" placeholder="예: G * (I - R) * K"
+                  value={customExpression}
                   className={inputCls}
-                  onChange={e => onChange({ ...form, selectedExpression: e.target.value })} />
-                <p className="font-mono text-[10px] text-ink-muted">저장 시 계산식 목록에 자동 추가됩니다. 사용 변수: R(원시값), I(초기값), G, A, B, C, K</p>
+                  onChange={e => setCustomExpression(e.target.value)} />
+                <p className="font-mono text-[10px] text-ink-muted mt-1">저장 시 계산식 목록에 자동 추가됩니다. 사용 변수: R(원시값), I(초기값), G, A, B, C, K</p>
               </div>
             )}
 

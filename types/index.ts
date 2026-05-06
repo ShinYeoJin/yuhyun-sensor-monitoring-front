@@ -124,6 +124,8 @@ export interface UnifiedSensor {
   batteryLevel:  number
   lastUpdated:   string
   readings:      SensorReading[]
+
+  customExpression?: string
 }
 
 // ─── 하위 호환 alias (기존 코드가 Sensor 타입을 참조하는 곳이 많으므로) ────────

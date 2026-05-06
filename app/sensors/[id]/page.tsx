@@ -267,13 +267,14 @@ export default function SensorDetailPage() {
   const [criteriaSaving, setCriteriaSaving] = useState(false)
   const [depth1Data, setDepth1Data] = useState<any[]>([])
   const [depth3Data, setDepth3Data] = useState<any[]>([])
+  const [queryTrigger, setQueryTrigger] = useState(0)
 
   // ─── 측정값 로딩 ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (!id || !sensorCode) return
     sensorApi.getMeasurements(Number(id), {
       from: chartMode === 'daily' ? `${dateFrom}T${String(selectedHour).padStart(2,'0')}:00:00` : dateFrom,
-      to:   chartMode === 'daily' ? `${dateTo}T${String(selectedHour).padStart(2,'0')}:59:59` : dateTo,
+      to:   chartMode === 'daily' ? `${dateTo}T${String(selectedHour).padStart(2,'0')}:00:59` : dateTo,
       limit: 2000,
       depthLabel: sensorCode === '80053' ? depthLabel : undefined,
     }).then((data: any[]) => {
@@ -285,7 +286,7 @@ export default function SensorDetailPage() {
       }))
       setMeasurements(mapped.reverse())
     }).catch(() => {})
-  }, [id, sensorCode, dateFrom, dateTo, depthLabel, calcMode, correctionParams, chartMode, selectedHour])
+  }, [id, sensorCode, depthLabel, calcMode, correctionParams, queryTrigger])
 
   // WL-02 평균 계산용 depth 1/3번 데이터 로드
   useEffect(() => {
@@ -294,7 +295,7 @@ export default function SensorDetailPage() {
     }
     const params = {
       from: chartMode === 'daily' ? `${dateFrom}T${String(selectedHour).padStart(2,'0')}:00:00` : dateFrom,
-      to:   chartMode === 'daily' ? `${dateTo}T${String(selectedHour).padStart(2,'0')}:59:59` : dateTo,
+      to:   chartMode === 'daily' ? `${dateTo}T${String(selectedHour).padStart(2,'0')}:00:00` : dateTo,
       limit: 2000,
     }
     const toVal = (m: any) => parseFloat(((calcMode === 'linear' ? parseFloat(m.linear_value ?? m.value) : parseFloat(m.value)) + (correctionParams['1'] ?? 0)).toFixed(4))
@@ -305,7 +306,7 @@ export default function SensorDetailPage() {
     sensorApi.getMeasurements(Number(id), { ...params, depthLabel: '3' })
       .then((data: any[]) => setDepth3Data(data.map((m: any) => ({ timestamp: m.measured_at, value: toVal3(m) }))))
       .catch(() => {})
-  }, [id, sensorCode, depthLabel, dateFrom, dateTo, calcMode, correctionParams, chartMode, selectedHour])
+  }, [id, sensorCode, depthLabel, calcMode, correctionParams, queryTrigger])
 
   const [globalInitReading, setGlobalInitReading] = useState<any>(null)
   useEffect(() => {
@@ -401,10 +402,8 @@ export default function SensorDetailPage() {
     const dataMap = new Map<string, any>()
     activeMeasurements.forEach(m => {
       const t = new Date(m.timestamp)
-      if (t.getHours() === targetHour) {
-        const dateKey = t.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
-        dataMap.set(dateKey, m)
-      }
+      const dateKey = t.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
+      if (!dataMap.has(dateKey)) dataMap.set(dateKey, m)
     })
     // 선택 날짜 범위 전체를 슬롯으로 생성 (없는 날짜는 미수신)
     const slots: any[] = []
@@ -513,7 +512,7 @@ export default function SensorDetailPage() {
     const initDate = globalInitReading ? new Date(globalInitReading.timestamp) : (sortedRows.length > 0 ? new Date(sortedRows[0].timestamp) : new Date())
     const ExcelJSModule = await import('exceljs') as any
     const ExcelJS = ExcelJSModule.default ?? ExcelJSModule
-    const wb2 = new ExcelJS.Workbook(); const ws2 = wb2.addWorksheet(sensor.manageNo || sensor.name || '측정데이터')
+    const wb2 = new ExcelJS.Workbook(); const ws2 = wb2.addWorksheet(iconLabel || sensor.manageNo || sensor.name || '측정데이터')
     const DARK = 'FFD9D9D9', MID = 'FFD9D9D9', WHITE = 'FFFFFFFF', BLACK = 'FF000000', RED = 'FFC00000', BLUE = 'FF2F5496', YELL = 'FFFFF2CC', ALT = 'FFEEF4FB'
     const thin = { style: 'thin' as const, color: { argb: 'FF000000' } }, med = { style: 'medium' as const, color: { argb: DARK } }
     const TB = { top: thin, left: thin, bottom: thin, right: thin }, MB = { top: med, left: med, bottom: med, right: med }
@@ -531,7 +530,7 @@ export default function SensorDetailPage() {
     ws2.mergeCells('A1:F1')
     const t = ws2.getCell('A1'); t.value = 'Water Level Meter Report'; t.font = font(true,15,BLACK); t.fill = fill(WHITE); t.alignment = aln(); t.border = MB
     const infoRows = [
-      ['현   장   명', sensor.siteName||'—', '계측기 No.', sensor.manageNo||'—'],
+      ['현   장   명', sensor.siteName||'—', '계측기 No.', iconLabel || sensor.manageNo||'—'],
       ['설 치 현 황', sensor.installDate?`설치일자 (${sensor.installDate.slice(0,10)})`:'—', '초기측정일', initDate.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'})],
       ['관   리   자', managerText, '설치위치', sensor.location?.description||'—'],
     ]
@@ -553,14 +552,14 @@ export default function SensorDetailPage() {
     }
     const legendRow = CR_END+1
     ws2.mergeCells(legendRow,1,legendRow,2); const lgLine = ws2.getCell(legendRow,1)
-    lgLine.value = '── '+(sensor.manageNo||sensor.name); lgLine.font = { name:'맑은 고딕', size:9, color:{argb:'FF2F5496'} }; lgLine.alignment = { horizontal:'center', vertical:'middle' }
+    lgLine.value = '── '+(iconLabel || sensor.manageNo||sensor.name); lgLine.font = { name:'맑은 고딕', size:9, color:{argb:'FF2F5496'} }; lgLine.alignment = { horizontal:'center', vertical:'middle' }
     ws2.mergeCells(legendRow,3,legendRow,4); const lgLower = ws2.getCell(legendRow,3)
     lgLower.value = '- - - 1차 하한기준'; lgLower.font = { name:'맑은 고딕', size:9, color:{argb:'FFC00000'} }; lgLower.alignment = { horizontal:'center', vertical:'middle' }
     ws2.mergeCells(legendRow,5,legendRow,6); const lgUpper = ws2.getCell(legendRow,5)
     lgUpper.value = '- - - 1차 상한기준'; lgUpper.font = { name:'맑은 고딕', size:9, color:{argb:'FFE07000'} }; lgUpper.alignment = { horizontal:'center', vertical:'middle' }
     const H1=CR_END+3, H2=CR_END+4, H3=CR_END+5
     const mhdr = (r1:number,c1:number,r2:number,c2:number,val:string,sz=9,bg=DARK) => { ws2.mergeCells(r1,c1,r2,c2); const c=ws2.getCell(r1,c1); c.value=val; c.font=font(true,sz,BLACK); c.fill=fill(bg); c.alignment=aln('center','middle',true); c.border=TB }
-    mhdr(H1,1,H3,1,'측  정  일'); mhdr(H1,2,H3,2,'경과일'); mhdr(H1,3,H1,5,sensor.manageNo||sensor.name); mhdr(H1,6,H3,6,'비  고')
+    mhdr(H1,1,H3,1,'측  정  일'); mhdr(H1,2,H3,2,'경과일'); mhdr(H1,3,H1,5,iconLabel || sensor.manageNo||sensor.name); mhdr(H1,6,H3,6,'비  고')
     mhdr(H2,3,H2,3,`지하수위 G.L(${sensor.unit})`,8,MID); mhdr(H2,4,H2,5,'변화량(m)',8,MID)
     const setHdr = (r:number,c:number,val:string,sz=7,bg=MID) => { const cell=ws2.getCell(r,c); cell.value=val; cell.font=font(true,sz,BLACK); cell.fill=fill(bg); cell.alignment=aln('center','middle',true); cell.border=TB }
     ws2.getCell(H3,3).fill=fill(MID); ws2.getCell(H3,3).border=TB; setHdr(H3,4,'전측정치대비'); setHdr(H3,5,'초기치대비')
@@ -588,7 +587,7 @@ export default function SensorDetailPage() {
     })
     ws2.pageSetup.paperSize=9; ws2.pageSetup.orientation='portrait'; ws2.pageSetup.fitToPage=true; ws2.pageSetup.fitToWidth=1; ws2.pageSetup.fitToHeight=0
     const buf=await wb2.xlsx.writeBuffer(), blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}), url=URL.createObjectURL(blob), a=document.createElement('a')
-    a.href=url; a.download=`${sensor.manageNo||sensor.name}_${dateFrom}_${dateTo}.xlsx`; a.click(); URL.revokeObjectURL(url)
+    a.href=url; a.download=`${iconLabel || sensor.manageNo || sensor.name}_${dateFrom}_${dateTo}.xlsx`; a.click(); URL.revokeObjectURL(url)
   }
 
   // ─── PDF ──────────────────────────────────────────────────────────────────
@@ -605,7 +604,7 @@ export default function SensorDetailPage() {
     const pdfSortedRows=[...pdfSourceRows].sort((a:any,b:any)=>new Date(a.timestamp).getTime()-new Date(b.timestamp).getTime())
     const pdfInitDate=globalInitReading?new Date(globalInitReading.timestamp):(pdfSortedRows.length>0?new Date(pdfSortedRows[0].timestamp):new Date())
     doc.setFontSize(16); doc.text('Water Level Meter Report',pageWidth/2,20,{align:'center'})
-    autoTable(doc,{startY:28,head:[],body:[['현장명',sensor.siteName||'—','계측기 No.',sensor.manageNo||'—'],['설치현황',sensor.installDate?`설치일자 (${sensor.installDate.slice(0,10)})`:'—','초기측정일',pdfInitDate.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'})],['관리자',mt,'설치위치',sensor.location?.description||'—']],theme:'grid',styles:{fontSize:9,cellPadding:2,font:'NanumGothic'},columnStyles:{0:{fillColor:[240,240,240],cellWidth:25},1:{cellWidth:65},2:{fillColor:[240,240,240],cellWidth:25},3:{cellWidth:65}}})
+    autoTable(doc,{startY:28,head:[],body:[['현장명',sensor.siteName||'—','계측기 No.',iconLabel || sensor.manageNo||'—'],['설치현황',sensor.installDate?`설치일자 (${sensor.installDate.slice(0,10)})`:'—','초기측정일',pdfInitDate.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'})],['관리자',mt,'설치위치',sensor.location?.description||'—']],theme:'grid',styles:{fontSize:9,cellPadding:2,font:'NanumGothic'},columnStyles:{0:{fillColor:[240,240,240],cellWidth:25},1:{cellWidth:65},2:{fillColor:[240,240,240],cellWidth:25},3:{cellWidth:65}}})
     const cy=(doc as any).lastAutoTable.finalY+5
     const chartData = [...(chartMode === 'hourly' ? measurementsWithGaps : dailyReadings)].sort((a:any,b:any)=>new Date(a.timestamp).getTime()-new Date(b.timestamp).getTime())
     if (chartData.length > 0) {
@@ -712,7 +711,7 @@ export default function SensorDetailPage() {
       doc.setDrawColor(34, 150, 100); doc.setLineWidth(1.0)
       doc.line(centerX - 52, legendY, centerX - 44, legendY)
       doc.setTextColor(34, 150, 100)
-      doc.text(`── ${sensor.manageNo || sensor.name}`, centerX - 42, legendY + 0.5)
+      doc.text(`── ${iconLabel || sensor.manageNo || sensor.name}`, centerX - 42, legendY + 0.5)
 
       // 1차 하한기준
       if (level1Lower !== null) {
@@ -744,7 +743,7 @@ export default function SensorDetailPage() {
       const isFirst=pdfSortedRows.findIndex((x:any)=>x.value!==null)===i
       return[dk,el,cv.toFixed(4),isFirst?'0.0000':(pd>0?`+${pd}`:String(pd)),isFirst?'0.0000':(id_>0?`+${id_}`:String(id_)),isFirst?'초기치':(remarks[dk]||'')]
     }),theme:'grid',headStyles:{fillColor:[60,80,120],textColor:255,fontSize:8,font:'NanumGothic',fontStyle:'normal'},styles:{fontSize:8,cellPadding:2,font:'NanumGothic'}})
-    doc.save(`${sensor.manageNo||sensor.name}_${dateFrom}_${dateTo}.pdf`)
+    doc.save(`${iconLabel || sensor.manageNo||sensor.name}_${dateFrom}_${dateTo}.pdf`)
   }
 
   // ─── 테이블 ───────────────────────────────────────────────────────────────
@@ -1093,6 +1092,13 @@ export default function SensorDetailPage() {
               </div>
             </>
           )}
+
+          {/* WL-01 WL-02 WL-03 버튼 오른쪽에 */}
+          <button 
+            onClick={() => setQueryTrigger(t => t + 1)} 
+            className="rounded-md bg-brand px-4 py-1 font-mono text-[11px] text-white hover:bg-brand/90">
+            조회
+          </button>
         </div>
 
         {/* 측정값 카드 — 한 줄 */}
@@ -1192,7 +1198,7 @@ export default function SensorDetailPage() {
             <div className="flex items-center justify-between mb-4"><h2 className="text-sm font-semibold text-ink">출력 설정</h2><button onClick={()=>setPrintOpen(false)} className="text-ink-muted hover:text-ink">✕</button></div>
             <div className="rounded-xl border border-line bg-surface-subtle p-3 text-xs text-ink-muted space-y-1 mb-4">
               <p className="font-semibold text-ink">{sensor.siteName||'현장명 없음'}</p>
-              <p>{sensor.manageNo} · {sensor.name}</p>
+              <p>{iconLabel || sensor.manageNo} · {sensor.name}</p>
               <p>{dateFrom} ~ {dateTo}</p>
             </div>
             <div className="flex gap-2">
