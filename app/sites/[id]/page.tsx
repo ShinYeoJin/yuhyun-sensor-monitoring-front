@@ -196,12 +196,12 @@ export default function SiteDetailPage() {
           manageNo: data.manage_no || '',
           nameAbbr: data.sensor_code,
           formulaParams: data.formula_params ? {
-            coeffA: data.formula_params.A,
-            coeffB: data.formula_params.B,
-            coeffC: data.formula_params.C,
-            coeffG: data.formula_params.G,
-            initVal: data.formula_params.I,
-          } : null,
+            coeffA: data.formula_params.coeffA || '',
+            coeffB: data.formula_params.coeffB || '',
+            coeffC: data.formula_params.coeffC || '',
+            coeffG: data.formula_params.coeffG || '',
+            initVal: data.formula_params.initVal || '',
+          } : { coeffA: '', coeffB: '', coeffC: '', coeffG: '', initVal: '' },
           criteria: {
             level1Upper: data.level1_upper != null ? parseFloat(data.level1_upper) : null,
             level1Lower: data.level1_lower != null ? parseFloat(data.level1_lower) : null,
