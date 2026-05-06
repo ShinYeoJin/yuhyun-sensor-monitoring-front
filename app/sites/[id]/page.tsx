@@ -138,7 +138,10 @@ export default function SiteDetailPage() {
 
   const [leftWidth, setLeftWidth] = useState(220)
   const isResizingLeft = useRef(false)
-  const [queryTrigger, setQueryTrigger] = useState(0)
+  const [queryCondition, setQueryCondition] = useState({
+    dateFrom: today, dateTo: today, chartMode: 'hourly' as 'hourly' | 'daily',
+    selectedHour: 12, calcMode: 'linear' as 'linear' | 'poly', depthLabel: '1' as '1'|'2'|'3'
+  })
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
@@ -233,13 +236,17 @@ export default function SiteDetailPage() {
   useEffect(() => {
     if (!sensor) return
     const sc = sensor.sensor_code || ''
-    const params: any = { from: chartMode === 'daily' ? `${dateFrom}T${String(selectedHour).padStart(2, '0')}:00:00` : dateFrom, to: chartMode === 'daily' ? `${dateTo}T${String(selectedHour).padStart(2, '0')}:59:59` : dateTo, limit: 2000 }
+    const params: any = {
+        from: queryCondition.chartMode === 'daily' ? `${queryCondition.dateFrom}T${String(queryCondition.selectedHour).padStart(2, '0')}:00:00` : queryCondition.dateFrom,
+        to: queryCondition.chartMode === 'daily' ? `${queryCondition.dateTo}T${String(queryCondition.selectedHour).padStart(2, '0')}:00:59` : queryCondition.dateTo,
+        limit: 2000
+    }
     if (sc === '80053') params.depthLabel = depthLabel
     sensorApi.getMeasurements(sensor.id, params).then((data: any[]) => {
       const corr = correctionParams[depthLabel] ?? 0
       setMeasurements(data.map((m: any) => ({ ...m, timestamp: m.measured_at, value: parseFloat(((calcMode === 'linear' ? parseFloat(m.linear_value ?? m.value) : parseFloat(m.value)) + corr).toFixed(4)), unit: sensor.unit || '' })))
     }).catch(() => setMeasurements([]))
-}, [id, sensor?.sensor_code, depthLabel, calcMode, correctionParams, queryTrigger])
+}, [id, sensor?.sensor_code, correctionParams, queryCondition])
 
   useEffect(() => {
     if (!sensor || sensor.sensor_code !== '80053' || depthLabel !== '2') { setDepth1Data([]); setDepth3Data([]); return }
@@ -277,21 +284,32 @@ export default function SiteDetailPage() {
     if (!sensor || chartMode !== 'hourly') return activeMeasurements
     const dataMap = new Map<number, any>()
     activeMeasurements.forEach(m => { const h = new Date(m.timestamp); h.setMinutes(0, 0, 0); dataMap.set(h.getTime(), m) })
-    const from = new Date(dateFrom + 'T00:00:00'), to = new Date(dateTo + 'T23:59:59'), now = new Date()
+    const from = new Date(queryCondition.dateFrom + 'T00:00:00'), to = new Date(queryCondition.dateTo + 'T23:59:59'), now = new Date()
     const slots: any[] = []
     for (let d = new Date(from); d <= to; d.setHours(d.getHours() + 1)) { if (d > now) break; const key = new Date(d); key.setMinutes(0, 0, 0); slots.push(dataMap.get(key.getTime()) ?? { timestamp: key.toISOString(), value: null, unit: sensor?.unit || '', status: 'gap' }) }
     return slots
-  }, [activeMeasurements, sensor, chartMode, dateFrom, dateTo])
+  }, [activeMeasurements, sensor, queryCondition])
 
   const dailyReadings = useMemo(() => {
-    if (chartMode !== 'daily') return []
+    if (queryCondition.chartMode !== 'daily') return []
     const dataMap = new Map<string, any>()
-    activeMeasurements.forEach(m => { const d = m.timestamp.slice(0, 10); dataMap.set(d, m) })
-    const from = new Date(dateFrom), to = new Date(dateTo), now = new Date()
+    activeMeasurements.forEach(m => {
+      const t = new Date(m.timestamp)
+      if (t.getHours() === queryCondition.selectedHour) {
+        const key = t.toISOString().slice(0, 10)
+        if (!dataMap.has(key)) dataMap.set(key, m)
+      }
+    })
+    const from = new Date(queryCondition.dateFrom), to = new Date(queryCondition.dateTo), now = new Date()
     const slots: any[] = []
-    for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) { if (d > now) break; const key = d.toISOString().slice(0, 10); slots.push(dataMap.get(key) ?? { timestamp: key + 'T00:00:00.000Z', value: null, unit: sensor?.unit || '', status: 'gap' }) }
+    for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
+      if (d > now) break
+      const key = d.toISOString().slice(0, 10)
+      const gapTs = `${key}T${String(queryCondition.selectedHour).padStart(2, '0')}:00:00.000Z`
+      slots.push(dataMap.get(key) ?? { timestamp: gapTs, value: null, unit: sensor?.unit || '', status: 'gap' })
+    }
     return slots
-  }, [activeMeasurements, chartMode, dateFrom, dateTo])
+  }, [activeMeasurements, queryCondition, sensor?.unit])
 
   const level1Upper = useMemo(() => {
     if (!sensor) return null
@@ -367,7 +385,7 @@ export default function SiteDetailPage() {
     }
   }
   const setPreset = (days: number) => { const to = new Date(), from = new Date(); from.setDate(from.getDate() - (days - 1)); setDateTo(to.toISOString().slice(0, 10)); setDateFrom(from.toISOString().slice(0, 10)); setTablePage(1) }
-  const tableData = useMemo(() => { const source = chartMode === 'hourly' ? measurementsWithGaps : dailyReadings; return [...source].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()) }, [chartMode, measurementsWithGaps, dailyReadings])
+  const tableData = useMemo(() => { const source = queryCondition.chartMode === 'hourly' ? measurementsWithGaps : dailyReadings; return [...source].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()) }, [chartMode, measurementsWithGaps, dailyReadings])
   const totalPages = Math.ceil(tableData.length / PAGE_SIZE)
   const pagedTable = tableData.slice((tablePage - 1) * PAGE_SIZE, tablePage * PAGE_SIZE)
 
@@ -700,6 +718,11 @@ export default function SiteDetailPage() {
                 <div className="flex gap-1">{(['1', '2', '3'] as const).map(d => { const depthIcon = icons.find(i => i.key === `${sensor.id}:${d}`); return (<button key={d} onClick={() => { setDepthLabel(d); setCriteriaEditing(false) }} className={['rounded-md border px-3 py-1 font-mono text-[11px]', depthLabel === d ? 'border-brand/30 bg-brand/10 text-brand font-medium' : 'border-line text-ink-muted hover:bg-surface-subtle'].join(' ')}>{depthIcon ? depthIcon.label : `${d}번 수위계`}</button>) })}</div>
               </>
             )}
+            <button
+                onClick={() => setQueryCondition({ dateFrom, dateTo, chartMode, selectedHour, calcMode, depthLabel })}
+                className="rounded-md bg-brand px-4 py-1 font-mono text-[11px] text-white hover:bg-brand/90">
+                조회
+            </button>
           </div>
           <div className="shrink-0 grid grid-cols-4 gap-1.5 px-3 py-2 border-b border-line">
             {[{ label: '기간 내 최신값', value: latestMeasurement?.value }, { label: '초기측정값', value: initValue }, { label: '최솟값', value: activeMeasurements.filter(m => m.value !== null).length > 0 ? Math.min(...activeMeasurements.filter(m => m.value !== null).map(m => m.value)) : null }, { label: '최댓값', value: activeMeasurements.filter(m => m.value !== null).length > 0 ? Math.max(...activeMeasurements.filter(m => m.value !== null).map(m => m.value)) : null }].map(({ label, value }) => (

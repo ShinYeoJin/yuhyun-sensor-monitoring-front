@@ -267,18 +267,21 @@ export default function SensorDetailPage() {
   const [criteriaSaving, setCriteriaSaving] = useState(false)
   const [depth1Data, setDepth1Data] = useState<any[]>([])
   const [depth3Data, setDepth3Data] = useState<any[]>([])
-  const [queryTrigger, setQueryTrigger] = useState(0)
+  const [queryCondition, setQueryCondition] = useState({
+    dateFrom: today, dateTo: today, chartMode: 'hourly' as 'hourly' | 'daily',
+    selectedHour: 12, calcMode: 'linear' as 'linear' | 'poly', depthLabel: '1'
+  })
 
   // ─── 측정값 로딩 ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (!id || !sensorCode) return
     sensorApi.getMeasurements(Number(id), {
-      from: chartMode === 'daily' ? `${dateFrom}T${String(selectedHour).padStart(2,'0')}:00:00` : dateFrom,
-      to:   chartMode === 'daily' ? `${dateTo}T${String(selectedHour).padStart(2,'0')}:00:59` : dateTo,
+      from: queryCondition.chartMode === 'daily' ? `${queryCondition.dateFrom}T${String(queryCondition.selectedHour).padStart(2,'0')}:00:00` : queryCondition.dateFrom,
+      to:   queryCondition.chartMode === 'daily' ? `${queryCondition.dateTo}T${String(queryCondition.selectedHour).padStart(2,'0')}:00:59` : queryCondition.dateTo,
       limit: 2000,
-      depthLabel: sensorCode === '80053' ? depthLabel : undefined,
+      depthLabel: sensorCode === '80053' ? queryCondition.depthLabel : undefined,
     }).then((data: any[]) => {
-      const corr = correctionParams[depthLabel] ?? 0
+      const corr = correctionParams[queryCondition.depthLabel] ?? 0
       const mapped = data.map((m: any) => ({
         timestamp: m.measured_at,
         value: parseFloat(((calcMode === 'poly' ? parseFloat(m.value) : parseFloat(m.linear_value ?? m.value)) + corr).toFixed(4)),
@@ -286,7 +289,7 @@ export default function SensorDetailPage() {
       }))
       setMeasurements(mapped.reverse())
     }).catch(() => {})
-  }, [id, sensorCode, depthLabel, calcMode, correctionParams, queryTrigger])
+  }, [id, sensorCode, correctionParams, queryCondition])
 
   // WL-02 평균 계산용 depth 1/3번 데이터 로드
   useEffect(() => {
@@ -294,8 +297,8 @@ export default function SensorDetailPage() {
       setDepth1Data([]); setDepth3Data([]); return
     }
     const params = {
-      from: chartMode === 'daily' ? `${dateFrom}T${String(selectedHour).padStart(2,'0')}:00:00` : dateFrom,
-      to:   chartMode === 'daily' ? `${dateTo}T${String(selectedHour).padStart(2,'0')}:00:00` : dateTo,
+      from: queryCondition.chartMode === 'daily' ? `${queryCondition.dateFrom}T${String(queryCondition.selectedHour).padStart(2,'0')}:00:00` : queryCondition.dateFrom,
+      to:   queryCondition.chartMode === 'daily' ? `${queryCondition.dateTo}T${String(queryCondition.selectedHour).padStart(2,'0')}:00:00` : queryCondition.dateTo,
       limit: 2000,
     }
     const toVal = (m: any) => parseFloat(((calcMode === 'linear' ? parseFloat(m.linear_value ?? m.value) : parseFloat(m.value)) + (correctionParams['1'] ?? 0)).toFixed(4))
@@ -306,8 +309,7 @@ export default function SensorDetailPage() {
     sensorApi.getMeasurements(Number(id), { ...params, depthLabel: '3' })
       .then((data: any[]) => setDepth3Data(data.map((m: any) => ({ timestamp: m.measured_at, value: toVal3(m) }))))
       .catch(() => {})
-  }, [id, sensorCode, depthLabel, calcMode, correctionParams, queryTrigger])
-
+  }, [id, sensorCode, correctionParams, queryCondition])
   const [globalInitReading, setGlobalInitReading] = useState<any>(null)
   useEffect(() => {
     if (!id || !sensorCode) return
@@ -402,14 +404,16 @@ export default function SensorDetailPage() {
     const dataMap = new Map<string, any>()
     activeMeasurements.forEach(m => {
       const t = new Date(m.timestamp)
-      const dateKey = t.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
-      if (!dataMap.has(dateKey)) dataMap.set(dateKey, m)
+      if (t.getHours() === queryCondition.selectedHour) {
+        const dateKey = t.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
+        if (!dataMap.has(dateKey)) dataMap.set(dateKey, m)
+      }
     })
     // 선택 날짜 범위 전체를 슬롯으로 생성 (없는 날짜는 미수신)
     const slots: any[] = []
-    const from = new Date(dateFrom + 'T00:00:00')
+    const from = new Date(queryCondition.dateFrom + 'T00:00:00')
     const now2 = new Date()
-    const toEnd = new Date(dateTo + 'T23:59:59')
+    const toEnd = new Date(queryCondition.dateTo + 'T23:59:59')
     const to = toEnd > now2 ? now2 : toEnd
     let cur = new Date(from)
     while (cur <= to) {
@@ -419,13 +423,13 @@ export default function SensorDetailPage() {
       } else {
         // 해당 날짜 selectedHour 시각으로 미수신 슬롯 생성
         const gapTime = new Date(cur)
-        gapTime.setHours(targetHour, 0, 0, 0)
+        gapTime.setHours(queryCondition.selectedHour, 0, 0, 0)
         slots.push({ timestamp: gapTime.toISOString(), value: null, unit: sensor?.unit || '', status: 'gap' })
       }
       cur.setDate(cur.getDate() + 1)
     }
     return slots
-  }, [activeMeasurements, chartMode, selectedHour, dateFrom, dateTo, sensor?.unit])
+  }, [activeMeasurements, queryCondition, sensor?.unit])
 
   // ─── 1차 상하한 ───────────────────────────────────────────────────────────
   const { level1Upper, level1Lower } = useMemo(() => {
@@ -1095,7 +1099,7 @@ export default function SensorDetailPage() {
 
           {/* WL-01 WL-02 WL-03 버튼 오른쪽에 */}
           <button 
-            onClick={() => setQueryTrigger(t => t + 1)} 
+            onClick={() => setQueryCondition({ dateFrom, dateTo, chartMode, selectedHour, calcMode, depthLabel })}
             className="rounded-md bg-brand px-4 py-1 font-mono text-[11px] text-white hover:bg-brand/90">
             조회
           </button>
