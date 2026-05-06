@@ -1007,17 +1007,17 @@ export default function SensorsPage() {
         formula: form.formula,
         formula_params: form.useDepthParams
           ? {
-              '1': { A: Number(form.depthParams['1'].A) || undefined, B: Number(form.depthParams['1'].B) || undefined, C: Number(form.depthParams['1'].C) || undefined, G: Number(form.depthParams['1'].G) || undefined, K: Number(form.depthParams['1'].K) || undefined },
-              '2': { A: Number(form.depthParams['2'].A) || undefined, B: Number(form.depthParams['2'].B) || undefined, C: Number(form.depthParams['2'].C) || undefined, G: Number(form.depthParams['2'].G) || undefined, K: Number(form.depthParams['2'].K) || undefined },
-              '3': { A: Number(form.depthParams['3'].A) || undefined, B: Number(form.depthParams['3'].B) || undefined, C: Number(form.depthParams['3'].C) || undefined, G: Number(form.depthParams['3'].G) || undefined, K: Number(form.depthParams['3'].K) || undefined },
+              '1': { A: Number(form.depthParams?.['1']?.A) || undefined, B: Number(form.depthParams?.['1']?.B) || undefined, C: Number(form.depthParams?.['1']?.C) || undefined, G: Number(form.depthParams?.['1']?.G) || undefined, K: Number(form.depthParams?.['1']?.K) || undefined },
+              '2': { A: Number(form.depthParams?.['2']?.A) || undefined, B: Number(form.depthParams?.['2']?.B) || undefined, C: Number(form.depthParams?.['2']?.C) || undefined, G: Number(form.depthParams?.['2']?.G) || undefined, K: Number(form.depthParams?.['2']?.K) || undefined },
+              '3': { A: Number(form.depthParams?.['3']?.A) || undefined, B: Number(form.depthParams?.['3']?.B) || undefined, C: Number(form.depthParams?.['3']?.C) || undefined, G: Number(form.depthParams?.['3']?.G) || undefined, K: Number(form.depthParams?.['3']?.K) || undefined },
             }
-          : (() => {
+            : (() => {
               const base: Record<string, any> = {}
-              if (form.depthParams['1'].G) base.G = Number(form.depthParams['1'].G)
-              if (form.depthParams['1'].K) base.K = Number(form.depthParams['1'].K)
-              if (form.depthParams['1'].A) base.A = Number(form.depthParams['1'].A)
-              if (form.depthParams['1'].B) base.B = Number(form.depthParams['1'].B)
-              if (form.depthParams['1'].C) base.C = Number(form.depthParams['1'].C)
+              if (form.depthParams?.['1']?.G) base.G = Number(form.depthParams['1'].G)
+              if (form.depthParams?.['1']?.K) base.K = Number(form.depthParams['1'].K)
+              if (form.depthParams?.['1']?.A) base.A = Number(form.depthParams['1'].A)
+              if (form.depthParams?.['1']?.B) base.B = Number(form.depthParams['1'].B)
+              if (form.depthParams?.['1']?.C) base.C = Number(form.depthParams['1'].C)
               return base
             })(),
         formula_id: form.formulaId || undefined,
