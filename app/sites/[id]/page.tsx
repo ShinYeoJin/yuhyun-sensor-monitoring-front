@@ -239,7 +239,7 @@ export default function SiteDetailPage() {
       const corr = correctionParams[depthLabel] ?? 0
       setMeasurements(data.map((m: any) => ({ ...m, timestamp: m.measured_at, value: parseFloat(((calcMode === 'linear' ? parseFloat(m.linear_value ?? m.value) : parseFloat(m.value)) + corr).toFixed(4)), unit: sensor.unit || '' })))
     }).catch(() => setMeasurements([]))
-}, [id, sensorCode, depthLabel, calcMode, correctionParams, queryTrigger])
+}, [id, sensor?.sensor_code, depthLabel, calcMode, correctionParams, queryTrigger])
 
   useEffect(() => {
     if (!sensor || sensor.sensor_code !== '80053' || depthLabel !== '2') { setDepth1Data([]); setDepth3Data([]); return }
