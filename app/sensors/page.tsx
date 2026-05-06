@@ -1101,7 +1101,11 @@ export default function SensorsPage() {
                           {s.threshold.normalMax === '' && s.threshold.dangerMin === '' && <span className="font-mono text-[10px] text-ink-muted">미설정</span>}
                         </div>
                       </td>
-                      <td className="px-4 py-3 font-mono text-xs text-ink-muted">{s.installDate || '—'}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-ink-muted">
+                        {s.installDate
+                          ? new Date(s.installDate).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
+                          : '—'}
+                      </td>
                       <td className="px-4 py-3 text-right">
                       {canManage && (
                         <>

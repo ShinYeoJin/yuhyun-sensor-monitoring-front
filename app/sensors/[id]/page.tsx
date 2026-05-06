@@ -335,15 +335,23 @@ export default function SensorDetailPage() {
   // WL-02: depth1/3 평균값으로 measurements 교체
   const activeMeasurements = useMemo(() => {
     if (sensorCode !== '80053' || depthLabel !== '2') return measurements
-    const d1Map = new Map(depth1Data.map(m => [new Date(m.timestamp).toISOString().slice(0, 13), m.value]))
-    const d3Map = new Map(depth3Data.map(m => [new Date(m.timestamp).toISOString().slice(0, 13), m.value]))
+    // UTC 기준이 아닌 로컬 시각(KST) 기준으로 시간 키 생성
+    const toHourKey = (ts: string) => {
+      const d = new Date(ts)
+      // KST 기준 YYYY-MM-DDTHH 형식
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}T${String(d.getHours()).padStart(2,'0')}`
+    }
+    const d1Map = new Map(depth1Data.map(m => [toHourKey(m.timestamp), { value: m.value, timestamp: m.timestamp }]))
+    const d3Map = new Map(depth3Data.map(m => [toHourKey(m.timestamp), { value: m.value, timestamp: m.timestamp }]))
     const allKeys = Array.from(new Set([...d1Map.keys(), ...d3Map.keys()])).sort()
     return allKeys.map(key => {
-      const v1 = d1Map.get(key), v3 = d3Map.get(key)
+      const e1 = d1Map.get(key), e2 = d3Map.get(key)
+      const v1 = e1?.value, v3 = e2?.value
       let avg: number
       if (v1 != null && v3 != null) avg = parseFloat(((v1 + v3) / 2).toFixed(4))
       else avg = (v1 ?? v3 ?? 0)
-      const ts = new Date(key + ':00:00.000Z').toISOString()
+      // 원본 timestamp 유지 (UTC 변환 안 함)
+      const ts = e1?.timestamp || e2?.timestamp || new Date().toISOString()
       return { timestamp: ts, value: avg, unit: sensor?.unit || '', status: 'normal', calc_status: 'WL-01+WL-03 평균' }
     })
   }, [sensorCode, depthLabel, depth1Data, depth3Data, measurements, sensor?.unit])
