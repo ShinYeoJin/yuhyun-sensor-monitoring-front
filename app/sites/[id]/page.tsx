@@ -195,13 +195,18 @@ export default function SiteDetailPage() {
           id: String(data.id),
           manageNo: data.manage_no || '',
           nameAbbr: data.sensor_code,
-          formulaParams: data.formula_params ? {
-            coeffA: data.formula_params.coeffA || '',
-            coeffB: data.formula_params.coeffB || '',
-            coeffC: data.formula_params.coeffC || '',
-            coeffG: data.formula_params.coeffG || '',
-            initVal: data.formula_params.initVal || '',
-          } : { coeffA: '', coeffB: '', coeffC: '', coeffG: '', initVal: '' },
+          formulaParams: data.formula_params ? (() => {
+            // depth별 구조 { "1": {G,K,A,B,C}, "2": ... } 또는 단일 구조 { coeffA, coeffG ... }
+            const fp = data.formula_params
+            const base = fp['1'] || fp  // depth별이면 1번 기준, 아니면 전체
+            return {
+              coeffA: base.A || base.coeffA || '',
+              coeffB: base.B || base.coeffB || '',
+              coeffC: base.C || base.coeffC || '',
+              coeffG: base.G || base.coeffG || '',
+              initVal: base.initVal || '',
+            }
+          })() : { coeffA: '', coeffB: '', coeffC: '', coeffG: '', initVal: '' },
           criteria: {
             level1Upper: data.level1_upper != null ? parseFloat(data.level1_upper) : null,
             level1Lower: data.level1_lower != null ? parseFloat(data.level1_lower) : null,

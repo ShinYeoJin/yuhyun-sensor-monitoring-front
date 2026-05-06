@@ -86,11 +86,18 @@ export default function SensorDetailPage() {
         id: String(data.id), manageNo: data.manage_no || '', name: data.name, nameAbbr: data.sensor_code,
         field: data.field || '공통', formula: data.formula || '', unit: data.unit || '',
         threshold: { normalMax: data.threshold_normal_max ?? '', warningMax: data.threshold_warning_max ?? '', dangerMin: data.threshold_danger_min ?? '' },
-        formulaParams: data.formula_params ? {
-          coeffA: data.formula_params.coeffA || '', coeffB: data.formula_params.coeffB || '',
-          coeffC: data.formula_params.coeffC || '', coeffG: data.formula_params.coeffG || '',
-          initVal: data.formula_params.initVal || '',
-        } : { coeffA: '', coeffB: '', coeffC: '', coeffG: '', initVal: '' },
+        formulaParams: data.formula_params ? (() => {
+          // depth별 구조 { "1": {G,K,A,B,C}, "2": ... } 또는 단일 구조 { coeffA, coeffG ... }
+          const fp = data.formula_params
+          const base = fp['1'] || fp  // depth별이면 1번 기준, 아니면 전체
+          return {
+            coeffA: base.A || base.coeffA || '',
+            coeffB: base.B || base.coeffB || '',
+            coeffC: base.C || base.coeffC || '',
+            coeffG: base.G || base.coeffG || '',
+            initVal: base.initVal || '',
+          }
+        })() : { coeffA: '', coeffB: '', coeffC: '', coeffG: '', initVal: '' },
         criteria: {
           level1Upper: data.level1_upper ?? '', level1Lower: data.level1_lower ?? '',
           level2Upper: data.level2_upper ?? '', level2Lower: data.level2_lower ?? '',
