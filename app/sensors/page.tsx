@@ -244,12 +244,6 @@ function SensorModal({ mode, form, onChange, onSubmit, onClose, formulas, sites,
                   {MEASURE_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
               </div>
-              <div>
-                <label className={labelCls}>계산식 *</label>
-                <select value={form.formula} onChange={e => set('formula', e.target.value)} className={selectCls}>
-                  {formulas.map(f => <option key={f.expression} value={f.expression}>{f.name} — {f.expression}</option>)}
-                </select>
-              </div>
             </div>
           </ModalSection>
 
@@ -363,9 +357,18 @@ function SensorModal({ mode, form, onChange, onSubmit, onClose, formulas, sites,
             {/* 파라미터 입력 */}
             {form.useDepthParams ? (
               <div className="space-y-3">
-                {(['1', '2', '3'] as const).map(d => (
+                {Object.keys(form.depthParams || { '1': {} }).map(d => (
                   <div key={d} className="rounded-lg border border-line bg-surface-subtle p-3">
-                    <p className="font-mono text-[10px] font-semibold text-ink mb-2">Depth {d}</p>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="font-mono text-[10px] font-semibold text-ink">Depth {d}</p>
+                      <button type="button"
+                        onClick={() => {
+                          const next = { ...(form.depthParams || {}) }
+                          delete next[d]
+                          onChange({ ...form, depthParams: next })
+                        }}
+                        className="font-mono text-[10px] text-red-400 hover:underline">− 삭제</button>
+                    </div>
                     <div className="grid grid-cols-5 gap-2">
                       {['G', 'A', 'B', 'C', 'K'].map(key => (
                         <div key={key}>
@@ -382,6 +385,16 @@ function SensorModal({ mode, form, onChange, onSubmit, onClose, formulas, sites,
                     </div>
                   </div>
                 ))}
+                {/* depth 추가 버튼 */}
+                <button type="button"
+                  onClick={() => {
+                    const existing = Object.keys(form.depthParams || {})
+                    const next = String((existing.length > 0 ? Math.max(...existing.map(Number)) : 0) + 1)
+                    onChange({ ...form, depthParams: { ...(form.depthParams || {}), [next]: { A: '', B: '', C: '', G: '', K: '' } } })
+                  }}
+                  className="mt-2 w-full rounded-lg border border-dashed border-brand/30 py-2 font-mono text-[10px] text-brand hover:bg-brand/5">
+                  + Depth 추가
+                </button>
               </div>
             ) : (
               <div className="rounded-lg border border-line bg-surface-subtle p-3">
@@ -944,9 +957,19 @@ export default function SensorsPage() {
         installDate: freshSensor.installDate ? freshSensor.installDate.slice(0, 10) : '',
         location: { ...freshSensor.location },
         formulaId: (fresh as any).formula_id || null,
-        selectedExpression: (fresh as any).formula_params?.['1']
-          ? ((fresh as any).formula_params['1']?.A !== undefined ? '(A * R^2 + B * R + C) * K' : 'G * (I - R) * K')
-          : '',
+        selectedExpression: (() => {
+          const fid = (fresh as any).formula_id
+          if (fid) {
+            // formula_id로 formulas 목록에서 expression 찾기
+            const found = formulas.find((f: any) => f.id === fid)
+            if (found) return found.expression
+          }
+          // formula_id 없으면 formula_params로 추정
+          const fp = (fresh as any).formula_params
+          if (!fp) return ''
+          const base = fp['1'] || fp
+          return base.A !== undefined ? '(A * R^2 + B * R + C) * K' : 'G * (I - R) * K'
+        })(),
         useDepthParams: !!(fresh as any).formula_params?.['1'],
         initValMode: 'auto' as 'auto' | 'manual',
         depthParams: (fresh as any).formula_params?.['1']
@@ -1007,9 +1030,9 @@ export default function SensorsPage() {
         formula: form.formula,
         formula_params: form.useDepthParams
           ? {
-              '1': { A: Number(form.depthParams?.['1']?.A) || undefined, B: Number(form.depthParams?.['1']?.B) || undefined, C: Number(form.depthParams?.['1']?.C) || undefined, G: Number(form.depthParams?.['1']?.G) || undefined, K: Number(form.depthParams?.['1']?.K) || undefined },
-              '2': { A: Number(form.depthParams?.['2']?.A) || undefined, B: Number(form.depthParams?.['2']?.B) || undefined, C: Number(form.depthParams?.['2']?.C) || undefined, G: Number(form.depthParams?.['2']?.G) || undefined, K: Number(form.depthParams?.['2']?.K) || undefined },
-              '3': { A: Number(form.depthParams?.['3']?.A) || undefined, B: Number(form.depthParams?.['3']?.B) || undefined, C: Number(form.depthParams?.['3']?.C) || undefined, G: Number(form.depthParams?.['3']?.G) || undefined, K: Number(form.depthParams?.['3']?.K) || undefined },
+              '1': { A: Number(form.depthParams?.['1']?.A) || undefined, B: Number(form.depthParams?.['1']?.B) || undefined, C: Number(form.depthParams?.['1']?.C) || undefined, G: Number(form.depthParams?.['1']?.G) || undefined, K: form.depthParams?.['1']?.K ? parseFloat(form.depthParams['1'].K) : undefined },
+              '2': { A: Number(form.depthParams?.['2']?.A) || undefined, B: Number(form.depthParams?.['2']?.B) || undefined, C: Number(form.depthParams?.['2']?.C) || undefined, G: Number(form.depthParams?.['2']?.G) || undefined, K: form.depthParams?.['2']?.K ? parseFloat(form.depthParams['2'].K) : undefined},
+              '3': { A: Number(form.depthParams?.['3']?.A) || undefined, B: Number(form.depthParams?.['3']?.B) || undefined, C: Number(form.depthParams?.['3']?.C) || undefined, G: Number(form.depthParams?.['3']?.G) || undefined, K: form.depthParams?.['3']?.K ? parseFloat(form.depthParams['3'].K) : undefined },
             }
             : (() => {
               const base: Record<string, any> = {}
