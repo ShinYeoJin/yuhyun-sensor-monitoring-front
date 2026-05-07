@@ -787,6 +787,7 @@ export default function SensorsPage() {
   const [editSensorPositions, setEditSensorPositions] = useState<Record<string, any>>({})
   const [form,         setForm]        = useState<SensorForm>(emptyForm)
   const [toast,        setToast]       = useState<string | null>(null)
+  const autoInitValues = useRef<Record<string, string>>({})
 
   const [formulaAddOpen, setFormulaAddOpen] = useState(false)
   const [formulaEditTarget, setFormulaEditTarget] = useState<any | null>(null)
@@ -977,11 +978,11 @@ export default function SensorsPage() {
         initValMode: (fresh as any).formula_params?.['1']?.I ? 'manual' : 'auto' as 'auto' | 'manual',
         depthParams: (fresh as any).formula_params?.['1']
           ? {
-              '1': { A: String((fresh as any).formula_params['1']?.A || ''), B: String((fresh as any).formula_params['1']?.B || ''), C: String((fresh as any).formula_params['1']?.C || ''), G: String((fresh as any).formula_params['1']?.G || ''), K: String((fresh as any).formula_params['1']?.K || '') },
-              '2': { A: String((fresh as any).formula_params['2']?.A || ''), B: String((fresh as any).formula_params['2']?.B || ''), C: String((fresh as any).formula_params['2']?.C || ''), G: String((fresh as any).formula_params['2']?.G || ''), K: String((fresh as any).formula_params['2']?.K || '') },
-              '3': { A: String((fresh as any).formula_params['3']?.A || ''), B: String((fresh as any).formula_params['3']?.B || ''), C: String((fresh as any).formula_params['3']?.C || ''), G: String((fresh as any).formula_params['3']?.G || ''), K: String((fresh as any).formula_params['3']?.K || '') },
+              '1': { A: String((fresh as any).formula_params['1']?.A || ''), B: String((fresh as any).formula_params['1']?.B || ''), C: String((fresh as any).formula_params['1']?.C || ''), G: String((fresh as any).formula_params['1']?.G || ''), K: String((fresh as any).formula_params['1']?.K || ''), I: String((fresh as any).formula_params['1']?.I || '') },
+              '2': { A: String((fresh as any).formula_params['2']?.A || ''), B: String((fresh as any).formula_params['2']?.B || ''), C: String((fresh as any).formula_params['2']?.C || ''), G: String((fresh as any).formula_params['2']?.G || ''), K: String((fresh as any).formula_params['2']?.K || ''), I: String((fresh as any).formula_params['2']?.I || '') },
+              '3': { A: String((fresh as any).formula_params['3']?.A || ''), B: String((fresh as any).formula_params['3']?.B || ''), C: String((fresh as any).formula_params['3']?.C || ''), G: String((fresh as any).formula_params['3']?.G || ''), K: String((fresh as any).formula_params['3']?.K || ''), I: String((fresh as any).formula_params['3']?.I || '') },
             }
-          : { '1': { A: '', B: '', C: '', G: '', K: '' }, '2': { A: '', B: '', C: '', G: '', K: '' }, '3': { A: '', B: '', C: '', G: '', K: '' } },
+          : { '1': { A: '', B: '', C: '', G: '', K: '', I: '' }, '2': { A: '', B: '', C: '', G: '', K: '', I: '' }, '3': { A: '', B: '', C: '', G: '', K: '', I: '' } },
         previewRaw: '',
         previewResult: null,
       })
@@ -1000,6 +1001,12 @@ export default function SensorsPage() {
               ? String(parseFloat([...data].sort((a: any, b: any) =>
                   new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime())[0].raw_value))
               : ''
+            // setForm 대신 ref에 저장
+            autoInitValues.current = {
+              '1': getOldestRaw(d1),
+              '2': getOldestRaw(d2),
+              '3': getOldestRaw(d3),
+            }
             setForm(prev => ({
               ...prev,
               depthParams: {
@@ -1014,6 +1021,7 @@ export default function SensorsPage() {
               const oldest = [...data].sort((a: any, b: any) =>
                 new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime())[0]
               const rawVal = String(parseFloat(oldest.raw_value ?? oldest.value))
+              autoInitValues.current = { '1': rawVal, '2': rawVal, '3': rawVal }
               setForm(prev => ({
                 ...prev,
                 depthParams: {
@@ -1067,6 +1075,10 @@ export default function SensorsPage() {
   const handleEdit = async () => {
     if (!editTarget) return
     try {
+      // 모든 센서 공통 — I값: form에 있으면 우선, 없으면 자동 조회값(ref) 사용
+      const getI = (depth: string) =>
+        form.depthParams?.[depth]?.I || autoInitValues.current[depth] || undefined
+  
       await sensorApi.updateInfo(Number(editTarget.id), {
         name: form.name,
         manage_no: form.manageNo,
@@ -1075,17 +1087,20 @@ export default function SensorsPage() {
         formula: form.formula,
         formula_params: form.useDepthParams
           ? {
-              '1': { A: Number(form.depthParams?.['1']?.A) || undefined, B: Number(form.depthParams?.['1']?.B) || undefined, C: Number(form.depthParams?.['1']?.C) || undefined, G: Number(form.depthParams?.['1']?.G) || undefined, K: form.depthParams?.['1']?.K ? parseFloat(form.depthParams['1'].K) : undefined, ...(form.depthParams?.['1']?.I ? { I: parseFloat(form.depthParams['1'].I) } : {})},
-              '2': { A: Number(form.depthParams?.['2']?.A) || undefined, B: Number(form.depthParams?.['2']?.B) || undefined, C: Number(form.depthParams?.['2']?.C) || undefined, G: Number(form.depthParams?.['2']?.G) || undefined, K: form.depthParams?.['2']?.K ? parseFloat(form.depthParams['2'].K) : undefined, ...(form.depthParams?.['2']?.I ? { I: parseFloat(form.depthParams['2'].I) } : {})},
-              '3': { A: Number(form.depthParams?.['3']?.A) || undefined, B: Number(form.depthParams?.['3']?.B) || undefined, C: Number(form.depthParams?.['3']?.C) || undefined, G: Number(form.depthParams?.['3']?.G) || undefined, K: form.depthParams?.['3']?.K ? parseFloat(form.depthParams['3'].K) : undefined, ...(form.depthParams?.['3']?.I ? { I: parseFloat(form.depthParams['3'].I) } : {})},
+              '1': { A: Number(form.depthParams?.['1']?.A) || undefined, B: Number(form.depthParams?.['1']?.B) || undefined, C: Number(form.depthParams?.['1']?.C) || undefined, G: Number(form.depthParams?.['1']?.G) || undefined, K: form.depthParams?.['1']?.K ? parseFloat(form.depthParams['1'].K) : undefined, ...(getI('1') ? { I: parseFloat(getI('1')!) } : {}) },
+              '2': { A: Number(form.depthParams?.['2']?.A) || undefined, B: Number(form.depthParams?.['2']?.B) || undefined, C: Number(form.depthParams?.['2']?.C) || undefined, G: Number(form.depthParams?.['2']?.G) || undefined, K: form.depthParams?.['2']?.K ? parseFloat(form.depthParams['2'].K) : undefined, ...(getI('2') ? { I: parseFloat(getI('2')!) } : {}) },
+              '3': { A: Number(form.depthParams?.['3']?.A) || undefined, B: Number(form.depthParams?.['3']?.B) || undefined, C: Number(form.depthParams?.['3']?.C) || undefined, G: Number(form.depthParams?.['3']?.G) || undefined, K: form.depthParams?.['3']?.K ? parseFloat(form.depthParams['3'].K) : undefined, ...(getI('3') ? { I: parseFloat(getI('3')!) } : {}) },
             }
-            : (() => {
+          : (() => {
               const base: Record<string, any> = {}
               if (form.depthParams?.['1']?.G) base.G = Number(form.depthParams['1'].G)
               if (form.depthParams?.['1']?.K) base.K = Number(form.depthParams['1'].K)
               if (form.depthParams?.['1']?.A) base.A = Number(form.depthParams['1'].A)
               if (form.depthParams?.['1']?.B) base.B = Number(form.depthParams['1'].B)
               if (form.depthParams?.['1']?.C) base.C = Number(form.depthParams['1'].C)
+              // 단일 구조도 I값 포함 (모든 센서)
+              const iVal = getI('1')
+              if (iVal) base.I = parseFloat(iVal)
               return base
             })(),
         formula_id: form.formulaId || undefined,
@@ -1099,7 +1114,6 @@ export default function SensorsPage() {
         install_date: form.installDate || null,
         location_desc: form.location.description || null,
       })
-      
       await sensorApi.updateThreshold(Number(editTarget.id), {
         threshold_normal_max: form.threshold.normalMax !== '' ? form.threshold.normalMax : null,
         threshold_warning_max: form.threshold.warningMax !== '' ? form.threshold.warningMax : null,
