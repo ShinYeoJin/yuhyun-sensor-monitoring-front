@@ -136,6 +136,8 @@ export default function SiteDetailPage() {
   const [showAddSensor, setShowAddSensor] = useState(false)
   const [showRemoveSensor, setShowRemoveSensor] = useState(false)
 
+  const [correctionInput, setCorrectionInput] = useState<Record<string, string>>({})
+  const [correctionSaving, setCorrectionSaving] = useState(false)
   const [leftWidth, setLeftWidth] = useState(220)
   const isResizingLeft = useRef(false)
   const [queryCondition, setQueryCondition] = useState({
@@ -600,7 +602,7 @@ export default function SiteDetailPage() {
                   <div className="mt-3 rounded-lg border border-line bg-surface-subtle p-2">
                     <p className="mb-1.5 font-mono text-[9px] font-semibold text-ink-muted uppercase tracking-wider">계산식 상수값</p>
                     <div className="flex flex-col gap-1">
-                     {[{k:'A',v:sensor.formulaParams?.coeffA},{k:'B',v:sensor.formulaParams?.coeffB},{k:'C',v:sensor.formulaParams?.coeffC},{k:'G(Linear)',v:sensor.formulaParams?.coeffG},{k:'I (초기값)',v:sensor.formulaParams?.initVal}].filter(x=>x.v!=null).map(({ k, v }) => (
+                     {[{k:'A',v:sensor.formulaParams?.coeffA},{k:'B',v:sensor.formulaParams?.coeffB},{k:'C',v:sensor.formulaParams?.coeffC},{k:'G(Linear)',v:sensor.formulaParams?.coeffG},{k:'I (초기값)', v: sensor.formulaParams?.initVal || (initValue !== 0 ? String(initValue) : '')},
                         <div key={k} className="flex gap-1"><span className="font-mono text-[10px] text-ink-muted w-16 shrink-0">{k}</span><span className="font-mono text-[10px] text-ink break-all">{v}</span></div>
                       ))}
                     </div>
@@ -717,6 +719,29 @@ export default function SiteDetailPage() {
                 <div className="w-px h-4 bg-line shrink-0" />
                 <div className="flex gap-1">{(['1', '2', '3'] as const).map(d => { const depthIcon = icons.find(i => i.key === `${sensor.id}:${d}`); return (<button key={d} onClick={() => { setDepthLabel(d); setCriteriaEditing(false) }} className={['rounded-md border px-3 py-1 font-mono text-[11px]', depthLabel === d ? 'border-brand/30 bg-brand/10 text-brand font-medium' : 'border-line text-ink-muted hover:bg-surface-subtle'].join(' ')}>{depthIcon ? depthIcon.label : `${d}번 수위계`}</button>) })}</div>
               </>
+            )}
+            {/* ↓ 보정값 입력 (80053 전용) — 조회 버튼 바로 앞에 추가 */}
+            {sensorCode === '80053' && (
+            <div className="flex items-center gap-1">
+                <span className="font-mono text-[11px] text-ink shrink-0 font-medium">보정값</span>
+                <input type="number" step="0.01" min="-100" max="100" placeholder="0.00"
+                value={correctionInput[depthLabel] ?? (correctionParams[depthLabel] !== undefined && correctionParams[depthLabel] !== 0 ? String(correctionParams[depthLabel]) : '')}
+                onChange={e => setCorrectionInput(prev => ({ ...prev, [depthLabel]: e.target.value }))}
+                onWheel={e => e.currentTarget.blur()}
+                className="w-20 rounded-md border border-line bg-surface-card px-2 py-0.5 font-mono text-[10px] text-ink text-right focus:outline-none focus:ring-1 focus:ring-brand/40" />
+                <span className="font-mono text-[11px] text-ink-muted shrink-0">{sensor?.unit}</span>
+                <button disabled={correctionSaving}
+                onClick={async () => {
+                    const s = correctionInput[depthLabel] ?? '', v = s === '' ? 0 : parseFloat(s)
+                    if (isNaN(v) || v < -100 || v > 100) { alert('보정값은 -100~100 사이의 숫자만 입력 가능합니다.'); return }
+                    const next = { ...correctionParams, [depthLabel]: v }; setCorrectionSaving(true)
+                    try { await sensorApi.updateInfo(Number(activeSensorId), { correction_params: next }); setCorrectionParams(next); setCorrectionInput(prev => ({ ...prev, [depthLabel]: String(v) })) }
+                    catch { } finally { setCorrectionSaving(false) }
+                }}
+                className="rounded-md bg-sensor-normal px-2 py-0.5 font-mono text-[10px] text-white disabled:opacity-50 whitespace-nowrap">
+                {correctionSaving ? '저장중' : '✓ 적용'}
+                </button>
+            </div>
             )}
             <button
                 onClick={() => setQueryCondition({ dateFrom, dateTo, chartMode, selectedHour, calcMode, depthLabel })}

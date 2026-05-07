@@ -914,7 +914,7 @@ export default function SensorDetailPage() {
               <div className="mt-3 rounded-lg border border-line bg-surface-subtle p-2">
                 <p className="mb-1.5 font-mono text-[9px] font-semibold text-ink-muted uppercase tracking-wider">계산식 상수값</p>
                 <div className="flex flex-col gap-1">
-                  {[{k:'A',v:sensor.formulaParams?.coeffA},{k:'B',v:sensor.formulaParams?.coeffB},{k:'C',v:sensor.formulaParams?.coeffC},{k:'G(Linear)',v:sensor.formulaParams?.coeffG},{k:'I (초기값)',v:sensor.formulaParams?.initVal}].filter(x=>x.v).map(({k,v})=>(
+                  {[{k:'A',v:sensor.formulaParams?.coeffA},{k:'B',v:sensor.formulaParams?.coeffB},{k:'C',v:sensor.formulaParams?.coeffC},{k:'G(Linear)',v:sensor.formulaParams?.coeffG},{k:'I (초기값)',v:sensor.formulaParams?.initVal || (initValue !== 0 ? String(initValue) : '')}].filter(x=>x.v).map(({k,v})=>(
                     <div key={k} className="flex gap-1">
                       <span className="font-mono text-[10px] text-ink-muted w-16 shrink-0">{k}</span>
                       <span className="font-mono text-[10px] text-ink break-all">{v}</span>
@@ -1089,7 +1089,13 @@ export default function SensorDetailPage() {
                   const depthIcon = icons.find(i => i.key === `${sensor.id}:${d}`)
                   const btnLabel = depthIcon ? depthIcon.label : `${d}번 수위계`
                   return (
-                    <button key={d} onClick={()=>{ setDepthLabel(d); setCriteriaEditing(false) }}
+                    <button key={d} onClick={() => {
+                      setDepthLabel(d)
+                      setCriteriaEditing(false)
+                      const depthIconKey = `${sensor.id}:${d}`
+                      const depthIcon = icons.find(i => i.key === depthIconKey)
+                      if (depthIcon) setIconLabel(depthIcon.label)
+                    }}
                       className={['rounded-md border px-3 py-1 font-mono text-[11px]', depthLabel===d?'border-brand/30 bg-brand/10 text-brand font-medium':'border-line text-ink-muted hover:bg-surface-subtle'].join(' ')}>{btnLabel}</button>
                   )
                 })}
