@@ -95,7 +95,7 @@ export default function SensorDetailPage() {
             coeffB: base.B || base.coeffB || '',
             coeffC: base.C || base.coeffC || '',
             coeffG: base.G || base.coeffG || '',
-            initVal: base.initVal || '',
+            initVal: base.initVal || String(base.I || '') || '',
           }
         })() : { coeffA: '', coeffB: '', coeffC: '', coeffG: '', initVal: '' },
         criteria: {
@@ -922,12 +922,12 @@ export default function SensorDetailPage() {
               <div className="mt-3 rounded-lg border border-line bg-surface-subtle p-2">
                 <p className="mb-1.5 font-mono text-[9px] font-semibold text-ink-muted uppercase tracking-wider">계산식 상수값</p>
                 <div className="flex flex-col gap-1">
-                  {[{k:'A',v:sensor.formulaParams?.coeffA},{k:'B',v:sensor.formulaParams?.coeffB},{k:'C',v:sensor.formulaParams?.coeffC},{k:'G(Linear)',v:sensor.formulaParams?.coeffG},{k:'I (초기값)', v: sensor.formulaParams?.initVal || (globalInitReading !== null ? String(globalInitReading.raw_value ?? globalInitReading.value) : '')}].filter(x=>x.v).map(({k,v})=>(
+                  {[{k:'A',v:sensor.formulaParams?.coeffA},{k:'B',v:sensor.formulaParams?.coeffB},{k:'C',v:sensor.formulaParams?.coeffC},{k:'G(Linear)',v:sensor.formulaParams?.coeffG},{k:'I (초기값)', v: sensor.formulaParams?.initVal || ''},
                     <div key={k} className="flex gap-1">
                       <span className="font-mono text-[10px] text-ink-muted w-16 shrink-0">{k}</span>
                       <span className="font-mono text-[10px] text-ink break-all">{v}</span>
                     </div>
-                  ))}
+                  ]}
                 </div>
               </div>
             )}

@@ -985,10 +985,52 @@ export default function SensorsPage() {
         previewRaw: '',
         previewResult: null,
       })
+      // I(초기값) 자동 조회 — formula_params에 I가 없을 때만
+      const hasSavedI = (fresh as any).formula_params?.['1']?.I || (fresh as any).formula_params?.I
+      if (!hasSavedI) {
+        try {
+          const is80053 = (fresh as any).sensor_code === '80053'
+          if (is80053) {
+            const [d1, d2, d3] = await Promise.all([
+              sensorApi.getMeasurements(Number(fresh.id), { limit: 2000, depthLabel: '1' }),
+              sensorApi.getMeasurements(Number(fresh.id), { limit: 2000, depthLabel: '2' }),
+              sensorApi.getMeasurements(Number(fresh.id), { limit: 2000, depthLabel: '3' }),
+            ])
+            const getOldestRaw = (data: any[]) => data.length > 0
+              ? String(parseFloat([...data].sort((a: any, b: any) =>
+                  new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime())[0].raw_value))
+              : ''
+            setForm(prev => ({
+              ...prev,
+              depthParams: {
+                '1': { ...(prev.depthParams?.['1'] || {}), I: getOldestRaw(d1) },
+                '2': { ...(prev.depthParams?.['2'] || {}), I: getOldestRaw(d2) },
+                '3': { ...(prev.depthParams?.['3'] || {}), I: getOldestRaw(d3) },
+              }
+            }))
+          } else {
+            const data = await sensorApi.getMeasurements(Number(fresh.id), { limit: 2000 })
+            if (data.length > 0) {
+              const oldest = [...data].sort((a: any, b: any) =>
+                new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime())[0]
+              const rawVal = String(parseFloat(oldest.raw_value ?? oldest.value))
+              setForm(prev => ({
+                ...prev,
+                depthParams: {
+                  '1': { ...(prev.depthParams?.['1'] || {}), I: rawVal },
+                  '2': { ...(prev.depthParams?.['2'] || {}), I: rawVal },
+                  '3': { ...(prev.depthParams?.['3'] || {}), I: rawVal },
+                }
+              }))
+            }
+          }
+        } catch { }
+      }
       setEditTarget(freshSensor)
     } catch (err) {
       showToast('센서 정보 로드 실패')
     }
+
   }
 
   const handleFormulaAdd = async () => {
@@ -1033,9 +1075,9 @@ export default function SensorsPage() {
         formula: form.formula,
         formula_params: form.useDepthParams
           ? {
-              '1': { A: Number(form.depthParams?.['1']?.A) || undefined, B: Number(form.depthParams?.['1']?.B) || undefined, C: Number(form.depthParams?.['1']?.C) || undefined, G: Number(form.depthParams?.['1']?.G) || undefined, K: form.depthParams?.['1']?.K ? parseFloat(form.depthParams['1'].K) : undefined, ...(form.initValMode === 'manual' && form.depthParams?.['1']?.I ? { I: parseFloat(form.depthParams['1'].I) } : {}) },
-              '2': { A: Number(form.depthParams?.['2']?.A) || undefined, B: Number(form.depthParams?.['2']?.B) || undefined, C: Number(form.depthParams?.['2']?.C) || undefined, G: Number(form.depthParams?.['2']?.G) || undefined, K: form.depthParams?.['2']?.K ? parseFloat(form.depthParams['2'].K) : undefined, ...(form.initValMode === 'manual' && form.depthParams?.['2']?.I ? { I: parseFloat(form.depthParams['2'].I) } : {}) },
-              '3': { A: Number(form.depthParams?.['3']?.A) || undefined, B: Number(form.depthParams?.['3']?.B) || undefined, C: Number(form.depthParams?.['3']?.C) || undefined, G: Number(form.depthParams?.['3']?.G) || undefined, K: form.depthParams?.['3']?.K ? parseFloat(form.depthParams['3'].K) : undefined, ...(form.initValMode === 'manual' && form.depthParams?.['3']?.I ? { I: parseFloat(form.depthParams['3'].I) } : {}) },
+              '1': { A: Number(form.depthParams?.['1']?.A) || undefined, B: Number(form.depthParams?.['1']?.B) || undefined, C: Number(form.depthParams?.['1']?.C) || undefined, G: Number(form.depthParams?.['1']?.G) || undefined, K: form.depthParams?.['1']?.K ? parseFloat(form.depthParams['1'].K) : undefined, ...(form.depthParams?.['1']?.I ? { I: parseFloat(form.depthParams['1'].I) } : {})},
+              '2': { A: Number(form.depthParams?.['2']?.A) || undefined, B: Number(form.depthParams?.['2']?.B) || undefined, C: Number(form.depthParams?.['2']?.C) || undefined, G: Number(form.depthParams?.['2']?.G) || undefined, K: form.depthParams?.['2']?.K ? parseFloat(form.depthParams['2'].K) : undefined, ...(form.depthParams?.['2']?.I ? { I: parseFloat(form.depthParams['2'].I) } : {})},
+              '3': { A: Number(form.depthParams?.['3']?.A) || undefined, B: Number(form.depthParams?.['3']?.B) || undefined, C: Number(form.depthParams?.['3']?.C) || undefined, G: Number(form.depthParams?.['3']?.G) || undefined, K: form.depthParams?.['3']?.K ? parseFloat(form.depthParams['3'].K) : undefined, ...(form.depthParams?.['3']?.I ? { I: parseFloat(form.depthParams['3'].I) } : {})},
             }
             : (() => {
               const base: Record<string, any> = {}
