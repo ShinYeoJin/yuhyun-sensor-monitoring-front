@@ -326,7 +326,12 @@ export default function SensorDetailPage() {
           const v3 = parseFloat(oldest3.linear_value ?? oldest3.value)
           const avg = (v1 + v3) / 2
           const ts = new Date(oldest1.measured_at).getTime() < new Date(oldest3.measured_at).getTime() ? oldest1.measured_at : oldest3.measured_at
-          setGlobalInitReading({ value: avg, linear_value: avg, timestamp: ts })
+          setGlobalInitReading({
+            value: avg,
+            linear_value: avg,
+            raw_value: avg,  // WL-02는 평균 원시값
+            timestamp: ts
+          })
         }
       }).catch(() => {})
       return
@@ -338,6 +343,7 @@ export default function SensorDetailPage() {
           setGlobalInitReading({
             value: parseFloat(oldest.value),
             linear_value: parseFloat(oldest.linear_value ?? oldest.value),
+            raw_value: parseFloat(oldest.value),  // 원시값 별도 보존
             timestamp: oldest.measured_at
           })
         }
@@ -916,7 +922,7 @@ export default function SensorDetailPage() {
               <div className="mt-3 rounded-lg border border-line bg-surface-subtle p-2">
                 <p className="mb-1.5 font-mono text-[9px] font-semibold text-ink-muted uppercase tracking-wider">계산식 상수값</p>
                 <div className="flex flex-col gap-1">
-                  {[{k:'A',v:sensor.formulaParams?.coeffA},{k:'B',v:sensor.formulaParams?.coeffB},{k:'C',v:sensor.formulaParams?.coeffC},{k:'G(Linear)',v:sensor.formulaParams?.coeffG},{k:'I (초기값)', v: sensor.formulaParams?.initVal || (globalInitReading !== null ? String(initValue) : '')}].filter(x=>x.v).map(({k,v})=>(
+                  {[{k:'A',v:sensor.formulaParams?.coeffA},{k:'B',v:sensor.formulaParams?.coeffB},{k:'C',v:sensor.formulaParams?.coeffC},{k:'G(Linear)',v:sensor.formulaParams?.coeffG},{k:'I (초기값)', v: sensor.formulaParams?.initVal || (globalInitReading !== null ? String(globalInitReading.raw_value ?? globalInitReading.value) : '')}].filter(x=>x.v).map(({k,v})=>(
                     <div key={k} className="flex gap-1">
                       <span className="font-mono text-[10px] text-ink-muted w-16 shrink-0">{k}</span>
                       <span className="font-mono text-[10px] text-ink break-all">{v}</span>

@@ -936,9 +936,9 @@ export default function SensorsPage() {
         initValMode: 'auto' as 'auto' | 'manual',
         depthParams: (fresh as any).formula_params?.['1']
           ? {
-              '1': { A: String((fresh as any).formula_params['1']?.A || ''), B: String((fresh as any).formula_params['1']?.B || ''), C: String((fresh as any).formula_params['1']?.C || ''), G: String((fresh as any).formula_params['1']?.G || ''), K: String((fresh as any).formula_params['1']?.K || '') },
-              '2': { A: String((fresh as any).formula_params['2']?.A || ''), B: String((fresh as any).formula_params['2']?.B || ''), C: String((fresh as any).formula_params['2']?.C || ''), G: String((fresh as any).formula_params['2']?.G || ''), K: String((fresh as any).formula_params['2']?.K || '') },
-              '3': { A: String((fresh as any).formula_params['3']?.A || ''), B: String((fresh as any).formula_params['3']?.B || ''), C: String((fresh as any).formula_params['3']?.C || ''), G: String((fresh as any).formula_params['3']?.G || ''), K: String((fresh as any).formula_params['3']?.K || '') },
+              '1': { A: String((fresh as any).formula_params['1']?.A || ''), B: String((fresh as any).formula_params['1']?.B || ''), C: String((fresh as any).formula_params['1']?.C || ''), G: String((fresh as any).formula_params['1']?.G || ''), K: String((fresh as any).formula_params['1']?.K || ''), I: String((fresh as any).formula_params['1']?.I || '') },
+              '2': { A: String((fresh as any).formula_params['2']?.A || ''), B: String((fresh as any).formula_params['2']?.B || ''), C: String((fresh as any).formula_params['2']?.C || ''), G: String((fresh as any).formula_params['2']?.G || ''), K: String((fresh as any).formula_params['2']?.K || ''), I: String((fresh as any).formula_params['2']?.I || '') },
+              '3': { A: String((fresh as any).formula_params['3']?.A || ''), B: String((fresh as any).formula_params['3']?.B || ''), C: String((fresh as any).formula_params['3']?.C || ''), G: String((fresh as any).formula_params['3']?.G || ''), K: String((fresh as any).formula_params['3']?.K || ''), I: String((fresh as any).formula_params['3']?.I || '') },
             }
           : { '1': { A: '', B: '', C: '', G: '', K: '' }, '2': { A: '', B: '', C: '', G: '', K: '' }, '3': { A: '', B: '', C: '', G: '', K: '' } },
         previewRaw: '',
@@ -974,7 +974,7 @@ export default function SensorsPage() {
           return base.A !== undefined ? '(A * R^2 + B * R + C) * K' : 'G * (I - R) * K'
         })(),
         useDepthParams: !!(fresh as any).formula_params?.['1'],
-        initValMode: 'auto' as 'auto' | 'manual',
+        initValMode: (fresh as any).formula_params?.['1']?.I ? 'manual' : 'auto' as 'auto' | 'manual',
         depthParams: (fresh as any).formula_params?.['1']
           ? {
               '1': { A: String((fresh as any).formula_params['1']?.A || ''), B: String((fresh as any).formula_params['1']?.B || ''), C: String((fresh as any).formula_params['1']?.C || ''), G: String((fresh as any).formula_params['1']?.G || ''), K: String((fresh as any).formula_params['1']?.K || '') },
@@ -1033,9 +1033,9 @@ export default function SensorsPage() {
         formula: form.formula,
         formula_params: form.useDepthParams
           ? {
-              '1': { A: Number(form.depthParams?.['1']?.A) || undefined, B: Number(form.depthParams?.['1']?.B) || undefined, C: Number(form.depthParams?.['1']?.C) || undefined, G: Number(form.depthParams?.['1']?.G) || undefined, K: form.depthParams?.['1']?.K ? parseFloat(form.depthParams['1'].K) : undefined },
-              '2': { A: Number(form.depthParams?.['2']?.A) || undefined, B: Number(form.depthParams?.['2']?.B) || undefined, C: Number(form.depthParams?.['2']?.C) || undefined, G: Number(form.depthParams?.['2']?.G) || undefined, K: form.depthParams?.['2']?.K ? parseFloat(form.depthParams['2'].K) : undefined},
-              '3': { A: Number(form.depthParams?.['3']?.A) || undefined, B: Number(form.depthParams?.['3']?.B) || undefined, C: Number(form.depthParams?.['3']?.C) || undefined, G: Number(form.depthParams?.['3']?.G) || undefined, K: form.depthParams?.['3']?.K ? parseFloat(form.depthParams['3'].K) : undefined },
+              '1': { A: Number(form.depthParams?.['1']?.A) || undefined, B: Number(form.depthParams?.['1']?.B) || undefined, C: Number(form.depthParams?.['1']?.C) || undefined, G: Number(form.depthParams?.['1']?.G) || undefined, K: form.depthParams?.['1']?.K ? parseFloat(form.depthParams['1'].K) : undefined, ...(form.initValMode === 'manual' && form.depthParams?.['1']?.I ? { I: parseFloat(form.depthParams['1'].I) } : {}) },
+              '2': { A: Number(form.depthParams?.['2']?.A) || undefined, B: Number(form.depthParams?.['2']?.B) || undefined, C: Number(form.depthParams?.['2']?.C) || undefined, G: Number(form.depthParams?.['2']?.G) || undefined, K: form.depthParams?.['2']?.K ? parseFloat(form.depthParams['2'].K) : undefined, ...(form.initValMode === 'manual' && form.depthParams?.['2']?.I ? { I: parseFloat(form.depthParams['2'].I) } : {}) },
+              '3': { A: Number(form.depthParams?.['3']?.A) || undefined, B: Number(form.depthParams?.['3']?.B) || undefined, C: Number(form.depthParams?.['3']?.C) || undefined, G: Number(form.depthParams?.['3']?.G) || undefined, K: form.depthParams?.['3']?.K ? parseFloat(form.depthParams['3'].K) : undefined, ...(form.initValMode === 'manual' && form.depthParams?.['3']?.I ? { I: parseFloat(form.depthParams['3'].I) } : {}) },
             }
             : (() => {
               const base: Record<string, any> = {}

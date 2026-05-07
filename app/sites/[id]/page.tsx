@@ -266,12 +266,13 @@ export default function SiteDetailPage() {
         const c1 = correctionParams['1'] ?? 0, c3 = correctionParams['3'] ?? 0
         const o1 = [...d1].sort((a: any, b: any) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime())[0]
         const o3 = [...d3].sort((a: any, b: any) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime())[0]
-        if (o1 && o3) { const v1 = parseFloat(o1.linear_value ?? o1.value), v3 = parseFloat(o3.linear_value ?? o3.value), avg = (v1 + v3) / 2; const ts = new Date(o1.measured_at).getTime() < new Date(o3.measured_at).getTime() ? o1.measured_at : o3.measured_at; setGlobalInitReading({ value: avg, linear_value: avg, timestamp: ts }); setInitValue(avg) }
+        if (o1 && o3) { const v1 = parseFloat(o1.linear_value ?? o1.value), v3 = parseFloat(o3.linear_value ?? o3.value), avg = (v1 + v3) / 2; const rawAvg = (parseFloat(o1.value) + parseFloat(o3.value)) / 2; const ts = new Date(o1.measured_at).getTime() < new Date(o3.measured_at).getTime() ? o1.measured_at : o3.measured_at; setGlobalInitReading({ value: avg, linear_value: avg, raw_value: rawAvg, timestamp: ts }); setInitValue(avg) }
       }).catch(() => {}); return
     }
     sensorApi.getMeasurements(sensor.id, { limit: 2000, depthLabel: sc === '80053' ? depthLabel : undefined }).then((data: any[]) => {
       if (data.length > 0) { const oldest = [...data].sort((a: any, b: any) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime())[0]; const val = parseFloat(parseFloat(oldest.linear_value ?? oldest.value).toFixed(4))
-        setGlobalInitReading({ value: val, linear_value: val, timestamp: oldest.measured_at })
+        const rawVal = parseFloat(oldest.value)  // 원시값 별도 보존
+        setGlobalInitReading({ value: val, linear_value: val, raw_value: rawVal, timestamp: oldest.measured_at })
         setInitValue(val) }
     }).catch(() => {})
   }, [sensor, depthLabel, correctionParams])
