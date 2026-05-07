@@ -918,7 +918,7 @@ export default function SensorDetailPage() {
               )}
             </dl>
 
-            {sensorCode === '80053' && !isMultiMonitor && (
+            {!isMultiMonitor && sensor.formulaParams && Object.values(sensor.formulaParams).some(v => v !== '') && (
               <div className="mt-3 rounded-lg border border-line bg-surface-subtle p-2">
                 <p className="mb-1.5 font-mono text-[9px] font-semibold text-ink-muted uppercase tracking-wider">계산식 상수값</p>
                 <div className="flex flex-col gap-1">

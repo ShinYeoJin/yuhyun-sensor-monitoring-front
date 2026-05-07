@@ -600,7 +600,7 @@ export default function SiteDetailPage() {
                     <dd className="flex-1 font-mono text-[10px] text-ink">{sensor.lastUpdated ? new Date(sensor.lastUpdated).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}</dd>
                   </div>
                 )}
-                {sensorCode === '80053' && !isMultiMonitor && (
+                {!isMultiMonitor && sensor.formulaParams && Object.values(sensor.formulaParams).some(v => v !== '') && (
                   <div className="mt-3 rounded-lg border border-line bg-surface-subtle p-2">
                     <p className="mb-1.5 font-mono text-[9px] font-semibold text-ink-muted uppercase tracking-wider">계산식 상수값</p>
                     <div className="flex flex-col gap-1">
