@@ -1,12 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { getRelativeTime, getThresholds } from '@/lib/mock-data'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { sensorStore, useSensorStore, evaluateStatus } from '@/lib/sensor-store'
 import { sensorApi, siteApi, formulaApi, recollectApi, agentApi } from '@/lib/api'
-import { useEffect } from 'react'
 import type {
   SensorStatus, UnifiedSensor, SensorField, MeasureMethod, Formula,
   ThresholdRange, SensorGroup, ActionAfterMeasure, ActionBeforeMeasure,
