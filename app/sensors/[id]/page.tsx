@@ -319,12 +319,11 @@ export default function SensorDetailPage() {
         sensorApi.getMeasurements(Number(id), { limit: 2000, depthLabel: '1' }),
         sensorApi.getMeasurements(Number(id), { limit: 2000, depthLabel: '3' }),
       ]).then(([d1, d3]) => {
-        const corr1 = correctionParams['1'] ?? 0, corr3 = correctionParams['3'] ?? 0
         const oldest1 = [...d1].sort((a: any, b: any) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime())[0]
         const oldest3 = [...d3].sort((a: any, b: any) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime())[0]
         if (oldest1 && oldest3) {
-          const v1 = parseFloat(oldest1.linear_value ?? oldest1.value) + corr1
-          const v3 = parseFloat(oldest3.linear_value ?? oldest3.value) + corr3
+          const v1 = parseFloat(oldest1.linear_value ?? oldest1.value)
+          const v3 = parseFloat(oldest3.linear_value ?? oldest3.value)
           const avg = (v1 + v3) / 2
           const ts = new Date(oldest1.measured_at).getTime() < new Date(oldest3.measured_at).getTime() ? oldest1.measured_at : oldest3.measured_at
           setGlobalInitReading({ value: avg, linear_value: avg, timestamp: ts })
@@ -336,8 +335,11 @@ export default function SensorDetailPage() {
       .then((data: any[]) => {
         if (data.length > 0) {
           const oldest = [...data].sort((a: any, b: any) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime())[0]
-          const corr = correctionParams[depthLabel] ?? 0
-          setGlobalInitReading({ value: parseFloat(oldest.value) + corr, linear_value: parseFloat(oldest.linear_value ?? oldest.value) + corr, timestamp: oldest.measured_at })
+          setGlobalInitReading({
+            value: parseFloat(oldest.value),
+            linear_value: parseFloat(oldest.linear_value ?? oldest.value),
+            timestamp: oldest.measured_at
+          })
         }
       }).catch(() => {})
   }, [id, sensorCode, depthLabel, correctionParams])

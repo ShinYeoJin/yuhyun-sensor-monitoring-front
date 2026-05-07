@@ -266,11 +266,13 @@ export default function SiteDetailPage() {
         const c1 = correctionParams['1'] ?? 0, c3 = correctionParams['3'] ?? 0
         const o1 = [...d1].sort((a: any, b: any) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime())[0]
         const o3 = [...d3].sort((a: any, b: any) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime())[0]
-        if (o1 && o3) { const v1 = parseFloat(o1.linear_value ?? o1.value) + c1, v3 = parseFloat(o3.linear_value ?? o3.value) + c3, avg = (v1 + v3) / 2; const ts = new Date(o1.measured_at).getTime() < new Date(o3.measured_at).getTime() ? o1.measured_at : o3.measured_at; setGlobalInitReading({ value: avg, linear_value: avg, timestamp: ts }); setInitValue(avg) }
+        if (o1 && o3) { const v1 = parseFloat(o1.linear_value ?? o1.value), v3 = parseFloat(o3.linear_value ?? o3.value), avg = (v1 + v3) / 2; const ts = new Date(o1.measured_at).getTime() < new Date(o3.measured_at).getTime() ? o1.measured_at : o3.measured_at; setGlobalInitReading({ value: avg, linear_value: avg, timestamp: ts }); setInitValue(avg) }
       }).catch(() => {}); return
     }
     sensorApi.getMeasurements(sensor.id, { limit: 2000, depthLabel: sc === '80053' ? depthLabel : undefined }).then((data: any[]) => {
-      if (data.length > 0) { const oldest = [...data].sort((a: any, b: any) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime())[0]; const corr = correctionParams[depthLabel] ?? 0; const val = parseFloat((parseFloat(oldest.linear_value ?? oldest.value) + corr).toFixed(4)); setGlobalInitReading({ value: val, linear_value: val, timestamp: oldest.measured_at }); setInitValue(val) }
+      if (data.length > 0) { const oldest = [...data].sort((a: any, b: any) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime())[0]; const val = parseFloat(parseFloat(oldest.linear_value ?? oldest.value).toFixed(4))
+        setGlobalInitReading({ value: val, linear_value: val, timestamp: oldest.measured_at })
+        setInitValue(val) }
     }).catch(() => {})
   }, [sensor, depthLabel, correctionParams])
 
@@ -601,7 +603,7 @@ export default function SiteDetailPage() {
                   <div className="mt-3 rounded-lg border border-line bg-surface-subtle p-2">
                     <p className="mb-1.5 font-mono text-[9px] font-semibold text-ink-muted uppercase tracking-wider">계산식 상수값</p>
                     <div className="flex flex-col gap-1">
-                        {[{k:'A',v:sensor.formulaParams?.coeffA},{k:'B',v:sensor.formulaParams?.coeffB},{k:'C',v:sensor.formulaParams?.coeffC},{k:'G(Linear)',v:sensor.formulaParams?.coeffG},{k:'I (초기값)', v: sensor.formulaParams?.initVal || (initValue !== 0 ? String(initValue) : '')}].filter(x=>x.v).map(({k,v})=>(
+                        {[{k:'A',v:sensor.formulaParams?.coeffA},{k:'B',v:sensor.formulaParams?.coeffB},{k:'C',v:sensor.formulaParams?.coeffC},{k:'G(Linear)',v:sensor.formulaParams?.coeffG},{k:'I (초기값)', v: sensor.formulaParams?.initVal || (globalInitReading !== null ? String(initValue) : '')}].filter(x=>x.v).map(({k,v})=>(
                             <div key={k} className="flex gap-1"><span className="font-mono text-[10px] text-ink-muted w-16 shrink-0">{k}</span><span className="font-mono text-[10px] text-ink break-all">{v}</span></div>
                         ))}
                     </div>
