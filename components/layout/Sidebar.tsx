@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth, DEFAULT_USER } from '@/lib/auth-context'
@@ -119,8 +119,8 @@ function SidebarContent({
               const isActive = pathname.startsWith(item.href)
               const badge = item.showBadge ? unreadCount : 0
               return (
-                <>
-                  <Link key={item.href} href={item.href} onClick={onClose}
+                <React.Fragment key={item.href}>
+                  <Link href={item.href} onClick={onClose}
                     className={[
                       'flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] transition-colors',
                       isActive
@@ -191,7 +191,7 @@ function SidebarContent({
                       )}
                     </div>
                   )}
-                </>
+                </React.Fragment>
               )
             })}
           </div>

@@ -514,6 +514,11 @@ export default function SensorDetailPage() {
     const excelSourceRows = chartMode === 'hourly' ? activeMeasurements : dailyReadings
     const sortedRows = [...excelSourceRows].sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
     const initDate = globalInitReading ? new Date(globalInitReading.timestamp) : (sortedRows.length > 0 ? new Date(sortedRows[0].timestamp) : new Date())
+    // 전체 기간 최초 데이터를 초기치 행으로 맨 앞에 추가 (조회 기간과 무관)
+    const initRowData = globalInitReading ? { timestamp: globalInitReading.timestamp, value: initValue, isInitRow: true } : null
+    const firstInRange = sortedRows[0]
+    const initAlreadyInRows = initRowData && firstInRange && Math.abs(new Date(initRowData.timestamp).getTime() - new Date(firstInRange.timestamp).getTime()) < 60000
+    const allRows = (initRowData && !initAlreadyInRows) ? [initRowData, ...sortedRows] : sortedRows
     const ExcelJSModule = await import('exceljs') as any
     const ExcelJS = ExcelJSModule.default ?? ExcelJSModule
     const wb2 = new ExcelJS.Workbook(); const ws2 = wb2.addWorksheet(iconLabel || sensor.manageNo || sensor.name || '측정데이터')
@@ -523,19 +528,19 @@ export default function SensorDetailPage() {
     const fill = (argb: string) => ({ type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb } })
     const font = (bold = false, sz = 9, argb = BLACK) => ({ name: '맑은 고딕', size: sz, bold, color: { argb } })
     const aln  = (h: 'center'|'left'|'right' = 'center', v: 'middle'|'top'|'bottom' = 'middle', wrap = false) => ({ horizontal: h, vertical: v, wrapText: wrap })
-    ws2.columns = [{ width: 14 }, { width: 15 }, { width: 35 }, { width: 12 }, { width: 20 }, { width: 36 }]
+    ws2.columns = [{ width: 22 }, { width: 8 }, { width: 16 }, { width: 14 }, { width: 16 }, { width: 18 }]
     const setH = (r: number, h: number) => { ws2.getRow(r).height = h }
     setH(1,28); setH(2,4); setH(3,18); setH(4,18)
     const CR_START = 5, CR_END = 14
     for (let r = CR_START; r <= CR_END; r++) setH(r, 18)
     setH(CR_END+1,14); setH(CR_END+2,4); setH(CR_END+3,18); setH(CR_END+4,18); setH(CR_END+5,18); setH(CR_END+6,3)
     const DS = CR_END + 7
-    sortedRows.forEach((_: any, i: number) => setH(DS+i, 17))
+    allRows.forEach((_: any, i: number) => setH(DS+i, 17))
     ws2.mergeCells('A1:F1')
     const t = ws2.getCell('A1'); t.value = 'Water Level Meter Report'; t.font = font(true,15,BLACK); t.fill = fill(WHITE); t.alignment = aln(); t.border = MB
     const infoRows = [
       ['현   장   명', sensor.siteName||'—', '계측기 No.', iconLabel || sensor.manageNo||'—'],
-      ['설 치 현 황', sensor.installDate?`설치일자 (${sensor.installDate.slice(0,10)})`:'—', '초기측정일', initDate.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'})],
+      ['설 치 현 황', sensor.installDate?`설치일자 (${sensor.installDate.slice(0,10)})`:'—', '초기측정일', initDate.toLocaleString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:true})],
     ]
     infoRows.forEach(([l1,v1,l2,v2]: any, i: number) => {
       const r = 3+i; ws2.mergeCells(r,2,r,3); ws2.mergeCells(r,5,r,6)
@@ -566,20 +571,21 @@ export default function SensorDetailPage() {
     mhdr(H2,3,H2,3,`지하수위 G.L(${sensor.unit})`,8,MID); mhdr(H2,4,H2,5,'변화량(m)',8,MID)
     const setHdr = (r:number,c:number,val:string,sz=7,bg=MID) => { const cell=ws2.getCell(r,c); cell.value=val; cell.font=font(true,sz,BLACK); cell.fill=fill(bg); cell.alignment=aln('center','middle',true); cell.border=TB }
     ws2.getCell(H3,3).fill=fill(MID); ws2.getCell(H3,3).border=TB; setHdr(H3,4,'전측정치대비'); setHdr(H3,5,'초기치대비')
-    sortedRows.forEach((row:any,i:number) => {
-      const r=DS+i, isFirst=i===0, rf=isFirst?YELL:(i%2===0?ALT:WHITE), base={fill:fill(rf),border:TB,alignment:aln()}
+    allRows.forEach((row:any,i:number) => {
+      const isFirst = !!(row.isInitRow) || (i===0 && !initRowData)
+      const r=DS+i, rf=isFirst?YELL:(i%2===0?ALT:WHITE), base={fill:fill(rf),border:TB,alignment:aln()}
       const setD = (c:number,val:any,fnt:any,numFmt?:string) => { const cell=ws2.getCell(r,c); cell.value=val; cell.font=fnt; Object.assign(cell,base); if(numFmt) cell.numFmt=numFmt }
       const curDate=new Date(row.timestamp), curMid=new Date(curDate.getFullYear(),curDate.getMonth(),curDate.getDate()), initMid=new Date(initDate.getFullYear(),initDate.getMonth(),initDate.getDate())
       const elapsed=Math.round((curMid.getTime()-initMid.getTime())/86400000)
       const dateKey=curDate.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'})
-      setD(1,curDate.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'}),font(false,9,BLACK))
+      setD(1,curDate.toLocaleString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:true}),font(false,9,BLACK))
       if(row.value===null){
         setD(2,'—',font(false,9,BLACK)); setD(3,'미수신',font(false,9,BLACK))
         setD(4,'—',font(false,9,BLACK)); setD(5,'—',font(false,9,BLACK))
         const cn=ws2.getCell(r,6); cn.value=''; cn.font=font(false,9,BLACK); cn.fill=fill(rf); cn.border=TB; cn.alignment=aln()
       } else {
         const curVal=parseFloat(parseFloat(String(row.value)).toFixed(4))
-        const prevValid=sortedRows.slice(0,i).reverse().find((x:any)=>x.value!==null)
+        const prevValid=allRows.slice(0,i).reverse().find((x:any)=>x.value!==null)
         const prevVal=prevValid?parseFloat(parseFloat(String(prevValid.value)).toFixed(4)):curVal
         const prevDiff=parseFloat((curVal-prevVal).toFixed(4)), initDiff=parseFloat((curVal-parseFloat(initValue.toFixed(4))).toFixed(4))
         setD(2,elapsed,font(false,9,BLACK)); setD(3,curVal,font(false,9,BLACK),'0.0000')
@@ -601,13 +607,16 @@ export default function SensorDetailPage() {
     const fb=btoa(bin); doc.addFileToVFS('NanumGothic.ttf',fb); doc.addFont('NanumGothic.ttf','NanumGothic','normal'); doc.addFont('NanumGothic.ttf','NanumGothic','bold'); doc.setFont('NanumGothic','normal')
     const managers=(() => { try{return JSON.parse((sensor as any).site_managers||'[]')}catch{return []} })()
     let mt='—'; if(managers.length>0){try{const u=await userApi.getList();mt=managers.map((m:string)=>{const f=u.find((x:any)=>x.username===m);return f?`${f.username} (${f.role})`:m}).join(', ')}catch{mt=managers.join(', ')}}
-    const pdfSourceRows = chartMode === 'hourly'
-      ? activeMeasurements
-      : dailyReadings
+    const pdfSourceRows = chartMode === 'hourly' ? activeMeasurements : dailyReadings
     const pdfSortedRows=[...pdfSourceRows].sort((a:any,b:any)=>new Date(a.timestamp).getTime()-new Date(b.timestamp).getTime())
     const pdfInitDate=globalInitReading?new Date(globalInitReading.timestamp):(pdfSortedRows.length>0?new Date(pdfSortedRows[0].timestamp):new Date())
+    // 전체 기간 최초 데이터를 PDF 초기치 행으로 맨 앞에 추가
+    const pdfInitRowData = globalInitReading ? { timestamp: globalInitReading.timestamp, value: initValue, isInitRow: true } : null
+    const pdfFirstInRange = pdfSortedRows[0]
+    const pdfInitAlreadyInRows = pdfInitRowData && pdfFirstInRange && Math.abs(new Date(pdfInitRowData.timestamp).getTime() - new Date(pdfFirstInRange.timestamp).getTime()) < 60000
+    const pdfAllRows = (pdfInitRowData && !pdfInitAlreadyInRows) ? [pdfInitRowData, ...pdfSortedRows] : pdfSortedRows
     doc.setFontSize(16); doc.text('Water Level Meter Report',pageWidth/2,20,{align:'center'})
-    autoTable(doc,{startY:28,head:[],body:[['현장명',sensor.siteName||'—','계측기 No.',iconLabel || sensor.manageNo||'—'],['설치현황',sensor.installDate?`설치일자 (${sensor.installDate.slice(0,10)})`:'—','초기측정일',pdfInitDate.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'})],['관리자',mt,'설치위치',sensor.location?.description||'—']],theme:'grid',styles:{fontSize:9,cellPadding:2,font:'NanumGothic'},columnStyles:{0:{fillColor:[240,240,240],cellWidth:25},1:{cellWidth:65},2:{fillColor:[240,240,240],cellWidth:25},3:{cellWidth:65}}})
+    autoTable(doc,{startY:28,head:[],body:[['현장명',sensor.siteName||'—','계측기 No.',iconLabel || sensor.manageNo||'—'],['설치현황',sensor.installDate?`설치일자 (${sensor.installDate.slice(0,10)})`:'—','초기측정일',pdfInitDate.toLocaleString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:true})]],theme:'grid',styles:{fontSize:9,cellPadding:2,font:'NanumGothic'},columnStyles:{0:{fillColor:[240,240,240],cellWidth:20},1:{cellWidth:50},2:{fillColor:[240,240,240],cellWidth:20},3:{cellWidth:50}}})
     const cy=(doc as any).lastAutoTable.finalY+5
     const chartData = [...(chartMode === 'hourly' ? measurementsWithGaps : dailyReadings)].sort((a:any,b:any)=>new Date(a.timestamp).getTime()-new Date(b.timestamp).getTime())
     if (chartData.length > 0) {
@@ -736,15 +745,15 @@ export default function SensorDetailPage() {
 
       doc.setTextColor(0, 0, 0)
     }
-    autoTable(doc,{startY:cy+75,head:[['측정일','경과일',`지하수위 G.L(${sensor.unit})`,'전측정대비','초기치대비','비고']],body:pdfSortedRows.map((r:any,i:number)=>{
-      const rd=new Date(r.timestamp),cm=new Date(rd.getFullYear(),rd.getMonth(),rd.getDate()),im=new Date(pdfInitDate.getFullYear(),pdfInitDate.getMonth(),pdfInitDate.getDate()),el=Math.round((cm.getTime()-im.getTime())/86400000),dk=rd.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'})
+    autoTable(doc,{startY:cy+75,head:[['측정일','경과일',`지하수위 G.L(${sensor.unit})`,'전측정대비','초기치대비','비고']],body:pdfAllRows.map((r:any,i:number)=>{
+      const rd=new Date(r.timestamp),cm=new Date(rd.getFullYear(),rd.getMonth(),rd.getDate()),im=new Date(pdfInitDate.getFullYear(),pdfInitDate.getMonth(),pdfInitDate.getDate()),el=Math.round((cm.getTime()-im.getTime())/86400000),dateOnlyKey=rd.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'}),dk=rd.toLocaleString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:true})
       if(r.value===null) return[dk,'—','미수신','—','—','']
       const cv=parseFloat(parseFloat(String(r.value)).toFixed(4))
-      const prevValid=pdfSortedRows.slice(0,i).reverse().find((x:any)=>x.value!==null)
+      const prevValid=pdfAllRows.slice(0,i).reverse().find((x:any)=>x.value!==null)
       const pv=prevValid?parseFloat(parseFloat(String(prevValid.value)).toFixed(4)):cv
       const pd=parseFloat((cv-pv).toFixed(4)),id_=parseFloat((cv-initValue).toFixed(4))
-      const isFirst=pdfSortedRows.findIndex((x:any)=>x.value!==null)===i
-      return[dk,el,cv.toFixed(4),isFirst?'0.0000':(pd>0?`+${pd}`:String(pd)),isFirst?'0.0000':(id_>0?`+${id_}`:String(id_)),isFirst?'초기치':(remarks[dk]||'')]
+      const isFirst=!!(r.isInitRow)||(i===0&&!pdfInitRowData)
+      return[dk,el,cv.toFixed(4),isFirst?'0.0000':(pd>0?`+${pd}`:String(pd)),isFirst?'0.0000':(id_>0?`+${id_}`:String(id_)),isFirst?'초기치':(dateOnlyKey?'':'')]
     }),theme:'grid',headStyles:{fillColor:[60,80,120],textColor:255,fontSize:8,font:'NanumGothic',fontStyle:'normal'},styles:{fontSize:8,cellPadding:2,font:'NanumGothic'}})
     doc.save(`${iconLabel || sensor.manageNo||sensor.name}_${dateFrom}_${dateTo}.pdf`)
   }
