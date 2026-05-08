@@ -511,14 +511,6 @@ export default function SensorDetailPage() {
         }
       } catch { chartBase64 = null }
     }
-    const managerUsernames: string[] = (() => { try { return JSON.parse(sensor.site_managers || '[]') } catch { return [] } })()
-    let managerText = '—'
-    if (managerUsernames.length > 0) {
-      try {
-        const users = await userApi.getList()
-        managerText = managerUsernames.map((u: string) => { const f = users.find((x: any) => x.username === u); return f ? `${f.username} (${f.role})` : u }).join(', ')
-      } catch { managerText = managerUsernames.join(', ') }
-    }
     const excelSourceRows = chartMode === 'hourly' ? activeMeasurements : dailyReadings
     const sortedRows = [...excelSourceRows].sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
     const initDate = globalInitReading ? new Date(globalInitReading.timestamp) : (sortedRows.length > 0 ? new Date(sortedRows[0].timestamp) : new Date())
@@ -531,10 +523,10 @@ export default function SensorDetailPage() {
     const fill = (argb: string) => ({ type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb } })
     const font = (bold = false, sz = 9, argb = BLACK) => ({ name: '맑은 고딕', size: sz, bold, color: { argb } })
     const aln  = (h: 'center'|'left'|'right' = 'center', v: 'middle'|'top'|'bottom' = 'middle', wrap = false) => ({ horizontal: h, vertical: v, wrapText: wrap })
-    ws2.columns = [{ width: 14 }, { width: 7 }, { width: 13 }, { width: 12 }, { width: 12 }, { width: 14 }]
+    ws2.columns = [{ width: 14 }, { width: 15 }, { width: 35 }, { width: 12 }, { width: 20 }, { width: 36 }]
     const setH = (r: number, h: number) => { ws2.getRow(r).height = h }
-    setH(1,28); setH(2,4); setH(3,18); setH(4,18); setH(5,18)
-    const CR_START = 6, CR_END = 15
+    setH(1,28); setH(2,4); setH(3,18); setH(4,18)
+    const CR_START = 5, CR_END = 14
     for (let r = CR_START; r <= CR_END; r++) setH(r, 18)
     setH(CR_END+1,14); setH(CR_END+2,4); setH(CR_END+3,18); setH(CR_END+4,18); setH(CR_END+5,18); setH(CR_END+6,3)
     const DS = CR_END + 7
@@ -544,7 +536,6 @@ export default function SensorDetailPage() {
     const infoRows = [
       ['현   장   명', sensor.siteName||'—', '계측기 No.', iconLabel || sensor.manageNo||'—'],
       ['설 치 현 황', sensor.installDate?`설치일자 (${sensor.installDate.slice(0,10)})`:'—', '초기측정일', initDate.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'})],
-      ['관   리   자', managerText, '설치위치', sensor.location?.description||'—'],
     ]
     infoRows.forEach(([l1,v1,l2,v2]: any, i: number) => {
       const r = 3+i; ws2.mergeCells(r,2,r,3); ws2.mergeCells(r,5,r,6)
