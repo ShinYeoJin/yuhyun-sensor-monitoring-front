@@ -77,6 +77,7 @@ export default function SiteDetailPage() {
   const [sensor, setSensor] = useState<any>(null)
   const [viewMode, setViewMode] = useState<'map' | 'detail'>('map')
   const pendingViewDetail = useRef(false)
+  const pendingDepth = useRef<'1'|'2'|'3' | null>(null)
 
   const [icons, setIcons] = useState<{ key: string; label: string; x: number; y: number }[]>([])
   const [editingIcon, setEditingIcon] = useState<{ key: string; label: string } | null>(null)
@@ -160,8 +161,16 @@ export default function SiteDetailPage() {
         siteName: data.site_name || '', installDate: data.install_date || '', location: { description: data.location_desc || '' },
         unit: data.unit || '', formula: data.formula || '', lastUpdated: data.last_measured || '', status: data.status || 'offline', site_managers: data.site_managers || '[]',
       })
-      setCorrectionParams(data.correction_params || {}); setDepthLabel('1'); setMeasurements([]); setCriteriaEditing(false)
-      if (pendingViewDetail.current) { pendingViewDetail.current = false; setViewMode('detail') }
+      setCorrectionParams(data.correction_params || {}); setMeasurements([]); setCriteriaEditing(false)
+      if (pendingViewDetail.current) {
+        // 클릭 시 지정한 depth 적용, 없으면 '1'
+        setDepthLabel(pendingDepth.current || '1')
+        pendingDepth.current = null
+        pendingViewDetail.current = false
+        setViewMode('detail')
+      } else {
+        setDepthLabel('1')
+      }
     })
   }, [activeSensorId])
 
@@ -257,11 +266,12 @@ export default function SiteDetailPage() {
   const handleIconClick = useCallback((key: string) => {
     if (draggingKey.current) return
     const parts = key.split(':'); const clickedSensorId = Number(parts[0]); const clickedDepth = parts[1] as '1'|'2'|'3'|undefined
-    if (clickedDepth) setDepthLabel(clickedDepth)
     if (clickedSensorId !== activeSensorId) {
       setActiveSensorId(clickedSensorId)
       pendingViewDetail.current = true
+      if (clickedDepth) pendingDepth.current = clickedDepth
     } else {
+      if (clickedDepth) setDepthLabel(clickedDepth)
       setViewMode('detail')
     }
   }, [activeSensorId])
