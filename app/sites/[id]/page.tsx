@@ -76,6 +76,7 @@ export default function SiteDetailPage() {
   const [activeSensorId, setActiveSensorId] = useState<number | null>(null)
   const [sensor, setSensor] = useState<any>(null)
   const [viewMode, setViewMode] = useState<'map' | 'detail'>('map')
+  const pendingViewDetail = useRef(false)
 
   const [icons, setIcons] = useState<{ key: string; label: string; x: number; y: number }[]>([])
   const [editingIcon, setEditingIcon] = useState<{ key: string; label: string } | null>(null)
@@ -160,6 +161,7 @@ export default function SiteDetailPage() {
         unit: data.unit || '', formula: data.formula || '', lastUpdated: data.last_measured || '', status: data.status || 'offline', site_managers: data.site_managers || '[]',
       })
       setCorrectionParams(data.correction_params || {}); setDepthLabel('1'); setMeasurements([]); setCriteriaEditing(false)
+      if (pendingViewDetail.current) { pendingViewDetail.current = false; setViewMode('detail') }
     })
   }, [activeSensorId])
 
@@ -255,9 +257,13 @@ export default function SiteDetailPage() {
   const handleIconClick = useCallback((key: string) => {
     if (draggingKey.current) return
     const parts = key.split(':'); const clickedSensorId = Number(parts[0]); const clickedDepth = parts[1] as '1'|'2'|'3'|undefined
-    if (clickedSensorId !== activeSensorId) setActiveSensorId(clickedSensorId)
     if (clickedDepth) setDepthLabel(clickedDepth)
-    setViewMode('detail')
+    if (clickedSensorId !== activeSensorId) {
+      setActiveSensorId(clickedSensorId)
+      pendingViewDetail.current = true
+    } else {
+      setViewMode('detail')
+    }
   }, [activeSensorId])
 
   const handleAddIcon = async () => {
@@ -358,7 +364,7 @@ export default function SiteDetailPage() {
     const pdfInitAlreadyInRows = pdfInitRowData && pdfFirstInRange && Math.abs(new Date(pdfInitRowData.timestamp).getTime() - new Date(pdfFirstInRange.timestamp).getTime()) < 60000
     const pdfAllRows = (pdfInitRowData && !pdfInitAlreadyInRows) ? [pdfInitRowData, ...pdfSortedRows] : pdfSortedRows
     doc.setFontSize(16); doc.text('Water Level Meter Report', pageWidth / 2, 20, { align: 'center' })
-    autoTable(doc, { startY: 28, head: [], body: [['현장명', sensor.siteName || '—', '계측기 No.', iconLabel || sensor.manageNo || '—'], ['설치현황', sensor.installDate ? `설치일자 (${sensor.installDate.slice(0, 10)})` : '—', '초기측정일', pdfInitDate.toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true })]], theme: 'grid', styles: { fontSize: 9, cellPadding: 2, font: 'NanumGothic' }, columnStyles: { 0: { fillColor: [240,240,240], cellWidth: 27 }, 1: { cellWidth: 64 }, 2: { fillColor: [240,240,240], cellWidth: 27 }, 3: { cellWidth: 64 } } })
+    autoTable(doc, { startY: 28, head: [], body: [['현장명', sensor.siteName || '—', '계측기 No.', iconLabel || sensor.manageNo || '—'], ['설치현황', sensor.installDate ? `설치일자 (${sensor.installDate.slice(0, 10)})` : '—', '초기측정일', pdfInitDate.toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true })]], theme: 'grid', styles: { fontSize: 9, cellPadding: 2, font: 'NanumGothic' }, columnStyles: { 0: { fillColor: [240, 240, 240], cellWidth: 20 }, 1: { cellWidth: 50 }, 2: { fillColor: [240, 240, 240], cellWidth: 20 }, 3: { cellWidth: 50 } } })
     const cy = (doc as any).lastAutoTable.finalY + 5
     const chartData = [...(chartMode === 'hourly' ? measurementsWithGaps : dailyReadings)].sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
     if (chartData.length > 0) {
