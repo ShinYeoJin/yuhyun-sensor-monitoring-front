@@ -177,7 +177,7 @@ export default function SiteDetailPage() {
   useEffect(() => {
     if (!sensor) return
     const sc = sensor.sensor_code || ''
-    const params: any = { from: queryCondition.chartMode === 'daily' ? `${queryCondition.dateFrom}T${String(queryCondition.selectedHour).padStart(2,'0')}:00:00` : queryCondition.dateFrom, to: queryCondition.chartMode === 'daily' ? `${queryCondition.dateTo}T${String(queryCondition.selectedHour).padStart(2,'0')}:00:59` : queryCondition.dateTo, limit: 2000 }
+    const params: any = { from: queryCondition.chartMode === 'daily' ? `${queryCondition.dateFrom}T${String(queryCondition.selectedHour).padStart(2,'0')}:00:00` : `${queryCondition.dateFrom}T00:00:00`, to: queryCondition.chartMode === 'daily' ? `${queryCondition.dateTo}T${String(queryCondition.selectedHour).padStart(2,'0')}:00:59` : `${queryCondition.dateTo}T23:59:59`, limit: 2000 }
     if (sc === '80053') params.depthLabel = depthLabel
     sensorApi.getMeasurements(sensor.id, params).then((data: any[]) => {
       const corr = correctionParams[depthLabel] ?? 0
@@ -187,7 +187,7 @@ export default function SiteDetailPage() {
 
   useEffect(() => {
     if (!sensor || sensor.sensor_code !== '80053' || depthLabel !== '2') { setDepth1Data([]); setDepth3Data([]); return }
-    const p: any = { from: dateFrom, to: dateTo, limit: 2000 }
+    const p: any = { from: `${dateFrom}T00:00:00`, to: `${dateTo}T23:59:59`, limit: 2000 }
     const toVal = (m: any, d: string) => parseFloat(((calcMode === 'linear' ? parseFloat(m.linear_value ?? m.value) : parseFloat(m.value)) + (correctionParams[d] ?? 0)).toFixed(4))
     sensorApi.getMeasurements(sensor.id, { ...p, depthLabel: '1' }).then((data: any[]) => setDepth1Data(data.map(m => ({ timestamp: m.measured_at, value: toVal(m, '1') })))).catch(() => {})
     sensorApi.getMeasurements(sensor.id, { ...p, depthLabel: '3' }).then((data: any[]) => setDepth3Data(data.map(m => ({ timestamp: m.measured_at, value: toVal(m, '3') })))).catch(() => {})

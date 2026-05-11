@@ -276,8 +276,8 @@ export default function SensorDetailPage() {
   useEffect(() => {
     if (!id || !sensorCode) return
     sensorApi.getMeasurements(Number(id), {
-      from: queryCondition.chartMode === 'daily' ? `${queryCondition.dateFrom}T${String(queryCondition.selectedHour).padStart(2,'0')}:00:00` : queryCondition.dateFrom,
-      to:   queryCondition.chartMode === 'daily' ? `${queryCondition.dateTo}T${String(queryCondition.selectedHour).padStart(2,'0')}:00:59` : queryCondition.dateTo,
+      from: queryCondition.chartMode === 'daily' ? `${queryCondition.dateFrom}T${String(queryCondition.selectedHour).padStart(2,'0')}:00:00` : `${queryCondition.dateFrom}T00:00:00`,
+      to:   queryCondition.chartMode === 'daily' ? `${queryCondition.dateTo}T${String(queryCondition.selectedHour).padStart(2,'0')}:00:59` : `${queryCondition.dateTo}T23:59:59`,
       limit: 2000,
       depthLabel: sensorCode === '80053' ? queryCondition.depthLabel : undefined,
     }).then((data: any[]) => {
@@ -297,8 +297,8 @@ export default function SensorDetailPage() {
       setDepth1Data([]); setDepth3Data([]); return
     }
     const params = {
-      from: queryCondition.chartMode === 'daily' ? `${queryCondition.dateFrom}T${String(queryCondition.selectedHour).padStart(2,'0')}:00:00` : queryCondition.dateFrom,
-      to:   queryCondition.chartMode === 'daily' ? `${queryCondition.dateTo}T${String(queryCondition.selectedHour).padStart(2,'0')}:00:00` : queryCondition.dateTo,
+      from: queryCondition.chartMode === 'daily' ? `${queryCondition.dateFrom}T${String(queryCondition.selectedHour).padStart(2,'0')}:00:00` : `${queryCondition.dateFrom}T00:00:00`,
+      to:   queryCondition.chartMode === 'daily' ? `${queryCondition.dateTo}T${String(queryCondition.selectedHour).padStart(2,'0')}:00:00` : `${queryCondition.dateTo}T23:59:59`,
       limit: 2000,
     }
     const toVal = (m: any) => parseFloat(((calcMode === 'linear' ? parseFloat(m.linear_value ?? m.value) : parseFloat(m.value)) + (correctionParams['1'] ?? 0)).toFixed(4))
@@ -309,7 +309,7 @@ export default function SensorDetailPage() {
     sensorApi.getMeasurements(Number(id), { ...params, depthLabel: '3' })
       .then((data: any[]) => setDepth3Data(data.map((m: any) => ({ timestamp: m.measured_at, value: toVal3(m) }))))
       .catch(() => {})
-  }, [id, sensorCode, correctionParams, queryCondition])
+  }, [id, sensorCode, depthLabel, correctionParams, queryCondition])
   const [globalInitReading, setGlobalInitReading] = useState<any>(null)
   useEffect(() => {
     if (!id || !sensorCode) return
