@@ -1070,23 +1070,20 @@ export default function SensorDetailPage() {
                 <span className="font-mono text-[11px] text-ink shrink-0 font-medium">보정값</span>
                 <input type="number" step="0.01" min="-100" max="100" placeholder="0.00"
                   value={correctionInput[depthLabel]??(correctionParams[depthLabel]!==undefined&&correctionParams[depthLabel]!==0?String(correctionParams[depthLabel]):'')}
-                  onChange={e=>{ if(!isMultiMonitor) setCorrectionInput(prev=>({...prev,[depthLabel]:e.target.value})) }}
+                  onChange={e=>setCorrectionInput(prev=>({...prev,[depthLabel]:e.target.value}))}
                   onWheel={e=>e.currentTarget.blur()}
-                  readOnly={isMultiMonitor}
-                  className={`w-24 rounded-md border border-brand/40 bg-surface-card px-2 py-1 font-mono text-[11px] text-ink text-right focus:outline-none focus:ring-1 focus:ring-brand/40${isMultiMonitor?' cursor-default opacity-70':''}`} />
+                  className="w-24 rounded-md border border-brand/40 bg-surface-card px-2 py-1 font-mono text-[11px] text-ink text-right focus:outline-none focus:ring-1 focus:ring-brand/40" />
                 <span className="font-mono text-[11px] text-ink-muted shrink-0">{sensor.unit}</span>
-                {!isMultiMonitor && (
-                  <button disabled={correctionSaving}
-                    onClick={async()=>{
-                      const s=correctionInput[depthLabel]??'', v=s===''?0:parseFloat(s)
-                      if(isNaN(v)||v<-100||v>100){alert('보정값은 -100 ~ 100 사이의 숫자만 입력 가능합니다.');return}
-                      const next={...correctionParams,[depthLabel]:v}; setCorrectionSaving(true)
-                      try{await sensorApi.updateInfo(Number(id),{correction_params:next});setCorrectionParams(next);setCorrectionInput(prev=>({...prev,[depthLabel]:String(v)}))}catch{}finally{setCorrectionSaving(false)}
-                    }}
-                    className="rounded-md bg-sensor-normal px-3 py-1 font-mono text-[11px] text-white disabled:opacity-50 whitespace-nowrap">
-                    {correctionSaving?'저장중':'✓ 적용'}
-                  </button>
-                )}
+                <button disabled={correctionSaving}
+                  onClick={async()=>{
+                    const s=correctionInput[depthLabel]??'', v=s===''?0:parseFloat(s)
+                    if(isNaN(v)||v<-100||v>100){alert('보정값은 -100 ~ 100 사이의 숫자만 입력 가능합니다.');return}
+                    const next={...correctionParams,[depthLabel]:v}; setCorrectionSaving(true)
+                    try{await sensorApi.updateInfo(Number(id),{correction_params:next});setCorrectionParams(next);setCorrectionInput(prev=>({...prev,[depthLabel]:String(v)}))}catch{}finally{setCorrectionSaving(false)}
+                  }}
+                  className="rounded-md bg-sensor-normal px-3 py-1 font-mono text-[11px] text-white disabled:opacity-50 whitespace-nowrap">
+                  {correctionSaving?'저장중':'✓ 적용'}
+                </button>
               </div>
             </>
           )}
