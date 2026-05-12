@@ -77,7 +77,7 @@ export default function SensorDetailPage() {
   const [measurements, setMeasurements] = useState<any[]>([])
   const { user } = useAuth()
   const isMultiMonitor = user?.role === 'MultiMonitor'
-  const today = new Date().toISOString().slice(0, 10)
+  const today = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` })()
 
   useEffect(() => {
     if (!id) return
@@ -468,7 +468,7 @@ export default function SensorDetailPage() {
 
   const setPreset = (days: number) => {
     const from = new Date(); from.setDate(from.getDate() - (days - 1))
-    setDateFrom(from.toISOString().slice(0, 10)); setDateTo(today); setTablePage(1)
+    setDateFrom(`${from.getFullYear()}-${String(from.getMonth()+1).padStart(2,'0')}-${String(from.getDate()).padStart(2,'0')}`); setDateTo(today); setTablePage(1)
   }
 
   // ─── 엑셀 ─────────────────────────────────────────────────────────────────

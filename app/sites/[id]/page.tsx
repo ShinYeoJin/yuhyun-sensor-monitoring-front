@@ -91,7 +91,7 @@ export default function SiteDetailPage() {
   const draggingKey = useRef<string | null>(null)
   const dragStart = useRef<{ mx: number; my: number; ix: number; iy: number } | null>(null)
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` })()
   const [dateFrom, setDateFrom] = useState(today)
   const [dateTo, setDateTo] = useState(today)
   const [chartMode, setChartMode] = useState<'hourly' | 'daily'>('hourly')
@@ -296,7 +296,7 @@ export default function SiteDetailPage() {
     if (activeSensorId === sensorId) { const remaining = updated.filter((s: any) => s.site_code === site.site_code); setActiveSensorId(remaining.length > 0 ? remaining[0].id : null); setSensor(null) }
     setShowRemoveSensor(false)
   }
-  const setPreset = (days: number) => { const to = new Date(), from = new Date(); from.setDate(from.getDate() - (days - 1)); setDateTo(to.toISOString().slice(0, 10)); setDateFrom(from.toISOString().slice(0, 10)); setTablePage(1) }
+  const setPreset = (days: number) => { const toD = new Date(), from = new Date(); from.setDate(from.getDate() - (days - 1)); const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; setDateTo(fmt(toD)); setDateFrom(fmt(from)); setTablePage(1) }
   const tableData = useMemo(() => { const source = queryCondition.chartMode === 'hourly' ? measurementsWithGaps : dailyReadings; return [...source].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()) }, [queryCondition.chartMode, measurementsWithGaps, dailyReadings])
   const totalPages = Math.ceil(tableData.length / PAGE_SIZE)
   const pagedTable = tableData.slice((tablePage - 1) * PAGE_SIZE, tablePage * PAGE_SIZE)
