@@ -238,10 +238,10 @@ export default function DashboardPage() {
             <div className="py-8 text-center font-mono text-xs text-ink-muted">등록된 현장이 없습니다.</div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[480px] text-sm">
+              <table className="w-full min-w-[320px] text-sm">
                 <thead>
                   <tr className="border-b border-line bg-surface-subtle">
-                    {['현장명', '현장코드', '위치', '좌표'].map(h => (
+                    {['현장명', '위치'].map(h => (
                       <th key={h} className="px-4 py-2.5 text-left font-mono text-[10px] font-semibold uppercase tracking-wide text-ink-muted">{h}</th>
                     ))}
                   </tr>
@@ -251,13 +251,7 @@ export default function DashboardPage() {
                     <tr key={site.id} onClick={() => router.push(`/sites/${site.id}`)}
                       className="cursor-pointer transition-colors hover:bg-brand/5">
                       <td className="px-4 py-3 font-mono text-sm font-semibold text-brand">{site.name || '—'}</td>
-                      <td className="px-4 py-3 font-mono text-xs text-ink-muted">{site.site_code || '—'}</td>
                       <td className="px-4 py-3 text-xs text-ink-sub">{site.location || '—'}</td>
-                      <td className="px-4 py-3 font-mono text-[11px] text-ink-muted">
-                        {site.latitude && site.longitude
-                          ? <span className="text-sensor-normaltext">📍 {Number(site.latitude).toFixed(4)}, {Number(site.longitude).toFixed(4)}</span>
-                          : <span className="text-sensor-warningtext">⚠ 좌표 미설정</span>}
-                      </td>
                     </tr>
                   ))}
                 </tbody>

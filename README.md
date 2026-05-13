@@ -9,6 +9,7 @@ GeoMonitor는 지반 계측 센서 데이터를 실시간으로 수집·저장·
 
 ## 🔗 배포 URL
 
+
 - **프론트엔드**: https://yuhyun-sensor-monitoring-front.vercel.app
 - **백엔드 API**: https://yuhyun-sensor-monitoring-back.onrender.com
 - **Swagger UI**: https://yuhyun-sensor-monitoring-back.onrender.com/api-docs
@@ -68,16 +69,26 @@ npm run build
 ## 🔐 환경변수
 ```env
 NEXT_PUBLIC_API_URL=https://yuhyun-sensor-monitoring-back.onrender.com
+NEXT_PUBLIC_KAKAO_MAP_KEY=<카카오 JavaScript 키>
+NEXT_PUBLIC_KAKAO_REST_KEY=<카카오 REST API 키>
 ```
+
+> Vercel 배포 환경에서는 프로젝트 설정 → Environment Variables에서 동일하게 등록합니다.
 
 ## 📱 주요 기능
 
 ### 대시보드
 - 전체 센서 현황 KPI 카드 (전체/정상/주의/위험/오프라인)
+- KPI 카드 클릭 시 해당 상태 센서 목록 팝업
 - 최근 알람 목록
 - 1분마다 자동 갱신, 새로고침 버튼
-- **데이터 수신 지연 경고**: 2시간 이상 미수신 시 경고 배너 자동 표시 (센서명 기준)
-- **카카오맵 플레이스홀더**: 카카오 계정 연동 후 현장 위치 및 센서 아이콘 표시 예정 — v1.5.0
+- **데이터 수신 지연 경고**: 2시간 이상 미수신 시 경고 배너 자동 표시
+- **카카오맵 실제 연동** (v1.7.0): 현장 위도/경도 기반 마커 표시, 마커 클릭 → 현장 상세 이동
+  - `siteApi.getAll()`(인증 포함)로 현장 목록 조회 → 마커 자동 생성
+  - 좌표 없는 현장은 마커 미표시 (현장 편집에서 좌표 입력 필요)
+- **현장 목록 표** (v1.7.0): 지도 하단에 전체 현장 수 + 현장 목록 테이블
+  - 컬럼: 현장명 / 위치
+  - 행 클릭 시 현장 상세 이동
 
 ### 센서 관리
 - 모니터링 / 센서 정의 / 계산식 관리 / 재수집 4개 탭
@@ -191,6 +202,24 @@ NEXT_PUBLIC_API_URL=https://yuhyun-sensor-monitoring-back.onrender.com
 - connectNulls=false (데이터 끊김 구간 선 연결 없음)
 - level1Upper/Lower prop으로 depth 전환 시 즉시 반영
 - 다이아몬드 마커, Y축 소수 2자리, 범례
+- **Min/Max 마커** (v1.7.0): 조회 기간 내 최솟값(빨간 원 + Min 말풍선), 최댓값(파란 원 + Max 말풍선) 강조
+
+### 시간별 트렌드 — 실시간 요약 카드 (v1.7.0 신규)
+- 차트 위 드래그 가능한 플로팅 카드
+- 표시 항목: 현재값(최근 정시 데이터) / 최댓값 / 최솟값 / 기준값(globalInitReading)
+- **기준값 대비 변화량 박스**: `현재값 - globalInitReading`
+  - 양수: ↑ N.NNNN단위 + '수위 상승'/'상승' 뱃지 (빨간색)
+  - 음수: ↓ N.NNNN단위 + '수위 하강'/'하강' 뱃지 (파란색)
+  - globalInitReading null 시 — 표시
+- 기간 내 최신값 카드에도 누적 변화량 뱃지 표시 (소수점 2자리)
+
+### 측정 데이터 로그 — 변화량 컬럼 (v1.7.0 개선)
+- **시간별**: 날짜 / 시각 / 측정값 / 누적 변화량 / 상태
+- **일별**: 날짜 / 시각(일평균) / 측정값 / 일일 변화량 / 누적 변화량 / 상태
+  - 누적 변화량 = 현재값 - globalInitReading (고정, 전체 기간 초기치 기준)
+  - 일일 변화량 = 현재값 - 전 측정값
+  - 상승(▲): 빨간색, 하강(▼): 파란색
+- 계산상태 컬럼 삭제
 
 ### 인증 및 토큰 관리
 - 페이지 진입 시마다 `/api/auth/me` 토큰 서버 검증
@@ -207,6 +236,9 @@ NEXT_PUBLIC_API_URL=https://yuhyun-sensor-monitoring-back.onrender.com
 - 현장 추가/편집 모달, PDF 업로드 시 PNG 자동 변환
 - 현장 편집 저장 시 평면도 유지 (floor_plan_url 별도 관리)
 - 페이지 헤더: "현장 추가 및 편집"
+- **위도/경도 입력** (v1.7.0): 직접 입력 또는 주소 자동 검색
+  - 📍 위치로 좌표 자동 검색 버튼: 주소 입력 → 백엔드 `/api/geocode` 프록시 → 위도/경도 자동 입력
+  - 직접 입력 필드도 병행 제공
 
 ### QR 기능
 - QR 모달: 센서명 표시, `/qr/[id]` 로그인 없이 현재 상태 조회
@@ -298,3 +330,25 @@ NEXT_PUBLIC_API_URL=https://yuhyun-sensor-monitoring-back.onrender.com
     - 초기치 행: 엑셀과 동일하게 pdfAllRows 앞에 추가
     - 날짜+시간 포함, dateOnlyKey는 remarks key 전용으로 분리
   - **useRef import 추가** (sensors/page.tsx 빌드 오류 수정)
+- **v1.7.0** (2026.05.08~14)
+  - **MultiMonitor 보정값 권한 분리**: 보정값 input readOnly 처리, 적용 버튼 숨김
+  - **엑셀 보고서 양식 개선**: 5행(관리자/설치위치) 삭제, 값 열 너비 확대 (20→50, 26→56)
+  - **today 날짜 UTC→KST 수정**: `toISOString().slice(0,10)` → 로컬 시간 기준 (자정~오전 8:59 전날 표시 버그 수정)
+  - **hourly 모드 API 파라미터 시간 명시**: `T00:00:00` / `T23:59:59` 추가 (오후 데이터 미수신 방지)
+  - **WL-02 depthLabel 의존성 누락 수정**: depth1/3 fetch useEffect deps에 depthLabel 추가
+  - **ESLint react-hooks/exhaustive-deps error 격상**: useEffect 의존성 누락 시 빌드 오류로 감지
+  - **Sidebar React key prop 경고 수정**: `<>` → `<React.Fragment key={...}>`
+  - **엑셀/PDF 변화량 컬럼 개편**:
+    - 일별: '전측정치대비'→'일일 변화량', '초기치대비'→'누적 변화량', ▲▼ 기호 표기
+    - 시간별: '전측정치대비' 제거, '초기치대비'→'누적 변화량', ▲▼ 기호 표기
+    - PDF 변화량 컬럼 텍스트 색상 적용 (`didParseCell`, 상승 빨강/하강 파랑)
+  - **PDF 현장관리 표 너비 통일**: info 테이블 열 너비 140mm→182mm, margin 맞춤
+  - **실시간 요약 카드**: 차트 위 드래그 가능 플로팅 카드 추가 (현재값/최댓값/최솟값/기준값/기준값 대비 변화량)
+  - **기간 내 최신값 카드 누적 변화량 뱃지** 추가
+  - **SensorTrendChart Min/Max 강조 마커** 추가
+  - **측정 데이터 로그 컬럼 개편**: 누적 변화량 / 일일 변화량 추가, 계산상태 삭제
+  - **기준값 대비 변화량 버그 수정**: globalInitReading null 시 diff=0 반환 → — 표시로 수정
+  - **누적 변화량 소수점 4자리 수정** (N.NNNN)
+  - **대시보드 카카오맵 실제 연동**: 현장 위치 마커 표시, 마커 클릭 → 현장 상세 이동
+  - **대시보드 현장 목록 표 추가**: 총 현장 수, 현장명/위치 컬럼 표시
+  - **현장 편집 모달 위도/경도 자동 검색**: 주소 입력 → `/api/geocode` 프록시 → 좌표 자동 입력
