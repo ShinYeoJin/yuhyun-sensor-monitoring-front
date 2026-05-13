@@ -113,9 +113,9 @@ export default function DashboardPage() {
   }, [])
 
   useEffect(() => {
-    if (sites.length === 0) return  // sites 로드 전에는 실행 안 함
     if (mapInitialized.current) return
-  
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://yuhyun-sensor-monitoring-back.onrender.com'
+    
     const script = document.createElement('script')
     script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}&autoload=false`
     script.async = true
@@ -125,33 +125,37 @@ export default function DashboardPage() {
         mapInitialized.current = true
   
         const map = new window.kakao.maps.Map(mapRef.current, {
-          center: new window.kakao.maps.LatLng(37.5665, 126.9780),
+          center: new window.kakao.maps.LatLng(37.6138, 126.7161),
           level: 10,
         })
   
-        sites.forEach((site: any) => {
-          if (!site.latitude || !site.longitude) return
-  
-          const marker = new window.kakao.maps.Marker({
-            map,
-            position: new window.kakao.maps.LatLng(site.latitude, site.longitude),
-            title: site.name,
+        // sites를 직접 fetch해서 마커 추가
+        fetch(`${apiUrl}/api/sites`)
+          .then(r => r.json())
+          .then((data: any[]) => {
+            if (!Array.isArray(data)) return
+            data.forEach((site: any) => {
+              if (!site.latitude || !site.longitude) return
+              const marker = new window.kakao.maps.Marker({
+                map,
+                position: new window.kakao.maps.LatLng(site.latitude, site.longitude),
+                title: site.name,
+              })
+              const infowindow = new window.kakao.maps.InfoWindow({
+                content: `<div style="padding:6px 10px;font-size:13px;font-weight:600;">${site.name}</div>`,
+              })
+              window.kakao.maps.event.addListener(marker, 'mouseover', () => infowindow.open(map, marker))
+              window.kakao.maps.event.addListener(marker, 'mouseout', () => infowindow.close())
+              window.kakao.maps.event.addListener(marker, 'click', () => {
+                router.push(`/sites/${site.id}`)
+              })
+            })
           })
-  
-          const infowindow = new window.kakao.maps.InfoWindow({
-            content: `<div style="padding:6px 10px;font-size:13px;font-weight:600;">${site.name}</div>`,
-          })
-  
-          window.kakao.maps.event.addListener(marker, 'mouseover', () => infowindow.open(map, marker))
-          window.kakao.maps.event.addListener(marker, 'mouseout', () => infowindow.close())
-          window.kakao.maps.event.addListener(marker, 'click', () => {
-            router.push(`/sites/${site.id}`)
-          })
-        })
+          .catch(() => {})
       })
     }
     document.head.appendChild(script)
-  }, [sites])
+  }, [])
 
   const normalCount  = sensors.filter(s => s.status === 'normal').length
   const warningCount = sensors.filter(s => s.status === 'warning').length
