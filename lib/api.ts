@@ -142,8 +142,8 @@ export const siteApi = {
   getAll: () => request('/api/sites'),
   create: (body: { name: string; location: string; description: string; managers: string[]; floor_plan_url?: string }) =>
     request('/api/sites', { method: 'POST', body: JSON.stringify(body) }),
-  update: (id: number, body: { name: string; location: string; description: string; managers: string[]; floor_plan_url?: string }) =>
-    request(`/api/sites/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  update: (id: number, data: { name: string; location: string; description: string; managers: string[]; floor_plan_url?: string; latitude?: number; longitude?: number }) =>
+    request(`/api/sites/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   delete: (id: number) =>
     request(`/api/sites/${id}`, { method: 'DELETE' }),
 }
