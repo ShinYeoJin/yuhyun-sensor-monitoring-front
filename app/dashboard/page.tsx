@@ -115,7 +115,6 @@ export default function DashboardPage() {
   useEffect(() => {
     console.log('카카오맵 useEffect 실행', mapRef.current, mapInitialized.current)
     if (mapInitialized.current) return
-    if (!mapRef.current) return
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://yuhyun-sensor-monitoring-back.onrender.com'
     
