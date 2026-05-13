@@ -24,9 +24,9 @@ interface SiteWithStatus extends Site {
 }
 
 type SiteForm = {
-  name: string; location: string; description: string; managers: string[]; selectedSensors: number[]; has_floor_plan?: boolean
+  name: string; location: string; description: string; managers: string[]; selectedSensors: number[]; has_floor_plan?: boolean; latitude?: number; longitude?: number
 }
-const emptyForm: SiteForm = { name: '', location: '', description: '', managers: [], selectedSensors: [], has_floor_plan: false }
+const emptyForm: SiteForm = { name: '', location: '', description: '', managers: [], selectedSensors: [], has_floor_plan: false, latitude: undefined, longitude: undefined }
 
 const inputCls = 'w-full rounded-lg border border-line bg-surface-subtle px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-ink-muted focus:border-brand/50 focus:ring-2 focus:ring-brand/10'
 const labelCls = 'mb-1.5 block font-mono text-[10px] font-semibold uppercase tracking-wider text-ink-muted'
@@ -77,6 +77,30 @@ function SiteModal({ mode, form, onChange, onSubmit, onClose, users, sensors, si
           <div>
             <label className={labelCls}>위치 *</label>
             <input type="text" value={form.location} onChange={e => onChange({ ...form, location: e.target.value })} placeholder="서울특별시 마포구" className={inputCls} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className={labelCls}>위도 (Latitude)</label>
+              <input
+                type="number"
+                step="any"
+                value={form.latitude ?? ''}
+                onChange={e => onChange({ ...form, latitude: e.target.value === '' ? undefined : parseFloat(e.target.value) })}
+                className={inputCls}
+                placeholder="예: 37.5665"
+              />
+            </div>
+            <div>
+              <label className={labelCls}>경도 (Longitude)</label>
+              <input
+                type="number"
+                step="any"
+                value={form.longitude ?? ''}
+                onChange={e => onChange({ ...form, longitude: e.target.value === '' ? undefined : parseFloat(e.target.value) })}
+                className={inputCls}
+                placeholder="예: 126.9780"
+              />
+            </div>
           </div>
           <div>
             <label className={labelCls}>설명</label>
@@ -422,7 +446,7 @@ function SitesPageInner() {
   const openAdd  = () => { setForm(emptyForm); setAddOpen(true) }
   const openEdit = (site: any) => {
     const currentSensors = sensors.filter((s: any) => s.site_code === site.site_code).map((s: any) => s.id)
-    setForm({ name: site.name, location: site.location || '', description: site.description || '', managers: site.managers || [], selectedSensors: currentSensors, has_floor_plan: !!site.has_floor_plan })
+    setForm({ name: site.name, location: site.location || '', description: site.description || '', managers: site.managers || [], selectedSensors: currentSensors, has_floor_plan: !!site.has_floor_plan, latitude: site.latitude ?? undefined, longitude: site.longitude ?? undefined })
     setEditTarget(site)
   }
 
@@ -447,7 +471,7 @@ function SitesPageInner() {
   const handleEdit = async () => {
     if (!editTarget) return
     try {
-      await siteApi.update(editTarget.id, { name: form.name, location: form.location, description: form.description, managers: form.managers })
+      await siteApi.update(editTarget.id, { name: form.name, location: form.location, description: form.description, managers: form.managers, latitude: form.latitude, longitude: form.longitude })
       // 센서 소속 현장 변경
       // 선택된 센서 → 현재 현장으로 변경
       await Promise.all(form.selectedSensors.map((sensorId: number) =>
