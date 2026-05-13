@@ -112,9 +112,11 @@ export default function DashboardPage() {
   }, [])
 
   useEffect(() => {
+    if (sites.length === 0) return  // sites 로드 전에는 실행 안 함
     if (mapInitialized.current) return
+  
     const script = document.createElement('script')
-    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}&autoload=false`
+    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}&autoload=false`
     script.async = true
     script.onload = () => {
       window.kakao.maps.load(() => {
@@ -126,7 +128,6 @@ export default function DashboardPage() {
           level: 10,
         })
   
-        // sites 목록에서 위도/경도 있는 현장만 마커 추가
         sites.forEach((site: any) => {
           if (!site.latitude || !site.longitude) return
   
