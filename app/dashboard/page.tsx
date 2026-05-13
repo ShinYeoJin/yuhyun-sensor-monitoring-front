@@ -114,6 +114,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (mapInitialized.current) return
+    if (!mapRef.current) return
+    
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://yuhyun-sensor-monitoring-back.onrender.com'
     
     const script = document.createElement('script')
