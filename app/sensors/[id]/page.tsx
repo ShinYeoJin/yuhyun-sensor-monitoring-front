@@ -485,16 +485,6 @@ export default function SensorDetailPage() {
     return result
   }, [activeMeasurements])
 
-  const baselineVal = useMemo(() => {
-    if (!baselineDate) return initValue
-    const match = activeMeasurements.find(m => {
-      if (m.value === null) return false
-      const d = new Date(m.timestamp)
-      const s = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
-      return s === baselineDate
-    })
-    return match ? parseFloat(String(match.value)) : initValue
-  }, [baselineDate, activeMeasurements, initValue])
 
   const tableDataAsc = useMemo(() =>
     [...(chartMode === 'hourly' ? measurementsWithGaps : dailyReadings)]
@@ -1242,7 +1232,7 @@ export default function SensorDetailPage() {
             const curVal = latestMeasurement?.value!=null ? parseFloat(String(latestMeasurement.value)) : null
             const maxV = vals.length>0 ? Math.max(...vals) : null
             const minV = vals.length>0 ? Math.min(...vals) : null
-            const diff = curVal!=null ? parseFloat((curVal-initValue).toFixed(4)) : null
+            const diff = (curVal!=null && globalInitReading!==null) ? parseFloat((curVal-initValue).toFixed(4)) : null
             return (
               <div style={{position:'absolute',left:summaryPos.x,top:summaryPos.y,zIndex:10,cursor:'grab',userSelect:'none'}}
                 onMouseDown={handleSummaryMouseDown}
@@ -1259,7 +1249,7 @@ export default function SensorDetailPage() {
                     <p className="font-mono text-[8px] text-ink-muted mb-1">기준값 대비 변화량</p>
                     <div className="flex items-center justify-between gap-2">
                       <span className={`font-mono text-sm font-bold ${diff>0?'text-red-500':diff<0?'text-blue-500':'text-ink'}`}>
-                        {diff>0?`↑ ${Math.abs(diff).toFixed(2)}`:diff<0?`↓ ${Math.abs(diff).toFixed(2)}`:'0.00'}{sensor.unit}
+                        {diff>0?`↑ ${Math.abs(diff).toFixed(4)}`:diff<0?`↓ ${Math.abs(diff).toFixed(4)}`:'0.0000'}{sensor.unit}
                       </span>
                       <span className={`text-[8px] font-mono font-semibold px-1.5 py-0.5 rounded-full ${diff>0?'bg-red-100 text-red-600':diff<0?'bg-blue-100 text-blue-600':'bg-surface-subtle text-ink-muted'}`}>
                         {sensorCode==='80053'?(diff>0?'수위 상승':diff<0?'수위 하강':'변화 없음'):(diff>0?'상승':diff<0?'하강':'변화 없음')}
@@ -1318,7 +1308,7 @@ export default function SensorDetailPage() {
               const curVal=isGap?null:parseFloat(String(row.value))
               const rowIdxAsc=tableDataAsc.findIndex((r:any)=>r.timestamp===row.timestamp)
               const prevRow=rowIdxAsc>0?tableDataAsc.slice(0,rowIdxAsc).reverse().find((r:any)=>r.value!==null):null
-              const cumulativeDiff=curVal!=null?parseFloat((curVal-baselineVal).toFixed(4)):null
+              const cumulativeDiff=(curVal!=null&&globalInitReading!==null)?parseFloat((curVal-initValue).toFixed(4)):null
               const dailyDiff=curVal!=null&&prevRow?.value!=null?parseFloat((curVal-parseFloat(String(prevRow.value))).toFixed(4)):null
               const fmtD=(v:number)=>v>0?<span className="text-red-500">▲ {v.toFixed(4)}</span>:v<0?<span className="text-blue-500">▼ {Math.abs(v).toFixed(4)}</span>:<span>0.0000</span>
               return(
