@@ -74,7 +74,7 @@ export default function DashboardPage() {
   const isDataDelayed = (lastMeasured: string | null) => {
     if (!lastMeasured) return true
     const diff = Date.now() - new Date(lastMeasured).getTime()
-    return diff > 2 * 60 * 60 * 1000  // 2시간
+    return diff > 2 * 60 * 60 * 1000
   }
 
   const fetchData = async (isManual = false) => {
@@ -102,22 +102,12 @@ export default function DashboardPage() {
     return () => clearInterval(interval)
   }, [])
 
-  const [sites, setSites] = useState<any[]>([])
-
+  // 카카오맵 초기화
   useEffect(() => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://yuhyun-sensor-monitoring-back.onrender.com'
-    fetch(`${apiUrl}/api/sites`)
-      .then(r => r.json())
-      .then(data => setSites(Array.isArray(data) ? data : []))
-      .catch(() => {})
-  }, [])
-
-  useEffect(() => {
-    console.log('카카오맵 useEffect 실행', mapRef.current, mapInitialized.current)
     if (mapInitialized.current) return
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://yuhyun-sensor-monitoring-back.onrender.com'
-    
+
     const script = document.createElement('script')
     script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}&autoload=false`
     script.async = true
@@ -125,13 +115,12 @@ export default function DashboardPage() {
       window.kakao.maps.load(() => {
         if (!mapRef.current) return
         mapInitialized.current = true
-  
+
         const map = new window.kakao.maps.Map(mapRef.current, {
           center: new window.kakao.maps.LatLng(37.6138, 126.7161),
           level: 10,
         })
-  
-        // sites를 직접 fetch해서 마커 추가
+
         fetch(`${apiUrl}/api/sites`)
           .then(r => r.json())
           .then((data: any[]) => {
@@ -164,7 +153,6 @@ export default function DashboardPage() {
   const dangerCount  = sensors.filter(s => s.status === 'danger').length
   const offlineCount = sensors.filter(s => s.status === 'offline').length
   const totalSensors = sensors.length
-  const activeAlarms = alarms.filter((a: any) => !a.is_acknowledged).length
   const recentAlarms = alarms.slice(0, 5)
   const dangerSensors = sensors.filter(s => s.status === 'danger')
 
@@ -184,14 +172,6 @@ export default function DashboardPage() {
     { filter: 'danger'  as KpiFilter, label: '위험',       value: dangerCount,   sub: '즉시 조치',  topBar: 'bg-sensor-danger',  valCls: 'text-sensor-danger'  },
     { filter: 'offline' as KpiFilter, label: '오프라인',   value: offlineCount,  sub: '점검 필요',  topBar: 'bg-ink-muted',      valCls: 'text-ink-muted'      },
   ]
-
-  if (loading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <p className="font-mono text-sm text-ink-muted">데이터 불러오는 중...</p>
-      </div>
-    )
-  }
 
   return (
     <div className="flex-1 overflow-y-auto bg-surface-page">
@@ -223,19 +203,20 @@ export default function DashboardPage() {
       </div>
 
       <div className="space-y-5 p-4 md:p-6">
+
         {/* 수신 지연 경고 배너 */}
-        {sensors.some((s: any) => isDataDelayed(s.last_measured)) && (
+        {!loading && sensors.some((s: any) => isDataDelayed(s.last_measured)) && (
           <div className="rounded-xl border border-sensor-warningborder bg-sensor-warningbg px-5 py-4">
             <p className="flex items-center gap-2 font-semibold text-sensor-warningtext">
               ⚠ 데이터 수신 지연 감지
             </p>
             <p className="mt-1 text-sm text-sensor-warningtext/80">
-             {sensors.filter((s: any) => isDataDelayed(s.last_measured)).map((s: any) => s.name || s.sensor_code).join(', ')} 센서에서 2시간 이상 데이터가 수신되지 않고 있습니다.
+              {sensors.filter((s: any) => isDataDelayed(s.last_measured)).map((s: any) => s.name || s.sensor_code).join(', ')} 센서에서 2시간 이상 데이터가 수신되지 않고 있습니다.
             </p>
           </div>
         )}
 
-        {/* 지도 영역 (카카오맵) */}
+        {/* 지도 영역 — loading과 무관하게 항상 렌더링 */}
         <div className="rounded-xl border border-line bg-surface-card shadow-card overflow-hidden">
           <div className="flex items-center justify-between border-b border-line px-4 py-3">
             <div className="flex items-center gap-2">
@@ -246,138 +227,146 @@ export default function DashboardPage() {
           <div ref={mapRef} style={{ width: '100%', height: '320px' }} />
         </div>
 
-        {/* KPI 카드 */}
-        <div>
-          <div className="mb-3 flex items-center gap-2">
-            <p className="section-title">시스템 현황</p>
-            <p className="font-mono text-[10px] text-ink-muted">— 카드를 클릭하면 해당 센서 목록을 볼 수 있습니다</p>
+        {/* 로딩 중 */}
+        {loading ? (
+          <div className="flex h-40 items-center justify-center">
+            <p className="font-mono text-sm text-ink-muted">데이터 불러오는 중...</p>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            {kpiCards.map(k => (
-              <KpiCard
-                key={k.filter}
-                label={k.label}
-                value={k.value}
-                sub={k.sub}
-                topBarClass={k.topBar}
-                valueClass={k.valCls}
-                active={kpiFilter === k.filter}
-                onClick={() => handleKpiClick(k.filter)}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* KPI 필터 센서 패널 */}
-        {kpiFilter !== null && (
-          <div className="rounded-xl border border-brand/30 bg-surface-card shadow-cardhover overflow-hidden">
-            <div className="flex items-center justify-between border-b border-line bg-surface-subtle px-4 py-3">
-              <div>
-                <h3 className="text-sm font-semibold text-ink">{kpiFilterLabel[kpiFilter]}</h3>
-                <p className="font-mono text-[10px] text-ink-muted">{filteredSensors.length}개 센서</p>
+        ) : (
+          <>
+            {/* KPI 카드 */}
+            <div>
+              <div className="mb-3 flex items-center gap-2">
+                <p className="section-title">시스템 현황</p>
+                <p className="font-mono text-[10px] text-ink-muted">— 카드를 클릭하면 해당 센서 목록을 볼 수 있습니다</p>
               </div>
-              <div className="flex items-center gap-2">
-                <Link href="/sensors" className="font-mono text-[11px] text-brand hover:underline">
-                  센서 관리 →
-                </Link>
-                <button onClick={() => setKpiFilter(null)}
-                  className="rounded-md p-1 text-ink-muted transition-colors hover:bg-surface-subtle hover:text-ink">
-                  ✕
-                </button>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                {kpiCards.map(k => (
+                  <KpiCard
+                    key={k.filter}
+                    label={k.label}
+                    value={k.value}
+                    sub={k.sub}
+                    topBarClass={k.topBar}
+                    valueClass={k.valCls}
+                    active={kpiFilter === k.filter}
+                    onClick={() => handleKpiClick(k.filter)}
+                  />
+                ))}
               </div>
             </div>
-            {filteredSensors.length === 0 ? (
-              <div className="py-10 text-center font-mono text-sm text-ink-muted">
-                해당하는 센서가 없습니다.
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[480px] text-sm">
-                  <thead>
-                    <tr className="border-b border-line bg-surface-subtle">
-                      {['센서명', '현장', '현재값', '상태', '마지막 측정'].map(h => (
-                        <th key={h} className="px-4 py-2.5 text-left font-mono text-[10px] font-semibold uppercase tracking-wide text-ink-muted">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-line">
-                    {filteredSensors.map((sensor: any) => (
-                      <tr key={sensor.id}
-                        onClick={() => router.push(`/sensors/${sensor.id}`)}
-                        className="cursor-pointer transition-colors hover:bg-brand/5">
-                        <td className="px-4 py-3">
-                        <p className="font-mono text-sm font-semibold text-brand">{sensor.name}</p>
-                        </td>
-                        <td className="px-4 py-3 text-xs text-ink-sub">{sensor.site_name}</td>
-                        <td className="px-4 py-3 font-mono text-sm font-medium text-ink">
-                          {sensor.current_value ? `${sensor.current_value} ${sensor.unit}` : '—'}
-                        </td>
-                        <td className="px-4 py-3">
-                          <StatusBadge status={sensor.status} size="sm" />
-                        </td>
-                        <td className="px-4 py-3 font-mono text-[10px]">
-                          {isDataDelayed(sensor.last_measured) ? (
-                            <span className="flex items-center gap-1 text-sensor-warningtext font-semibold">
-                              ⚠ {sensor.last_measured ? getRelativeTime(sensor.last_measured) : '미수신'}
-                            </span>
-                          ) : (
-                            <span className="text-ink-muted">{getRelativeTime(sensor.last_measured)}</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+
+            {/* KPI 필터 센서 패널 */}
+            {kpiFilter !== null && (
+              <div className="rounded-xl border border-brand/30 bg-surface-card shadow-cardhover overflow-hidden">
+                <div className="flex items-center justify-between border-b border-line bg-surface-subtle px-4 py-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-ink">{kpiFilterLabel[kpiFilter]}</h3>
+                    <p className="font-mono text-[10px] text-ink-muted">{filteredSensors.length}개 센서</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Link href="/sensors" className="font-mono text-[11px] text-brand hover:underline">
+                      센서 관리 →
+                    </Link>
+                    <button onClick={() => setKpiFilter(null)}
+                      className="rounded-md p-1 text-ink-muted transition-colors hover:bg-surface-subtle hover:text-ink">
+                      ✕
+                    </button>
+                  </div>
+                </div>
+                {filteredSensors.length === 0 ? (
+                  <div className="py-10 text-center font-mono text-sm text-ink-muted">
+                    해당하는 센서가 없습니다.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[480px] text-sm">
+                      <thead>
+                        <tr className="border-b border-line bg-surface-subtle">
+                          {['센서명', '현장', '현재값', '상태', '마지막 측정'].map(h => (
+                            <th key={h} className="px-4 py-2.5 text-left font-mono text-[10px] font-semibold uppercase tracking-wide text-ink-muted">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-line">
+                        {filteredSensors.map((sensor: any) => (
+                          <tr key={sensor.id}
+                            onClick={() => router.push(`/sensors/${sensor.id}`)}
+                            className="cursor-pointer transition-colors hover:bg-brand/5">
+                            <td className="px-4 py-3">
+                              <p className="font-mono text-sm font-semibold text-brand">{sensor.name}</p>
+                            </td>
+                            <td className="px-4 py-3 text-xs text-ink-sub">{sensor.site_name}</td>
+                            <td className="px-4 py-3 font-mono text-sm font-medium text-ink">
+                              {sensor.current_value ? `${sensor.current_value} ${sensor.unit}` : '—'}
+                            </td>
+                            <td className="px-4 py-3">
+                              <StatusBadge status={sensor.status} size="sm" />
+                            </td>
+                            <td className="px-4 py-3 font-mono text-[10px]">
+                              {isDataDelayed(sensor.last_measured) ? (
+                                <span className="flex items-center gap-1 text-sensor-warningtext font-semibold">
+                                  ⚠ {sensor.last_measured ? getRelativeTime(sensor.last_measured) : '미수신'}
+                                </span>
+                              ) : (
+                                <span className="text-ink-muted">{getRelativeTime(sensor.last_measured)}</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             )}
-          </div>
-        )}
 
-        {/* 최근 알람 */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="section-title">최근 알람</div>
-            <Link href="/alarms" className="text-xs text-brand hover:underline">전체 보기 →</Link>
-          </div>
-          <div className="geo-card divide-y divide-line overflow-hidden">
-            {recentAlarms.length === 0 ? (
-              <div className="px-4 py-6 text-center font-mono text-xs text-ink-muted">알람이 없습니다.</div>
-            ) : recentAlarms.map((alarm: any) => (
-              <Link key={alarm.id} href="/alarms"
-                className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-surface-subtle">
-                <AlarmBadge severity={alarm.severity} />
-                <div className="min-w-0 flex-1">
-                  <p className="flex items-center gap-1.5">
-                    <span className="font-mono text-xs font-semibold text-brand shrink-0">{alarm.sensor_code}</span>
-                    <span className="truncate text-sm font-medium text-ink">{alarm.sensor_name}</span>
-                  </p>
-                  <p className="truncate text-xs text-ink-sub">{alarm.message}</p>
-                </div>
-                <span className="shrink-0 font-mono text-[10px] text-ink-muted">
-                  {getRelativeTime(alarm.triggered_at)}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        {/* 위험 센서 배너 */}
-        {dangerSensors.length > 0 && (
-          <div className="rounded-xl border border-sensor-dangerborder bg-sensor-dangerbg p-4">
-            <p className="flex items-center gap-2 text-sm font-semibold text-sensor-dangertext">
-              위험 센서 즉시 확인 필요
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {dangerSensors.map((s: any) => (
-                <Link key={s.id} href={`/sensors/${s.id}`}
-                  className="rounded-lg border border-sensor-dangerborder bg-surface-card px-3 py-2 text-sm font-medium text-sensor-dangertext shadow-card transition-colors hover:bg-sensor-dangerbg">
-                  {s.sensor_code} {s.name} → {s.current_value} {s.unit}
-                </Link>
-              ))}
+            {/* 최근 알람 */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="section-title">최근 알람</div>
+                <Link href="/alarms" className="text-xs text-brand hover:underline">전체 보기 →</Link>
+              </div>
+              <div className="geo-card divide-y divide-line overflow-hidden">
+                {recentAlarms.length === 0 ? (
+                  <div className="px-4 py-6 text-center font-mono text-xs text-ink-muted">알람이 없습니다.</div>
+                ) : recentAlarms.map((alarm: any) => (
+                  <Link key={alarm.id} href="/alarms"
+                    className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-surface-subtle">
+                    <AlarmBadge severity={alarm.severity} />
+                    <div className="min-w-0 flex-1">
+                      <p className="flex items-center gap-1.5">
+                        <span className="font-mono text-xs font-semibold text-brand shrink-0">{alarm.sensor_code}</span>
+                        <span className="truncate text-sm font-medium text-ink">{alarm.sensor_name}</span>
+                      </p>
+                      <p className="truncate text-xs text-ink-sub">{alarm.message}</p>
+                    </div>
+                    <span className="shrink-0 font-mono text-[10px] text-ink-muted">
+                      {getRelativeTime(alarm.triggered_at)}
+                    </span>
+                  </Link>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
 
+            {/* 위험 센서 배너 */}
+            {dangerSensors.length > 0 && (
+              <div className="rounded-xl border border-sensor-dangerborder bg-sensor-dangerbg p-4">
+                <p className="flex items-center gap-2 text-sm font-semibold text-sensor-dangertext">
+                  위험 센서 즉시 확인 필요
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {dangerSensors.map((s: any) => (
+                    <Link key={s.id} href={`/sensors/${s.id}`}
+                      className="rounded-lg border border-sensor-dangerborder bg-surface-card px-3 py-2 text-sm font-medium text-sensor-dangertext shadow-card transition-colors hover:bg-sensor-dangerbg">
+                      {s.sensor_code} {s.name} → {s.current_value} {s.unit}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   )
