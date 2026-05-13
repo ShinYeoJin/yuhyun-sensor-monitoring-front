@@ -21,15 +21,28 @@ function CustomTooltip({ active, payload }: TooltipProps<number, string>) {
   )
 }
 
-function DiamondDot(props: any) {
-  const { cx, cy, fill, payload } = props
+
+function MinMaxDot(props: any) {
+  const { cx, cy, payload, index, minIdx, maxIdx, showRegularDot, fill } = props
   if (!cx || !cy || payload?.value === null) return null
-  const size = 4
+  const isMin = index === minIdx
+  const isMax = index === maxIdx
+  if (!isMin && !isMax) {
+    if (!showRegularDot) return null
+    const size = 4
+    return <polygon points={`${cx},${cy-size} ${cx+size},${cy} ${cx},${cy+size} ${cx-size},${cy}`} fill={fill} stroke={fill} strokeWidth={1} />
+  }
+  const color = isMin ? '#EF4444' : '#3B82F6'
+  const label = isMin ? `Min: ${Number(payload.value).toFixed(2)}` : `Max: ${Number(payload.value).toFixed(2)}`
+  const boxW = 64, boxH = 16
+  const boxX = cx - boxW / 2
+  const boxY = isMin ? cy + 10 : cy - 10 - boxH
   return (
-    <polygon
-      points={`${cx},${cy - size} ${cx + size},${cy} ${cx},${cy + size} ${cx - size},${cy}`}
-      fill={fill} stroke={fill} strokeWidth={1}
-    />
+    <g>
+      <circle cx={cx} cy={cy} r={6} fill={color} stroke="white" strokeWidth={2} />
+      <rect x={boxX} y={boxY} width={boxW} height={boxH} rx={3} fill="#111827" fillOpacity={0.85} />
+      <text x={cx} y={boxY + 11} textAnchor="middle" fill="white" fontSize={9} fontFamily="DM Mono, monospace">{label}</text>
+    </g>
   )
 }
 
@@ -83,6 +96,13 @@ export function SensorTrendChart({ sensor, readings, hideXAxis = false, initValu
     : (sensor.criteria?.level1Upper !== '' && sensor.criteria?.level1Upper != null ? parseFloat(sensor.criteria.level1Upper) : null)
   const refLine  = (level1Lower !== null && level1Lower !== undefined && !isNaN(level1Lower)) ? level1Lower : null
   const refLine2 = (level1Upper !== null && level1Upper !== undefined && !isNaN(level1Upper)) ? level1Upper : null
+
+  // Min/Max 인덱스 계산
+  const nonNullVals = data.filter(d => d.value !== null).map(d => d.value as number)
+  const minVal = nonNullVals.length > 0 ? Math.min(...nonNullVals) : null
+  const maxVal = nonNullVals.length > 0 ? Math.max(...nonNullVals) : null
+  const minIdx = minVal !== null ? data.findIndex(d => d.value === minVal) : -1
+  const maxIdx = maxVal !== null ? data.findIndex(d => d.value === maxVal) : -1
 
   // chartWidth/chartHeight 계산 변경
   const MIN_WIDTH_PER_POINT = 12
@@ -171,7 +191,7 @@ export function SensorTrendChart({ sensor, readings, hideXAxis = false, initValu
               dataKey="value"
               stroke="#1D9E75"
               strokeWidth={1.5}
-              dot={data.length <= 200 ? <DiamondDot fill="#1D9E75" /> : false}
+              dot={(props: any) => <MinMaxDot {...props} minIdx={minIdx} maxIdx={maxIdx} showRegularDot={data.length <= 200} fill="#1D9E75" />}
               activeDot={{ r: 4 }}
               isAnimationActive={false}
               connectNulls={false}

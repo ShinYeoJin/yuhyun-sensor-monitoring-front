@@ -271,6 +271,8 @@ export default function SensorDetailPage() {
     dateFrom: today, dateTo: today, chartMode: 'hourly' as 'hourly' | 'daily',
     selectedHour: 12, calcMode: 'linear' as 'linear' | 'poly', depthLabel: '1'
   })
+  const [summaryPos, setSummaryPos] = useState({ x: 40, y: 40 })
+  const [baselineDate, setBaselineDate] = useState<string>('')
 
   // ─── 측정값 로딩 ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -349,6 +351,13 @@ export default function SensorDetailPage() {
         }
       }).catch(() => {})
   }, [id, sensorCode, depthLabel, correctionParams])
+
+  useEffect(() => {
+    if (globalInitReading?.timestamp) {
+      const d = new Date(globalInitReading.timestamp)
+      setBaselineDate(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`)
+    }
+  }, [globalInitReading])
 
   // WL-02: depth1/3 평균값으로 measurements 교체
   const activeMeasurements = useMemo(() => {
@@ -464,11 +473,46 @@ export default function SensorDetailPage() {
     return [...activeMeasurements].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]
   }, [activeMeasurements])
 
+  const baselineDateOptions = useMemo(() => {
+    const seen = new Set<string>()
+    const result: string[] = []
+    ;[...activeMeasurements].sort((a,b) => new Date(a.timestamp).getTime()-new Date(b.timestamp).getTime()).forEach(m => {
+      if (m.value === null) return
+      const d = new Date(m.timestamp)
+      const s = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+      if (!seen.has(s)) { seen.add(s); result.push(s) }
+    })
+    return result
+  }, [activeMeasurements])
+
+  const baselineVal = useMemo(() => {
+    if (!baselineDate) return initValue
+    const match = activeMeasurements.find(m => {
+      if (m.value === null) return false
+      const d = new Date(m.timestamp)
+      const s = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+      return s === baselineDate
+    })
+    return match ? parseFloat(String(match.value)) : initValue
+  }, [baselineDate, activeMeasurements, initValue])
+
+  const tableDataAsc = useMemo(() =>
+    [...(chartMode === 'hourly' ? measurementsWithGaps : dailyReadings)]
+      .sort((a,b) => new Date(a.timestamp).getTime()-new Date(b.timestamp).getTime())
+  , [chartMode, measurementsWithGaps, dailyReadings])
+
   const { thresholdWarning, thresholdDanger } = sensor ? getThresholds(sensor) : { thresholdWarning: 0, thresholdDanger: 0 }
 
   const setPreset = (days: number) => {
     const from = new Date(); from.setDate(from.getDate() - (days - 1))
     setDateFrom(`${from.getFullYear()}-${String(from.getMonth()+1).padStart(2,'0')}-${String(from.getDate()).padStart(2,'0')}`); setDateTo(today); setTablePage(1)
+  }
+
+  const handleSummaryMouseDown = (e: React.MouseEvent) => {
+    const startX = e.clientX - summaryPos.x, startY = e.clientY - summaryPos.y
+    const onMove = (ev: MouseEvent) => setSummaryPos({ x: ev.clientX - startX, y: ev.clientY - startY })
+    const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
+    window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp); e.preventDefault()
   }
 
   // ─── 엑셀 ─────────────────────────────────────────────────────────────────
@@ -570,7 +614,9 @@ export default function SensorDetailPage() {
     mhdr(H1,1,H3,1,'측  정  일'); mhdr(H1,2,H3,2,'경과일'); mhdr(H1,3,H1,5,iconLabel || sensor.manageNo||sensor.name); mhdr(H1,6,H3,6,'비  고')
     mhdr(H2,3,H2,3,`지하수위 G.L(${sensor.unit})`,8,MID); mhdr(H2,4,H2,5,'변화량(m)',8,MID)
     const setHdr = (r:number,c:number,val:string,sz=7,bg=MID) => { const cell=ws2.getCell(r,c); cell.value=val; cell.font=font(true,sz,BLACK); cell.fill=fill(bg); cell.alignment=aln('center','middle',true); cell.border=TB }
-    ws2.getCell(H3,3).fill=fill(MID); ws2.getCell(H3,3).border=TB; setHdr(H3,4,'전측정치대비'); setHdr(H3,5,'초기치대비')
+    ws2.getCell(H3,3).fill=fill(MID); ws2.getCell(H3,3).border=TB
+    if(chartMode==='daily'){setHdr(H3,4,'일일 변화량');setHdr(H3,5,'누적 변화량')}
+    else{setHdr(H3,4,'누적 변화량');const ec=ws2.getCell(H3,5);ec.value='';ec.font=font(true,7,BLACK);ec.fill=fill(MID);ec.alignment=aln('center','middle',true);ec.border=TB}
     allRows.forEach((row:any,i:number) => {
       const isFirst = !!(row.isInitRow) || (i===0 && !initRowData)
       const r=DS+i, rf=isFirst?YELL:(i%2===0?ALT:WHITE), base={fill:fill(rf),border:TB,alignment:aln()}
@@ -588,9 +634,16 @@ export default function SensorDetailPage() {
         const prevValid=allRows.slice(0,i).reverse().find((x:any)=>x.value!==null)
         const prevVal=prevValid?parseFloat(parseFloat(String(prevValid.value)).toFixed(4)):curVal
         const prevDiff=parseFloat((curVal-prevVal).toFixed(4)), initDiff=parseFloat((curVal-parseFloat(initValue.toFixed(4))).toFixed(4))
+        const fmtDiff=(v:number)=>v>0?`▲ ${v.toFixed(4)}`:v<0?`▼ ${Math.abs(v).toFixed(4)}`:'0.0000'
         setD(2,elapsed,font(false,9,BLACK)); setD(3,curVal,font(false,9,BLACK),'0.0000')
-        if(isFirst){setD(4,0,font(false,9,BLACK),'0.0000');setD(5,0,font(false,9,BLACK),'0.0000')}
-        else{setD(4,prevDiff,font(false,9,prevDiff<0?RED:BLUE),'+0.0000;-0.0000;0.0000');setD(5,initDiff,font(false,9,initDiff<0?RED:BLUE),'+0.0000;-0.0000;0.0000')}
+        if(isFirst){setD(4,'0.0000',font(false,9,BLACK));setD(5,'0.0000',font(false,9,BLACK))}
+        else if(chartMode==='daily'){
+          setD(4,fmtDiff(prevDiff),font(false,9,prevDiff<0?BLUE:RED))
+          setD(5,fmtDiff(initDiff),font(false,9,initDiff<0?BLUE:RED))
+        }else{
+          setD(4,fmtDiff(initDiff),font(false,9,initDiff<0?BLUE:RED))
+          const ec=ws2.getCell(r,5);ec.value='';ec.font=font(false,9,BLACK);Object.assign(ec,base)
+        }
         const note=remarks[dateKey]||(isFirst?'초기치':''); const cn=ws2.getCell(r,6); cn.value=note; cn.font=font(isFirst,9,isFirst?RED:BLACK); cn.fill=fill(isFirst?YELL:rf); cn.border=TB; cn.alignment=aln()
       }
     })
@@ -745,16 +798,27 @@ export default function SensorDetailPage() {
 
       doc.setTextColor(0, 0, 0)
     }
-    autoTable(doc,{startY:cy+75,head:[['측정일','경과일',`지하수위 G.L(${sensor.unit})`,'전측정대비','초기치대비','비고']],body:pdfAllRows.map((r:any,i:number)=>{
-      const rd=new Date(r.timestamp),cm=new Date(rd.getFullYear(),rd.getMonth(),rd.getDate()),im=new Date(pdfInitDate.getFullYear(),pdfInitDate.getMonth(),pdfInitDate.getDate()),el=Math.round((cm.getTime()-im.getTime())/86400000),dateOnlyKey=rd.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'}),dk=rd.toLocaleString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:true})
-      if(r.value===null) return[dk,'—','미수신','—','—','']
+    const pdfFmtDiff=(v:number)=>v>0?`▲ ${v.toFixed(4)}`:v<0?`▼ ${Math.abs(v).toFixed(4)}`:'0.0000'
+    const pdfHead=chartMode==='daily'?[['측정일','경과일',`지하수위 G.L(${sensor.unit})`,'일일 변화량','누적 변화량','비고']]:[['측정일','경과일',`지하수위 G.L(${sensor.unit})`,'누적 변화량','비고']]
+    autoTable(doc,{startY:cy+75,head:pdfHead,body:pdfAllRows.map((r:any,i:number)=>{
+      const rd=new Date(r.timestamp),cm=new Date(rd.getFullYear(),rd.getMonth(),rd.getDate()),im=new Date(pdfInitDate.getFullYear(),pdfInitDate.getMonth(),pdfInitDate.getDate()),el=Math.round((cm.getTime()-im.getTime())/86400000),dk=rd.toLocaleString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:true})
+      if(r.value===null) return chartMode==='daily'?[dk,'—','미수신','—','—','']:[dk,'—','미수신','—','']
       const cv=parseFloat(parseFloat(String(r.value)).toFixed(4))
       const prevValid=pdfAllRows.slice(0,i).reverse().find((x:any)=>x.value!==null)
       const pv=prevValid?parseFloat(parseFloat(String(prevValid.value)).toFixed(4)):cv
       const pd=parseFloat((cv-pv).toFixed(4)),id_=parseFloat((cv-initValue).toFixed(4))
       const isFirst=!!(r.isInitRow)||(i===0&&!pdfInitRowData)
-      return[dk,el,cv.toFixed(4),isFirst?'0.0000':(pd>0?`+${pd}`:String(pd)),isFirst?'0.0000':(id_>0?`+${id_}`:String(id_)),isFirst?'초기치':(dateOnlyKey?'':'')]
-    }),theme:'grid',headStyles:{fillColor:[60,80,120],textColor:255,fontSize:8,font:'NanumGothic',fontStyle:'normal'},styles:{fontSize:8,cellPadding:2,font:'NanumGothic'}})
+      if(chartMode==='daily') return[dk,el,cv.toFixed(4),isFirst?'0.0000':pdfFmtDiff(pd),isFirst?'0.0000':pdfFmtDiff(id_),isFirst?'초기치':'']
+      return[dk,el,cv.toFixed(4),isFirst?'0.0000':pdfFmtDiff(id_),isFirst?'초기치':'']
+    }),theme:'grid',headStyles:{fillColor:[60,80,120],textColor:255,fontSize:8,font:'NanumGothic',fontStyle:'normal'},styles:{fontSize:8,cellPadding:2,font:'NanumGothic'},didParseCell:(data:any)=>{
+      if(data.section!=='body') return
+      const text=String(data.cell.text[0]||'')
+      const changeCols=chartMode==='daily'?[3,4]:[3]
+      if(changeCols.includes(data.column.index)){
+        if(text.startsWith('▲')) data.cell.styles.textColor=[220,38,38]
+        else if(text.startsWith('▼')) data.cell.styles.textColor=[37,99,235]
+      }
+    }})
     doc.save(`${iconLabel || sensor.manageNo||sensor.name}_${dateFrom}_${dateTo}.pdf`)
   }
 
@@ -1125,18 +1189,27 @@ export default function SensorDetailPage() {
         {/* 측정값 카드 — 한 줄 */}
         <div className="shrink-0 grid grid-cols-4 gap-1.5 px-3 py-2 border-b border-line">
           {[
-            {label:'기간 내 최신값', value:latestMeasurement?.value},
+            {label:'기간 내 최신값', value:latestMeasurement?.value, showChange:true},
             {label:'초기측정값', value:initValue},
             {label:'최솟값', value:activeMeasurements.length>0?Math.min(...activeMeasurements.filter((m:any)=>m.value!==null).map((m:any)=>m.value)):null},
             {label:'최댓값', value:activeMeasurements.length>0?Math.max(...activeMeasurements.filter((m:any)=>m.value!==null).map((m:any)=>m.value)):null},
-          ].map(({label,value})=>(
+          ].map(({label,value,showChange}:{label:string,value:any,showChange?:boolean})=>{
+            const numVal = value!==null&&value!==undefined ? Number(value) : null
+            const changeVal = showChange&&numVal!==null&&globalInitReading!==null ? parseFloat((numVal-initValue).toFixed(2)) : null
+            return (
             <div key={label} className="rounded-lg border border-line bg-surface-subtle px-2 py-1.5 text-center">
               <p className="font-mono text-[9px] text-ink-muted">{label}</p>
               <p className={`font-mono text-sm font-semibold mt-0.5 ${sensor.status==='danger'?'text-sensor-danger':sensor.status==='warning'?'text-sensor-warning':'text-sensor-normal'}`}>
-                {value!==null&&value!==undefined?Number(value).toFixed(2):'—'}<span className="text-[10px] text-ink-muted ml-0.5">{sensor.unit}</span>
+                {numVal!==null?numVal.toFixed(2):'—'}<span className="text-[10px] text-ink-muted ml-0.5">{sensor.unit}</span>
               </p>
+              {changeVal!==null&&(
+                <span className={`inline-block mt-0.5 text-[8px] font-mono font-semibold px-1.5 py-0.5 rounded-full ${changeVal>0?'bg-red-100 text-red-600':changeVal<0?'bg-blue-100 text-blue-600':'bg-surface-subtle text-ink-muted'}`}>
+                  {changeVal>0?`↑ ${changeVal.toFixed(2)}`:changeVal<0?`↓ ${Math.abs(changeVal).toFixed(2)}`:'0.00'}{sensor.unit}
+                </span>
+              )}
             </div>
-          ))}
+            )
+          })}
         </div>
 
         {/* 게이지 */}
@@ -1161,8 +1234,42 @@ export default function SensorDetailPage() {
         })()}
 
         {/* 차트 — 나머지 공간 전부 */}
-        <div ref={chartRef} className="overflow-hidden" style={{ height: '460px' }}>
+        <div ref={chartRef} className="overflow-hidden relative" style={{ height: '460px' }}>
           <SensorTrendChart sensor={sensor} readings={chartMode==='hourly'?measurementsWithGaps:dailyReadings} initValue={sensorCode==='80053'?initValue:undefined} level1Upper={sensorCode==='80053'?(sensor.criteria?.depthCriteria?.[depthLabel]?.upper??null):(sensor.criteria?.level1Upper??null)} level1Lower={sensorCode==='80053'?(sensor.criteria?.depthCriteria?.[depthLabel]?.lower??null):(sensor.criteria?.level1Lower??null)} />
+          {/* 실시간 요약 카드 */}
+          {(() => {
+            const vals = activeMeasurements.filter((m:any)=>m.value!==null).map((m:any)=>parseFloat(String(m.value)))
+            const curVal = latestMeasurement?.value!=null ? parseFloat(String(latestMeasurement.value)) : null
+            const maxV = vals.length>0 ? Math.max(...vals) : null
+            const minV = vals.length>0 ? Math.min(...vals) : null
+            const diff = curVal!=null ? parseFloat((curVal-initValue).toFixed(4)) : null
+            return (
+              <div style={{position:'absolute',left:summaryPos.x,top:summaryPos.y,zIndex:10,cursor:'grab',userSelect:'none'}}
+                onMouseDown={handleSummaryMouseDown}
+                className="rounded-xl border border-line bg-surface-card/90 backdrop-blur-sm px-3 py-2 shadow-lg min-w-[155px]">
+                <p className="font-mono text-[9px] text-ink-muted font-semibold mb-1.5 text-center border-b border-line/50 pb-1">📊 실시간 요약</p>
+                {[{label:'현재값',value:curVal},{label:'최댓값',value:maxV},{label:'최솟값',value:minV},{label:'기준값',value:globalInitReading!==null?initValue:null}].map(({label,value})=>(
+                  <div key={label} className="flex justify-between items-center gap-3 py-0.5">
+                    <span className="font-mono text-[9px] text-ink-muted">{label}</span>
+                    <span className="font-mono text-[10px] font-medium text-ink">{value!=null?`${Number(value).toFixed(4)} ${sensor.unit}`:'—'}</span>
+                  </div>
+                ))}
+                {diff!=null&&(
+                  <div className={`mt-2 rounded-lg px-2 py-1.5 border ${diff>0?'bg-red-50 border-red-200':diff<0?'bg-blue-50 border-blue-200':'bg-surface-subtle border-line'}`}>
+                    <p className="font-mono text-[8px] text-ink-muted mb-1">기준값 대비 변화량</p>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`font-mono text-sm font-bold ${diff>0?'text-red-500':diff<0?'text-blue-500':'text-ink'}`}>
+                        {diff>0?`↑ ${Math.abs(diff).toFixed(2)}`:diff<0?`↓ ${Math.abs(diff).toFixed(2)}`:'0.00'}{sensor.unit}
+                      </span>
+                      <span className={`text-[8px] font-mono font-semibold px-1.5 py-0.5 rounded-full ${diff>0?'bg-red-100 text-red-600':diff<0?'bg-blue-100 text-blue-600':'bg-surface-subtle text-ink-muted'}`}>
+                        {sensorCode==='80053'?(diff>0?'수위 상승':diff<0?'수위 하강':'변화 없음'):(diff>0?'상승':diff<0?'하강':'변화 없음')}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
         </div>
 
       </div>
@@ -1179,6 +1286,13 @@ export default function SensorDetailPage() {
               return <span className="ml-1 font-mono text-[10px] text-brand">({logLabel})</span>
             })()}
           </h2>
+          <div className="flex items-center gap-1.5">
+            <span className="font-mono text-[9px] text-ink-muted">누적 기준일</span>
+            <select value={baselineDate} onChange={e=>setBaselineDate(e.target.value)}
+              className="rounded-md border border-line bg-surface-card px-1.5 py-0.5 font-mono text-[9px] text-ink focus:outline-none">
+              {baselineDateOptions.map(d=><option key={d} value={d}>{d}</option>)}
+            </select>
+          </div>
           {totalPages>1&&(
             <div className="flex items-center gap-1">
               <button disabled={tablePage===1} onClick={()=>setTablePage(p=>p-1)} className="rounded px-2 py-0.5 font-mono text-[11px] text-ink-muted border border-line disabled:opacity-30 hover:bg-surface-subtle">←</button>
@@ -1189,21 +1303,31 @@ export default function SensorDetailPage() {
         </div>
         <table className="w-full text-xs">
           <thead className="sticky top-[37px] bg-surface-subtle">
-            <tr>{['날짜','시각',`측정값(${sensor.unit})`,'계산상태','상태'].map(h=>(
+            <tr>{(chartMode==='daily'
+              ?['날짜','시각(일평균)',`측정값(${sensor.unit})`,'일일 변화량','누적 변화량','상태']
+              :['날짜','시각',`측정값(${sensor.unit})`,'누적 변화량','상태']
+            ).map(h=>(
               <th key={h} className="border-b border-line px-3 py-1.5 text-left font-mono text-[10px] font-semibold text-ink-muted">{h}</th>
             ))}</tr>
           </thead>
           <tbody>
             {pagedTable.length===0?(
-              <tr><td colSpan={5} className="px-4 py-8 text-center font-mono text-xs text-ink-muted">데이터가 없습니다.</td></tr>
+              <tr><td colSpan={chartMode==='daily'?6:5} className="px-4 py-8 text-center font-mono text-xs text-ink-muted">데이터가 없습니다.</td></tr>
             ):pagedTable.map((row:any,i)=>{
               const isGap=row.status==='gap'||row.value===null; const d=new Date(row.timestamp)
+              const curVal=isGap?null:parseFloat(String(row.value))
+              const rowIdxAsc=tableDataAsc.findIndex((r:any)=>r.timestamp===row.timestamp)
+              const prevRow=rowIdxAsc>0?tableDataAsc.slice(0,rowIdxAsc).reverse().find((r:any)=>r.value!==null):null
+              const cumulativeDiff=curVal!=null?parseFloat((curVal-baselineVal).toFixed(4)):null
+              const dailyDiff=curVal!=null&&prevRow?.value!=null?parseFloat((curVal-parseFloat(String(prevRow.value))).toFixed(4)):null
+              const fmtD=(v:number)=>v>0?<span className="text-red-500">▲ {v.toFixed(4)}</span>:v<0?<span className="text-blue-500">▼ {Math.abs(v).toFixed(4)}</span>:<span>0.0000</span>
               return(
                 <tr key={i} className={isGap?'bg-surface-subtle/50':i%2===0?'':'bg-surface-subtle/30'}>
                   <td className="border-b border-line px-3 py-1.5 font-mono text-[11px] text-ink-muted">{d.toLocaleDateString('ko-KR',{month:'2-digit',day:'2-digit'})}</td>
                   <td className="border-b border-line px-3 py-1.5 font-mono text-[11px] text-ink-muted">{d.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}</td>
                   <td className={`border-b border-line px-3 py-1.5 font-mono text-[11px] font-medium ${isGap?'text-ink-muted':'text-ink'}`}>{isGap?<span className="text-ink-muted">—</span>:`${Number(row.value).toFixed(4)} ${sensor.unit}`}</td>
-                  <td className="border-b border-line px-3 py-1.5 font-mono text-[10px] text-ink-muted">{isGap?'—':(sensorCode==='80053'?`${calcMode==='linear'?'Linear':'Polynomial'} 적용`:'—')}</td>
+                  {chartMode==='daily'&&<td className="border-b border-line px-3 py-1.5 font-mono text-[11px]">{isGap||dailyDiff==null?<span className="text-ink-muted">—</span>:fmtD(dailyDiff)}</td>}
+                  <td className="border-b border-line px-3 py-1.5 font-mono text-[11px]">{isGap||cumulativeDiff==null?<span className="text-ink-muted">—</span>:fmtD(cumulativeDiff)}</td>
                   <td className="border-b border-line px-3 py-1.5">{isGap?<span className="font-mono text-[10px] text-ink-muted">● 미수신</span>:<span className={`font-mono text-[10px] ${row.status==='danger'?'text-sensor-dangertext':row.status==='warning'?'text-sensor-warningtext':'text-sensor-normaltext'}`}>● {row.status==='danger'?'위험':row.status==='warning'?'주의':'정상'}</span>}</td>
                 </tr>
               )
