@@ -109,7 +109,7 @@ export default function DashboardPage() {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://yuhyun-sensor-monitoring-back.onrender.com'
 
     const script = document.createElement('script')
-    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}&autoload=false`
+    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}&autoload=false&libraries=clusterer`
     script.async = true
     script.onload = () => {
       window.kakao.maps.load(() => {
@@ -118,29 +118,36 @@ export default function DashboardPage() {
 
         const map = new window.kakao.maps.Map(mapRef.current, {
           center: new window.kakao.maps.LatLng(37.6138, 126.7161),
-          level: 10,
+          level: 6,
         })
 
         fetch(`${apiUrl}/api/sites`)
           .then(r => r.json())
           .then((data: any[]) => {
             if (!Array.isArray(data)) return
-            data.forEach((site: any) => {
-              if (!site.latitude || !site.longitude) return
-              const marker = new window.kakao.maps.Marker({
-                map,
-                position: new window.kakao.maps.LatLng(site.latitude, site.longitude),
-                title: site.name,
-              })
-              const infowindow = new window.kakao.maps.InfoWindow({
-                content: `<div style="padding:6px 10px;font-size:13px;font-weight:600;">${site.name}</div>`,
-              })
-              window.kakao.maps.event.addListener(marker, 'mouseover', () => infowindow.open(map, marker))
-              window.kakao.maps.event.addListener(marker, 'mouseout', () => infowindow.close())
-              window.kakao.maps.event.addListener(marker, 'click', () => {
-                router.push(`/sites/${site.id}`)
-              })
+            const clusterer = new window.kakao.maps.MarkerClusterer({
+              map,
+              averageCenter: true,
+              minLevel: 4,
             })
+            const markers = data
+              .filter((site: any) => site.latitude && site.longitude)
+              .map((site: any) => {
+                const marker = new window.kakao.maps.Marker({
+                  position: new window.kakao.maps.LatLng(site.latitude, site.longitude),
+                  title: site.name,
+                })
+                const infowindow = new window.kakao.maps.InfoWindow({
+                  content: `<div style="padding:6px 10px;font-size:13px;font-weight:600;">${site.name}</div>`,
+                })
+                window.kakao.maps.event.addListener(marker, 'mouseover', () => infowindow.open(map, marker))
+                window.kakao.maps.event.addListener(marker, 'mouseout', () => infowindow.close())
+                window.kakao.maps.event.addListener(marker, 'click', () => {
+                  router.push(`/sites/${site.id}`)
+                })
+                return marker
+              })
+            clusterer.addMarkers(markers)
           })
           .catch(() => {})
       })

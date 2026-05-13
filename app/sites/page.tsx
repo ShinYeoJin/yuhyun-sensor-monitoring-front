@@ -78,29 +78,66 @@ function SiteModal({ mode, form, onChange, onSubmit, onClose, users, sensors, si
             <label className={labelCls}>위치 *</label>
             <input type="text" value={form.location} onChange={e => onChange({ ...form, location: e.target.value })} placeholder="서울특별시 마포구" className={inputCls} />
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className={labelCls}>위도 (Latitude)</label>
-              <input
-                type="number"
-                step="any"
-                value={form.latitude ?? ''}
-                onChange={e => onChange({ ...form, latitude: e.target.value === '' ? undefined : parseFloat(e.target.value) })}
-                className={inputCls}
-                placeholder="예: 37.5665"
-              />
+          <div>
+            <div className="mb-1.5 flex items-center justify-between">
+              <label className={labelCls + ' mb-0'}>현장 좌표</label>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!form.location.trim()) {
+                    alert('위치를 먼저 입력해주세요.')
+                    return
+                  }
+                  try {
+                    const res = await fetch(
+                      `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(form.location)}`,
+                      { headers: { Authorization: `KakaoAK ${process.env.NEXT_PUBLIC_KAKAO_REST_KEY}` } }
+                    )
+                    const data = await res.json()
+                    if (data.documents && data.documents.length > 0) {
+                      const { x, y } = data.documents[0]
+                      onChange({ ...form, latitude: parseFloat(y), longitude: parseFloat(x) })
+                    } else {
+                      alert('주소를 찾을 수 없습니다. 더 구체적인 주소를 입력해주세요.')
+                    }
+                  } catch {
+                    alert('좌표 검색 중 오류가 발생했습니다.')
+                  }
+                }}
+                className="rounded-lg border border-brand/40 bg-brand/10 px-2.5 py-1 font-mono text-[10px] text-brand hover:bg-brand/20 transition-colors"
+              >
+                📍 위치로 좌표 자동 검색
+              </button>
             </div>
-            <div>
-              <label className={labelCls}>경도 (Longitude)</label>
-              <input
-                type="number"
-                step="any"
-                value={form.longitude ?? ''}
-                onChange={e => onChange({ ...form, longitude: e.target.value === '' ? undefined : parseFloat(e.target.value) })}
-                className={inputCls}
-                placeholder="예: 126.9780"
-              />
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className={labelCls}>위도</label>
+                <input
+                  type="number"
+                  step="any"
+                  value={form.latitude ?? ''}
+                  onChange={e => onChange({ ...form, latitude: e.target.value === '' ? undefined : parseFloat(e.target.value) })}
+                  className={inputCls}
+                  placeholder="자동 입력"
+                />
+              </div>
+              <div>
+                <label className={labelCls}>경도</label>
+                <input
+                  type="number"
+                  step="any"
+                  value={form.longitude ?? ''}
+                  onChange={e => onChange({ ...form, longitude: e.target.value === '' ? undefined : parseFloat(e.target.value) })}
+                  className={inputCls}
+                  placeholder="자동 입력"
+                />
+              </div>
             </div>
+            {form.latitude && form.longitude && (
+              <p className="mt-1 font-mono text-[10px] text-sensor-normaltext">
+                ✓ 좌표 설정됨 ({form.latitude.toFixed(4)}, {form.longitude.toFixed(4)})
+              </p>
+            )}
           </div>
           <div>
             <label className={labelCls}>설명</label>
