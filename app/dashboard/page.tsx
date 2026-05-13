@@ -105,7 +105,8 @@ export default function DashboardPage() {
   const [sites, setSites] = useState<any[]>([])
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/sites`)
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://yuhyun-sensor-monitoring-back.onrender.com'
+    fetch(`${apiUrl}/api/sites`)
       .then(r => r.json())
       .then(data => setSites(Array.isArray(data) ? data : []))
       .catch(() => {})
