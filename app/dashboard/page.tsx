@@ -11,7 +11,7 @@ import { getRelativeTime } from '@/lib/mock-data'
 import { StatusBadge, AlarmBadge } from '@/components/ui/StatusBadge'
 import { useMemo, useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { dashboardApi, sensorApi, alarmApi } from '@/lib/api'
+import { dashboardApi, sensorApi, alarmApi, siteApi } from '@/lib/api'
 
 // ─── KPI 카드 ─────────────────────────────────────────────────────────────────
 function KpiCard({
@@ -64,11 +64,13 @@ export default function DashboardPage() {
   const [dashboard, setDashboard] = useState<any>(null)
   const [sensors,   setSensors]   = useState<any[]>([])
   const [alarms,    setAlarms]    = useState<any[]>([])
+  const [sites,     setSites]     = useState<any[]>([])
   const [kpiFilter, setKpiFilter] = useState<KpiFilter | null>(null)
   const [loading,   setLoading]   = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const router = useRouter()
   const mapRef = useRef<HTMLDivElement>(null)
+  const mapInstanceRef = useRef<any>(null)
   const mapInitialized = useRef(false)
 
   const isDataDelayed = (lastMeasured: string | null) => {
@@ -80,14 +82,16 @@ export default function DashboardPage() {
   const fetchData = async (isManual = false) => {
     if (isManual) setRefreshing(true)
     try {
-      const [dash, sens, alm] = await Promise.all([
+      const [dash, sens, alm, siteList] = await Promise.all([
         dashboardApi.get(),
         sensorApi.getAll(),
         alarmApi.getAll(),
+        siteApi.getAll(),
       ])
       setDashboard(dash)
       setSensors(sens)
       setAlarms(alm)
+      setSites(Array.isArray(siteList) ? siteList : [])
     } catch (err) {
       console.error(err)
     } finally {
@@ -102,12 +106,9 @@ export default function DashboardPage() {
     return () => clearInterval(interval)
   }, [])
 
-  // 카카오맵 초기화
+  // 카카오맵 초기화 (스크립트 1회 로드)
   useEffect(() => {
     if (mapInitialized.current) return
-
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://yuhyun-sensor-monitoring-back.onrender.com'
-
     const script = document.createElement('script')
     script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}&autoload=false`
     script.async = true
@@ -115,38 +116,34 @@ export default function DashboardPage() {
       window.kakao.maps.load(() => {
         if (!mapRef.current) return
         mapInitialized.current = true
-
-        const map = new window.kakao.maps.Map(mapRef.current, {
+        mapInstanceRef.current = new window.kakao.maps.Map(mapRef.current, {
           center: new window.kakao.maps.LatLng(37.6138, 126.7161),
           level: 6,
         })
-
-        fetch(`${apiUrl}/api/sites`)
-          .then(r => r.json())
-          .then((data: any[]) => {
-            if (!Array.isArray(data)) return
-            data.forEach((site: any) => {
-              if (!site.latitude || !site.longitude) return
-              const marker = new window.kakao.maps.Marker({
-                map,
-                position: new window.kakao.maps.LatLng(site.latitude, site.longitude),
-                title: site.name,
-              })
-              const infowindow = new window.kakao.maps.InfoWindow({
-                content: `<div style="padding:6px 10px;font-size:13px;font-weight:600;">${site.name}</div>`,
-              })
-              window.kakao.maps.event.addListener(marker, 'mouseover', () => infowindow.open(map, marker))
-              window.kakao.maps.event.addListener(marker, 'mouseout', () => infowindow.close())
-              window.kakao.maps.event.addListener(marker, 'click', () => {
-                router.push(`/sites/${site.id}`)
-              })
-            })
-          })
-          .catch(() => {})
       })
     }
     document.head.appendChild(script)
   }, [])
+
+  // sites 데이터가 바뀔 때마다 마커 갱신
+  useEffect(() => {
+    if (!mapInstanceRef.current || !window.kakao) return
+    const map = mapInstanceRef.current
+    sites.forEach((site: any) => {
+      if (!site.latitude || !site.longitude) return
+      const marker = new window.kakao.maps.Marker({
+        map,
+        position: new window.kakao.maps.LatLng(site.latitude, site.longitude),
+        title: site.name,
+      })
+      const infowindow = new window.kakao.maps.InfoWindow({
+        content: `<div style="padding:6px 10px;font-size:13px;font-weight:600;">${site.name}</div>`,
+      })
+      window.kakao.maps.event.addListener(marker, 'mouseover', () => infowindow.open(map, marker))
+      window.kakao.maps.event.addListener(marker, 'mouseout', () => infowindow.close())
+      window.kakao.maps.event.addListener(marker, 'click', () => router.push(`/sites/${site.id}`))
+    })
+  }, [sites])
 
   const normalCount  = sensors.filter(s => s.status === 'normal').length
   const warningCount = sensors.filter(s => s.status === 'warning').length
@@ -225,6 +222,48 @@ export default function DashboardPage() {
             </div>
           </div>
           <div ref={mapRef} style={{ width: '100%', height: '320px' }} />
+        </div>
+
+        {/* 현장 목록 표 */}
+        <div className="rounded-xl border border-line bg-surface-card shadow-card overflow-hidden">
+          <div className="flex items-center justify-between border-b border-line px-4 py-3">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">📋</span>
+              <h2 className="text-sm font-semibold text-ink">현장 목록</h2>
+              <span className="rounded-full bg-brand/10 px-2 py-0.5 font-mono text-[10px] font-semibold text-brand">총 {sites.length}개</span>
+            </div>
+            <Link href="/sites" className="font-mono text-[11px] text-brand hover:underline">현장 관리 →</Link>
+          </div>
+          {sites.length === 0 ? (
+            <div className="py-8 text-center font-mono text-xs text-ink-muted">등록된 현장이 없습니다.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[480px] text-sm">
+                <thead>
+                  <tr className="border-b border-line bg-surface-subtle">
+                    {['현장명', '현장코드', '위치', '좌표'].map(h => (
+                      <th key={h} className="px-4 py-2.5 text-left font-mono text-[10px] font-semibold uppercase tracking-wide text-ink-muted">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {sites.map((site: any) => (
+                    <tr key={site.id} onClick={() => router.push(`/sites/${site.id}`)}
+                      className="cursor-pointer transition-colors hover:bg-brand/5">
+                      <td className="px-4 py-3 font-mono text-sm font-semibold text-brand">{site.name || '—'}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-ink-muted">{site.site_code || '—'}</td>
+                      <td className="px-4 py-3 text-xs text-ink-sub">{site.location || '—'}</td>
+                      <td className="px-4 py-3 font-mono text-[11px] text-ink-muted">
+                        {site.latitude && site.longitude
+                          ? <span className="text-sensor-normaltext">📍 {Number(site.latitude).toFixed(4)}, {Number(site.longitude).toFixed(4)}</span>
+                          : <span className="text-sensor-warningtext">⚠ 좌표 미설정</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         {/* 로딩 중 */}
