@@ -89,9 +89,9 @@ function SiteModal({ mode, form, onChange, onSubmit, onClose, users, sensors, si
                     return
                   }
                   try {
+                    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://yuhyun-sensor-monitoring-back.onrender.com'
                     const res = await fetch(
-                      `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(form.location)}`,
-                      { headers: { Authorization: `KakaoAK ${process.env.NEXT_PUBLIC_KAKAO_REST_KEY}` } }
+                      `${apiUrl}/api/geocode?query=${encodeURIComponent(form.location)}`
                     )
                     const data = await res.json()
                     if (data.documents && data.documents.length > 0) {
