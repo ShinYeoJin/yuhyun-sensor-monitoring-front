@@ -51,7 +51,7 @@ export default function QRSensorPage() {
           const corr = (sensor.correctionParams || {})[depth] ?? 0
           return [depth, {
             poly: parseFloat((parseFloat(latest.value) + corr).toFixed(2)),
-            linear: parseFloat((parseFloat(latest.linear_value ?? latest.value) + corr).toFixed(2)),
+            linear: parseFloat(((parseFloat(latest.linear_value) || parseFloat(latest.value)) + corr).toFixed(2)),
           }]
         })
         .catch(() => [depth, null])

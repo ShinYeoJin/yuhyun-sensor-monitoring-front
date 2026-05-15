@@ -7,6 +7,9 @@ import { sensorApi, userApi } from '@/lib/api'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { SensorTrendChart } from '@/components/charts/SensorTrendChart'
 import { QRModal } from '@/components/ui/QRModal'
+import { TrendControlsBar } from '@/components/ui/TrendControlsBar'
+import { MeasurementLogTable } from '@/components/ui/MeasurementLogTable'
+import ThresholdGauge from '@/components/ui/ThresholdGauge'
 import Link from 'next/link'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
@@ -251,15 +254,12 @@ export default function SensorDetailPage() {
   const [selectedHour, setSelectedHour] = useState<number>(12)
   const [chartMode, setChartMode] = useState<'hourly' | 'daily'>('hourly')
   const [depthLabel, setDepthLabel] = useState<'1' | '2' | '3'>('1')
-  const [calcMode,   setCalcMode]   = useState<'poly' | 'linear'>('linear')
   const [correctionParams, setCorrectionParams] = useState<Record<string, number>>({})
   const [correctionInput,  setCorrectionInput]  = useState<Record<string, string>>({})
   const [correctionSaving, setCorrectionSaving] = useState(false)
   const [qrOpen, setQrOpen] = useState(false)
   const [printOpen, setPrintOpen] = useState(false)
-  const [tablePage, setTablePage] = useState(1)
   const [remarks, setRemarks] = useState<Record<string, string>>({})
-  const TABLE_PAGE_SIZE = 15
   const chartRef = useRef<HTMLDivElement>(null)
   const printRef = useRef<HTMLDivElement>(null)
   const [criteriaEditing, setCriteriaEditing] = useState(false)
@@ -269,11 +269,12 @@ export default function SensorDetailPage() {
   const [depth3Data, setDepth3Data] = useState<any[]>([])
   const [queryCondition, setQueryCondition] = useState({
     dateFrom: today, dateTo: today, chartMode: 'hourly' as 'hourly' | 'daily',
-    selectedHour: 12, calcMode: 'linear' as 'linear' | 'poly', depthLabel: '1'
+    selectedHour: 12, depthLabel: '1'
   })
   const [summaryPos, setSummaryPos] = useState({ x: 40, y: 40 })
   const [summaryMinimized, setSummaryMinimized] = useState(false)
-  const [baselineDate, setBaselineDate] = useState<string>('')
+  const [baselineMode, setBaselineMode] = useState<'range' | 'allTime'>('range')
+  const [allTimeOldest, setAllTimeOldest] = useState<{ value: number; timestamp: string } | null>(null)
 
   // ─── 측정값 로딩 ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -287,7 +288,7 @@ export default function SensorDetailPage() {
       const corr = correctionParams[queryCondition.depthLabel] ?? 0
       const mapped = data.map((m: any) => ({
         timestamp: m.measured_at,
-        value: parseFloat(((calcMode === 'poly' ? parseFloat(m.value) : parseFloat(m.linear_value ?? m.value)) + corr).toFixed(4)),
+        value: parseFloat(((parseFloat(m.linear_value) || parseFloat(m.value)) + corr).toFixed(4)),
         unit: sensor?.unit || '', status: 'normal',
       }))
       setMeasurements(mapped.reverse())
@@ -304,8 +305,8 @@ export default function SensorDetailPage() {
       to:   queryCondition.chartMode === 'daily' ? `${queryCondition.dateTo}T${String(queryCondition.selectedHour).padStart(2,'0')}:00:00` : `${queryCondition.dateTo}T23:59:59`,
       limit: 2000,
     }
-    const toVal = (m: any) => parseFloat(((calcMode === 'linear' ? parseFloat(m.linear_value ?? m.value) : parseFloat(m.value)) + (correctionParams['1'] ?? 0)).toFixed(4))
-    const toVal3 = (m: any) => parseFloat(((calcMode === 'linear' ? parseFloat(m.linear_value ?? m.value) : parseFloat(m.value)) + (correctionParams['3'] ?? 0)).toFixed(4))
+    const toVal = (m: any) => parseFloat(((parseFloat(m.linear_value) || parseFloat(m.value)) + (correctionParams['1'] ?? 0)).toFixed(4))
+    const toVal3 = (m: any) => parseFloat(((parseFloat(m.linear_value) || parseFloat(m.value)) + (correctionParams['3'] ?? 0)).toFixed(4))
     sensorApi.getMeasurements(Number(id), { ...params, depthLabel: '1' })
       .then((data: any[]) => setDepth1Data(data.map((m: any) => ({ timestamp: m.measured_at, value: toVal(m) }))))
       .catch(() => {})
@@ -313,52 +314,6 @@ export default function SensorDetailPage() {
       .then((data: any[]) => setDepth3Data(data.map((m: any) => ({ timestamp: m.measured_at, value: toVal3(m) }))))
       .catch(() => {})
   }, [id, sensorCode, depthLabel, correctionParams, queryCondition])
-  const [globalInitReading, setGlobalInitReading] = useState<any>(null)
-  useEffect(() => {
-    if (!id || !sensorCode) return
-    if (sensorCode === '80053' && depthLabel === '2') {
-      // WL-02: depth1/3 가장 오래된 데이터 평균으로 초기값 계산
-      Promise.all([
-        sensorApi.getMeasurements(Number(id), { limit: 2000, depthLabel: '1' }),
-        sensorApi.getMeasurements(Number(id), { limit: 2000, depthLabel: '3' }),
-      ]).then(([d1, d3]) => {
-        const oldest1 = [...d1].sort((a: any, b: any) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime())[0]
-        const oldest3 = [...d3].sort((a: any, b: any) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime())[0]
-        if (oldest1 && oldest3) {
-          const v1 = parseFloat(oldest1.linear_value ?? oldest1.value)
-          const v3 = parseFloat(oldest3.linear_value ?? oldest3.value)
-          const avg = (v1 + v3) / 2
-          const ts = new Date(oldest1.measured_at).getTime() < new Date(oldest3.measured_at).getTime() ? oldest1.measured_at : oldest3.measured_at
-          setGlobalInitReading({
-            value: avg,
-            linear_value: avg,
-            raw_value: avg,  // WL-02는 평균 원시값
-            timestamp: ts
-          })
-        }
-      }).catch(() => {})
-      return
-    }
-    sensorApi.getMeasurements(Number(id), { limit: 2000, depthLabel: sensorCode === '80053' ? depthLabel : undefined })
-      .then((data: any[]) => {
-        if (data.length > 0) {
-          const oldest = [...data].sort((a: any, b: any) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime())[0]
-          setGlobalInitReading({
-            value: parseFloat(oldest.value),
-            linear_value: parseFloat(oldest.linear_value ?? oldest.value),
-            raw_value: parseFloat(oldest.value),  // 원시값 별도 보존
-            timestamp: oldest.measured_at
-          })
-        }
-      }).catch(() => {})
-  }, [id, sensorCode, depthLabel, correctionParams])
-
-  useEffect(() => {
-    if (globalInitReading?.timestamp) {
-      const d = new Date(globalInitReading.timestamp)
-      setBaselineDate(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`)
-    }
-  }, [globalInitReading])
 
   // WL-02: depth1/3 평균값으로 measurements 교체
   const activeMeasurements = useMemo(() => {
@@ -383,6 +338,63 @@ export default function SensorDetailPage() {
       return { timestamp: ts, value: avg, unit: sensor?.unit || '', status: 'normal', calc_status: 'WL-01+WL-03 평균' }
     })
   }, [sensorCode, depthLabel, depth1Data, depth3Data, measurements, sensor?.unit])
+
+  // allTime 모드: 센서 전체 기간 oldest를 별도 fetch (linear_value valid 우선)
+  useEffect(() => {
+    if (baselineMode !== 'allTime' || !id || !sensorCode) { setAllTimeOldest(null); return }
+    const pickOldest = (rows: any[]): any | null => {
+      if (rows.length === 0) return null
+      const sorted = [...rows].sort((a: any, b: any) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime())
+      if (sensorCode === '80053') {
+        const valid = sorted.find((m: any) => { const lv = parseFloat(m.linear_value); return !isNaN(lv) && lv !== 0 })
+        return valid ?? sorted[0]
+      }
+      return sorted[0]
+    }
+    const corr = correctionParams[depthLabel] ?? 0
+    if (sensorCode === '80053' && depthLabel === '2') {
+      Promise.all([
+        sensorApi.getMeasurements(Number(id), { limit: 2000, depthLabel: '1' }),
+        sensorApi.getMeasurements(Number(id), { limit: 2000, depthLabel: '3' }),
+      ]).then(([d1, d3]) => {
+        const o1 = pickOldest(d1), o3 = pickOldest(d3)
+        if (o1 && o3) {
+          const v1 = (parseFloat(o1.linear_value) || parseFloat(o1.value)) + (correctionParams['1'] ?? 0)
+          const v3 = (parseFloat(o3.linear_value) || parseFloat(o3.value)) + (correctionParams['3'] ?? 0)
+          const avg = parseFloat(((v1 + v3) / 2).toFixed(4))
+          const ts = new Date(o1.measured_at).getTime() < new Date(o3.measured_at).getTime() ? o1.measured_at : o3.measured_at
+          setAllTimeOldest({ value: avg, timestamp: ts })
+        }
+      }).catch(() => {})
+      return
+    }
+    sensorApi.getMeasurements(Number(id), { limit: 2000, depthLabel: sensorCode === '80053' ? depthLabel : undefined })
+      .then((data: any[]) => {
+        const oldest = pickOldest(data)
+        if (oldest) {
+          const v = parseFloat(((parseFloat(oldest.linear_value) || parseFloat(oldest.value)) + corr).toFixed(4))
+          setAllTimeOldest({ value: v, timestamp: oldest.measured_at })
+        }
+      }).catch(() => {})
+  }, [baselineMode, id, sensorCode, depthLabel, correctionParams])
+
+  // 기준값(모드에 따라 분기)
+  // - range: 측정 데이터 로그의 시간순 첫 valid row
+  // - allTime: 센서 전체 기간 oldest (allTimeOldest)
+  const globalInitReading = useMemo(() => {
+    if (baselineMode === 'allTime') {
+      if (!allTimeOldest) return null
+      return { value: allTimeOldest.value, linear_value: allTimeOldest.value, raw_value: allTimeOldest.value, timestamp: allTimeOldest.timestamp }
+    }
+    if (activeMeasurements.length === 0) return null
+    const sorted = [...activeMeasurements]
+      .filter((m: any) => m.value !== null && m.value !== undefined && !isNaN(parseFloat(String(m.value))))
+      .sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+    if (sorted.length === 0) return null
+    const oldest = sorted[0]
+    const v = parseFloat(String(oldest.value))
+    return { value: v, linear_value: v, raw_value: v, timestamp: oldest.timestamp }
+  }, [baselineMode, allTimeOldest, activeMeasurements])
 
   // ─── 데이터 공백 구간 처리 ────────────────────────────────────────────────
   const measurementsWithGaps = useMemo(() => {
@@ -464,26 +476,21 @@ export default function SensorDetailPage() {
     }
   }, [sensor, sensorCode, depthLabel])
 
+  // 누적 변화량·실시간 요약·게이지의 기준값은 측정 데이터 로그의 시간순 첫 row를 사용.
   const initValue = useMemo(() => {
     if (!globalInitReading) return 0
-    return parseFloat(String(sensorCode === '80053' && calcMode === 'linear' ? (globalInitReading.linear_value ?? globalInitReading.value) : globalInitReading.value))
-  }, [globalInitReading, sensorCode, calcMode])
+    return globalInitReading.value
+  }, [globalInitReading])
+
+  const baselineDate = useMemo(() => {
+    if (!globalInitReading?.timestamp) return ''
+    const d = new Date(globalInitReading.timestamp)
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+  }, [globalInitReading])
 
   const latestMeasurement = useMemo(() => {
     if (activeMeasurements.length === 0) return null
     return [...activeMeasurements].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]
-  }, [activeMeasurements])
-
-  const baselineDateOptions = useMemo(() => {
-    const seen = new Set<string>()
-    const result: string[] = []
-    ;[...activeMeasurements].sort((a,b) => new Date(a.timestamp).getTime()-new Date(b.timestamp).getTime()).forEach(m => {
-      if (m.value === null) return
-      const d = new Date(m.timestamp)
-      const s = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
-      if (!seen.has(s)) { seen.add(s); result.push(s) }
-    })
-    return result
   }, [activeMeasurements])
 
 
@@ -493,11 +500,6 @@ export default function SensorDetailPage() {
   , [chartMode, measurementsWithGaps, dailyReadings])
 
   const { thresholdWarning, thresholdDanger } = sensor ? getThresholds(sensor) : { thresholdWarning: 0, thresholdDanger: 0 }
-
-  const setPreset = (days: number) => {
-    const from = new Date(); from.setDate(from.getDate() - (days - 1))
-    setDateFrom(`${from.getFullYear()}-${String(from.getMonth()+1).padStart(2,'0')}-${String(from.getDate()).padStart(2,'0')}`); setDateTo(today); setTablePage(1)
-  }
 
   const handleSummaryMouseDown = (e: React.MouseEvent) => {
     const startX = e.clientX - summaryPos.x, startY = e.clientY - summaryPos.y
@@ -548,9 +550,10 @@ export default function SensorDetailPage() {
     }
     const excelSourceRows = chartMode === 'hourly' ? activeMeasurements : dailyReadings
     const sortedRows = [...excelSourceRows].sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-    const initDate = globalInitReading ? new Date(globalInitReading.timestamp) : (sortedRows.length > 0 ? new Date(sortedRows[0].timestamp) : new Date())
-    // 전체 기간 최초 데이터를 초기치 행으로 맨 앞에 추가 (조회 기간과 무관)
-    const initRowData = globalInitReading ? { timestamp: globalInitReading.timestamp, value: initValue, isInitRow: true } : null
+    // 센서 전체 기간의 최초 측정값을 초기치로 사용
+    const initTimestamp = globalInitReading?.timestamp ?? null
+    const initDate = initTimestamp ? new Date(initTimestamp) : (sortedRows.length > 0 ? new Date(sortedRows[0].timestamp) : new Date())
+    const initRowData = initTimestamp ? { timestamp: initTimestamp, value: initValue, isInitRow: true } : null
     const firstInRange = sortedRows[0]
     const initAlreadyInRows = initRowData && firstInRange && Math.abs(new Date(initRowData.timestamp).getTime() - new Date(firstInRange.timestamp).getTime()) < 60000
     const allRows = (initRowData && !initAlreadyInRows) ? [initRowData, ...sortedRows] : sortedRows
@@ -653,9 +656,10 @@ export default function SensorDetailPage() {
     let mt='—'; if(managers.length>0){try{const u=await userApi.getList();mt=managers.map((m:string)=>{const f=u.find((x:any)=>x.username===m);return f?`${f.username} (${f.role})`:m}).join(', ')}catch{mt=managers.join(', ')}}
     const pdfSourceRows = chartMode === 'hourly' ? activeMeasurements : dailyReadings
     const pdfSortedRows=[...pdfSourceRows].sort((a:any,b:any)=>new Date(a.timestamp).getTime()-new Date(b.timestamp).getTime())
-    const pdfInitDate=globalInitReading?new Date(globalInitReading.timestamp):(pdfSortedRows.length>0?new Date(pdfSortedRows[0].timestamp):new Date())
-    // 전체 기간 최초 데이터를 PDF 초기치 행으로 맨 앞에 추가
-    const pdfInitRowData = globalInitReading ? { timestamp: globalInitReading.timestamp, value: initValue, isInitRow: true } : null
+    // 센서 전체 기간의 최초 측정값을 초기치로 사용
+    const pdfInitTimestamp = globalInitReading?.timestamp ?? null
+    const pdfInitDate = pdfInitTimestamp ? new Date(pdfInitTimestamp) : (pdfSortedRows.length>0?new Date(pdfSortedRows[0].timestamp):new Date())
+    const pdfInitRowData = pdfInitTimestamp ? { timestamp: pdfInitTimestamp, value: initValue, isInitRow: true } : null
     const pdfFirstInRange = pdfSortedRows[0]
     const pdfInitAlreadyInRows = pdfInitRowData && pdfFirstInRange && Math.abs(new Date(pdfInitRowData.timestamp).getTime() - new Date(pdfFirstInRange.timestamp).getTime()) < 60000
     const pdfAllRows = (pdfInitRowData && !pdfInitAlreadyInRows) ? [pdfInitRowData, ...pdfSortedRows] : pdfSortedRows
@@ -820,8 +824,6 @@ export default function SensorDetailPage() {
     // 일별 모드에서 미수신은 표시하되 실제 데이터만 카운트
   }, [chartMode, measurementsWithGaps, dailyReadings])
 
-  const totalPages = Math.ceil(tableData.length / TABLE_PAGE_SIZE)
-  const pagedTable = tableData.slice((tablePage-1)*TABLE_PAGE_SIZE, tablePage*TABLE_PAGE_SIZE)
 
   const formulaDisplay = useMemo(() => {
     if (sensorCode !== '80053') return sensor?.formula || '—'
@@ -1073,108 +1075,51 @@ export default function SensorDetailPage() {
           <span className="font-mono text-[11px] font-medium text-brand">{sensor.name}</span>
         </div>
 
-        {/* 컨트롤 영역 — 한 줄 */}
-        <div className="shrink-0 flex items-center gap-2 px-3 py-2.5 border-b border-line flex-wrap">
-          {/* 날짜 범위 */}
-          <div className="flex items-center gap-1">
-            {[['오늘',1],['7일',7],['30일',30]].map(([label,days])=>(
-              <button key={String(label)} onClick={()=>setPreset(Number(days))}
-              className="rounded-md border border-line px-3 py-1 font-mono text-[11px] text-ink-muted hover:bg-surface-subtle hover:text-ink">{label}</button>
-            ))}
-          </div>
-          <input type="date" value={dateFrom} max={today} onChange={e=>{setDateFrom(e.target.value);setTablePage(1)}}
-            className="rounded-md border border-line bg-surface-card px-2 py-1 font-mono text-[11px] text-ink focus:outline-none" />
-          <span className="font-mono text-[10px] text-ink-muted">~</span>
-          <input type="date" value={dateTo} min={dateFrom} max={today} onChange={e=>{setDateTo(e.target.value);setTablePage(1)}}
-            className="rounded-md border border-line bg-surface-card px-2 py-1 font-mono text-[11px] text-ink focus:outline-none" />
-
-          <div className="w-px h-4 bg-line shrink-0" />
-
-          {/* 조회 단위 */}
-          <span className="font-mono text-[10px] text-ink-muted shrink-0">△ 조회 단위</span>
-          <div className="flex gap-1">
-            {['시간별','일별'].map(m=>(
-              <button key={m} onClick={()=>setChartMode(m==='시간별'?'hourly':'daily')}
-                className={['rounded-md border px-3 py-1 font-mono text-[11px]', chartMode===(m==='시간별'?'hourly':'daily')?'border-brand/30 bg-brand/10 text-brand':'border-line text-ink-muted hover:bg-surface-subtle'].join(' ')}>{m}</button>
-            ))}
-          </div>
-
-          {/* 일별 시간 선택 */}
-          {chartMode === 'daily' && (
-            <select value={selectedHour} onChange={e=>setSelectedHour(Number(e.target.value))}
-              className="rounded-md border border-line bg-surface-card px-2 py-0.5 font-mono text-[10px] text-ink focus:outline-none">
-              {Array.from({length:24},(_,i)=>(
-                <option key={i} value={i}>{i < 12 ? `오전 ${i===0?12:i}시` : `오후 ${i===12?12:i-12}시`}</option>
-              ))}
-            </select>
-          )}
-
-          {/* 계산식 (80053 전용) */}
-          {sensorCode==='80053' && (
-            <>
-              <div className="w-px h-4 bg-line shrink-0" />
-              <span className="font-mono text-[10px] text-ink-muted shrink-0">∧ 계산식</span>
-              <div className="flex gap-1">
-                {(isMultiMonitor ? [['Linear','linear']] : [['Linear','linear'],['Polynomial','poly']]).map(([l,v])=>(
-                  <button key={v} onClick={()=>setCalcMode(v as 'linear'|'poly')}
-                    className={['rounded-md border px-3 py-1 font-mono text-[11px]', calcMode===v?'border-brand/30 bg-brand/10 text-brand':'border-line text-ink-muted hover:bg-surface-subtle'].join(' ')}>{l}</button>
-                ))}
-              </div>
-              {/* 보정값 입력 — 계산식 옆 */}
-              <div className="flex items-center gap-1">
-                <span className="font-mono text-[11px] text-ink shrink-0 font-medium">보정값</span>
-                <input type="number" step="0.01" min="-100" max="100" placeholder="0.00"
-                  value={correctionInput[depthLabel]??(correctionParams[depthLabel]!==undefined&&correctionParams[depthLabel]!==0?String(correctionParams[depthLabel]):'')}
-                  onChange={e=>{ if(!isMultiMonitor) setCorrectionInput(prev=>({...prev,[depthLabel]:e.target.value})) }}
-                  onWheel={e=>e.currentTarget.blur()}
-                  readOnly={isMultiMonitor}
-                  className={`w-24 rounded-md border border-brand/40 bg-surface-card px-2 py-1 font-mono text-[11px] text-ink text-right focus:outline-none focus:ring-1 focus:ring-brand/40${isMultiMonitor?' cursor-default opacity-70':''}`} />
-                <span className="font-mono text-[11px] text-ink-muted shrink-0">{sensor.unit}</span>
-                {!isMultiMonitor && (
-                  <button disabled={correctionSaving}
-                    onClick={async()=>{
-                      const s=correctionInput[depthLabel]??'', v=s===''?0:parseFloat(s)
-                      if(isNaN(v)||v<-100||v>100){alert('보정값은 -100 ~ 100 사이의 숫자만 입력 가능합니다.');return}
-                      const next={...correctionParams,[depthLabel]:v}; setCorrectionSaving(true)
-                      try{await sensorApi.updateInfo(Number(id),{correction_params:next});setCorrectionParams(next);setCorrectionInput(prev=>({...prev,[depthLabel]:String(v)}))}catch{}finally{setCorrectionSaving(false)}
-                    }}
-                    className="rounded-md bg-sensor-normal px-3 py-1 font-mono text-[11px] text-white disabled:opacity-50 whitespace-nowrap">
-                    {correctionSaving?'저장중':'✓ 적용'}
-                  </button>
-                )}
-              </div>
-            </>
-          )}
-
-          {/* depth 버튼 (80053 전용) */}
-          {sensorCode==='80053' && (
-            <>
-              <div className="w-px h-4 bg-line shrink-0" />
-              <div className="flex gap-1">
-                {(['1','2','3'] as const).map(d=>{
-                  const depthIcon = icons.find(i => i.key === `${sensor.id}:${d}`)
-                  const btnLabel = depthIcon ? depthIcon.label : `${d}번 수위계`
-                  return (
-                    <button key={d} onClick={() => {
-                      setDepthLabel(d)
-                      setCriteriaEditing(false)
-                      const depthIconKey = `${sensor.id}:${d}`
-                      const depthIcon = icons.find(i => i.key === depthIconKey)
-                      if (depthIcon) setIconLabel(depthIcon.label)
-                    }}
-                      className={['rounded-md border px-3 py-1 font-mono text-[11px]', depthLabel===d?'border-brand/30 bg-brand/10 text-brand font-medium':'border-line text-ink-muted hover:bg-surface-subtle'].join(' ')}>{btnLabel}</button>
-                  )
-                })}
-              </div>
-            </>
-          )}
-
-          {/* WL-01 WL-02 WL-03 버튼 오른쪽에 */}
-          <button 
-            onClick={() => setQueryCondition({ dateFrom, dateTo, chartMode, selectedHour, calcMode, depthLabel })}
-            className="rounded-md bg-brand px-4 py-1 font-mono text-[11px] text-white hover:bg-brand/90">
-            조회
-          </button>
+        {/* 컨트롤 영역 */}
+        <div className="shrink-0 px-3 py-2.5 border-b border-line">
+          <TrendControlsBar
+            today={today}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            onDateFromChange={setDateFrom}
+            onDateToChange={setDateTo}
+            chartMode={chartMode}
+            onChartModeChange={setChartMode}
+            selectedHour={selectedHour}
+            onSelectedHourChange={setSelectedHour}
+            showCorrection={sensorCode === '80053'}
+            correctionInputValue={correctionInput[depthLabel] ?? (correctionParams[depthLabel] !== undefined && correctionParams[depthLabel] !== 0 ? String(correctionParams[depthLabel]) : '')}
+            onCorrectionInputChange={v => { if (!isMultiMonitor) setCorrectionInput(prev => ({ ...prev, [depthLabel]: v })) }}
+            correctionSaving={correctionSaving}
+            correctionUnit={sensor.unit}
+            correctionReadOnly={isMultiMonitor}
+            onCorrectionApply={async () => {
+              const s = correctionInput[depthLabel] ?? ''
+              const v = s === '' ? 0 : parseFloat(s)
+              if (isNaN(v) || v < -100 || v > 100) { alert('보정값은 -100 ~ 100 사이의 숫자만 입력 가능합니다.'); return }
+              const next = { ...correctionParams, [depthLabel]: v }
+              setCorrectionSaving(true)
+              try { await sensorApi.updateInfo(Number(id), { correction_params: next }); setCorrectionParams(next); setCorrectionInput(prev => ({ ...prev, [depthLabel]: String(v) })) } catch {} finally { setCorrectionSaving(false) }
+            }}
+            depthOptions={sensorCode === '80053' ? (['1','2','3'] as const).map(d => {
+              const depthIcon = icons.find(i => i.key === `${sensor.id}:${d}`)
+              return { value: d, label: depthIcon ? depthIcon.label : `${d}번 수위계` }
+            }) : undefined}
+            depthLabel={depthLabel}
+            onDepthLabelChange={d => {
+              setDepthLabel(d)
+              setCriteriaEditing(false)
+              const depthIcon = icons.find(i => i.key === `${sensor.id}:${d}`)
+              if (depthIcon) setIconLabel(depthIcon.label)
+            }}
+            showBaseline={globalInitReading !== null}
+            baselineDate={baselineDate}
+            baselineValueText={globalInitReading !== null ? `${initValue.toFixed(4)} ${sensor.unit}` : undefined}
+            baselineMode={baselineMode}
+            onBaselineModeChange={setBaselineMode}
+            onReset={() => { setDateFrom(today); setDateTo(today); setChartMode('hourly'); setSelectedHour(12) }}
+            onQuery={() => setQueryCondition({ dateFrom, dateTo, chartMode, selectedHour, depthLabel })}
+          />
         </div>
 
         {/* 측정값 카드 — 한 줄 */}
@@ -1188,14 +1133,14 @@ export default function SensorDetailPage() {
             const numVal = value!==null&&value!==undefined ? Number(value) : null
             const changeVal = showChange&&numVal!==null&&globalInitReading!==null ? parseFloat((numVal-initValue).toFixed(2)) : null
             return (
-            <div key={label} className="rounded-lg border border-line bg-surface-subtle px-2 py-1.5 text-center">
+            <div key={label} className="relative rounded-lg border border-line bg-surface-subtle px-2 py-1.5 text-center">
               <p className="font-mono text-[9px] text-ink-muted">{label}</p>
               <p className={`font-mono text-sm font-semibold mt-0.5 ${sensor.status==='danger'?'text-sensor-danger':sensor.status==='warning'?'text-sensor-warning':'text-sensor-normal'}`}>
                 {numVal!==null?numVal.toFixed(2):'—'}<span className="text-[10px] text-ink-muted ml-0.5">{sensor.unit}</span>
               </p>
               {changeVal!==null&&(
-                <span className={`inline-block mt-0.5 text-[8px] font-mono font-semibold px-1.5 py-0.5 rounded-full ${changeVal>0?'bg-red-100 text-red-600':changeVal<0?'bg-blue-100 text-blue-600':'bg-surface-subtle text-ink-muted'}`}>
-                  {changeVal>0?`↑ ${changeVal.toFixed(2)}`:changeVal<0?`↓ ${Math.abs(changeVal).toFixed(2)}`:'0.00'}{sensor.unit}
+                <span className={`absolute top-1 right-1 text-[8px] font-mono font-semibold px-1.5 py-0.5 rounded-full leading-none ${changeVal>0?'bg-red-100 text-red-600':changeVal<0?'bg-blue-100 text-blue-600':'bg-surface-subtle text-ink-muted'}`}>
+                  {changeVal>0?`↑${changeVal.toFixed(2)}`:changeVal<0?`↓${Math.abs(changeVal).toFixed(2)}`:'0.00'}
                 </span>
               )}
             </div>
@@ -1204,25 +1149,14 @@ export default function SensorDetailPage() {
         </div>
 
         {/* 게이지 */}
-        {(level1Lower!==null||level1Upper!==null)&&latestMeasurement&&(()=>{
-          const lo = level1Lower as number, hi = level1Upper as number
-          const val = latestMeasurement.value
-          const pct = lo !== null && hi !== null ? Math.max(0, Math.min(1, (val - lo) / (hi - lo))) : 0.5
-          const isNormalRange = pct >= 0 && pct <= 1
-          return (
-            <div className="shrink-0 px-3 py-1.5 border-b border-line">
-              <div className="flex justify-between font-mono text-[9px] mb-1">
-                <span className="text-sensor-normaltext font-medium">정상 구간</span>
-                <span className="text-sensor-warningtext font-medium">경고</span>
-              </div>
-              <div className="relative h-2.5 rounded-full overflow-hidden" style={{background:'#f9d0d0'}}>
-                <div className="absolute left-0 top-0 h-full rounded-full bg-sensor-normal/30" style={{width:'100%'}} />
-                <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full border-2 border-white shadow-md transition-all"
-                  style={{left:`${pct*100}%`, background: isNormalRange ? '#22c55e' : '#ef4444'}} />
-              </div>
-            </div>
-          )
-        })()}
+        <ThresholdGauge
+          value={latestMeasurement?.value ?? null}
+          lower={level1Lower}
+          upper={level1Upper}
+          unit={sensor.unit}
+          depthLabel={sensorCode === '80053' ? (icons.find(i => i.key === `${sensor.id}:${depthLabel}`)?.label || `${depthLabel}번 수위계`) : undefined}
+          baseline={globalInitReading !== null ? initValue : null}
+        />
 
         {/* 차트 — 나머지 공간 전부 */}
         <div ref={chartRef} className="overflow-hidden relative" style={{ height: '460px' }}>
@@ -1273,65 +1207,21 @@ export default function SensorDetailPage() {
       </div>
 
       {/* 하단: 측정 데이터 로그 */}
-      <div className="shrink-0 border-t border-line">
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-surface-card px-4 py-2">
-          <h2 className="text-xs font-semibold text-ink">
-            측정 데이터 로그
-            <span className="ml-2 font-mono text-[10px] text-ink-muted">총 {tableData.length}건</span>
-            {sensorCode==='80053'&&(()=>{
-              const depthIcon = icons.find(i => i.key === `${sensor.id}:${depthLabel}`)
-              const logLabel = depthIcon ? depthIcon.label : `${depthLabel}번 수위계`
-              return <span className="ml-1 font-mono text-[10px] text-brand">({logLabel})</span>
-            })()}
-          </h2>
-          <div className="flex items-center gap-1.5">
-            <span className="font-mono text-[9px] text-ink-muted">누적 기준일</span>
-            <select value={baselineDate} onChange={e=>setBaselineDate(e.target.value)}
-              className="rounded-md border border-line bg-surface-card px-1.5 py-0.5 font-mono text-[9px] text-ink focus:outline-none">
-              {baselineDateOptions.map(d=><option key={d} value={d}>{d}</option>)}
-            </select>
-          </div>
-          {totalPages>1&&(
-            <div className="flex items-center gap-1">
-              <button disabled={tablePage===1} onClick={()=>setTablePage(p=>p-1)} className="rounded px-2 py-0.5 font-mono text-[11px] text-ink-muted border border-line disabled:opacity-30 hover:bg-surface-subtle">←</button>
-              <span className="font-mono text-[11px] text-ink-muted">{tablePage}/{totalPages}</span>
-              <button disabled={tablePage===totalPages} onClick={()=>setTablePage(p=>p+1)} className="rounded px-2 py-0.5 font-mono text-[11px] text-ink-muted border border-line disabled:opacity-30 hover:bg-surface-subtle">→</button>
-            </div>
-          )}
-        </div>
-        <table className="w-full text-xs">
-          <thead className="sticky top-[37px] bg-surface-subtle">
-            <tr>{(chartMode==='daily'
-              ?['날짜','시각(일평균)',`측정값(${sensor.unit})`,'일일 변화량','누적 변화량','상태']
-              :['날짜','시각',`측정값(${sensor.unit})`,'누적 변화량','상태']
-            ).map(h=>(
-              <th key={h} className="border-b border-line px-3 py-1.5 text-left font-mono text-[10px] font-semibold text-ink-muted">{h}</th>
-            ))}</tr>
-          </thead>
-          <tbody>
-            {pagedTable.length===0?(
-              <tr><td colSpan={chartMode==='daily'?6:5} className="px-4 py-8 text-center font-mono text-xs text-ink-muted">데이터가 없습니다.</td></tr>
-            ):pagedTable.map((row:any,i)=>{
-              const isGap=row.status==='gap'||row.value===null; const d=new Date(row.timestamp)
-              const curVal=isGap?null:parseFloat(String(row.value))
-              const rowIdxAsc=tableDataAsc.findIndex((r:any)=>r.timestamp===row.timestamp)
-              const prevRow=rowIdxAsc>0?tableDataAsc.slice(0,rowIdxAsc).reverse().find((r:any)=>r.value!==null):null
-              const cumulativeDiff=(curVal!=null&&globalInitReading!==null)?parseFloat((curVal-initValue).toFixed(4)):null
-              const dailyDiff=curVal!=null&&prevRow?.value!=null?parseFloat((curVal-parseFloat(String(prevRow.value))).toFixed(4)):null
-              const fmtD=(v:number)=>v>0?<span className="text-red-500">▲ {v.toFixed(4)}</span>:v<0?<span className="text-blue-500">▼ {Math.abs(v).toFixed(4)}</span>:<span>0.0000</span>
-              return(
-                <tr key={i} className={isGap?'bg-surface-subtle/50':i%2===0?'':'bg-surface-subtle/30'}>
-                  <td className="border-b border-line px-3 py-1.5 font-mono text-[11px] text-ink-muted">{d.toLocaleDateString('ko-KR',{month:'2-digit',day:'2-digit'})}</td>
-                  <td className="border-b border-line px-3 py-1.5 font-mono text-[11px] text-ink-muted">{d.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}</td>
-                  <td className={`border-b border-line px-3 py-1.5 font-mono text-[11px] font-medium ${isGap?'text-ink-muted':'text-ink'}`}>{isGap?<span className="text-ink-muted">—</span>:`${Number(row.value).toFixed(4)} ${sensor.unit}`}</td>
-                  {chartMode==='daily'&&<td className="border-b border-line px-3 py-1.5 font-mono text-[11px]">{isGap||dailyDiff==null?<span className="text-ink-muted">—</span>:fmtD(dailyDiff)}</td>}
-                  <td className="border-b border-line px-3 py-1.5 font-mono text-[11px]">{isGap||cumulativeDiff==null?<span className="text-ink-muted">—</span>:fmtD(cumulativeDiff)}</td>
-                  <td className="border-b border-line px-3 py-1.5">{isGap?<span className="font-mono text-[10px] text-ink-muted">● 미수신</span>:<span className={`font-mono text-[10px] ${row.status==='danger'?'text-sensor-dangertext':row.status==='warning'?'text-sensor-warningtext':'text-sensor-normaltext'}`}>● {row.status==='danger'?'위험':row.status==='warning'?'주의':'정상'}</span>}</td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+      <div className="shrink-0 border-t border-line bg-surface-subtle/30 px-3 py-3">
+        <MeasurementLogTable
+          tableData={tableData}
+          tableDataAsc={tableDataAsc}
+          chartMode={chartMode}
+          unit={sensor.unit}
+          sensorCode={sensorCode}
+          logLabel={sensorCode === '80053' ? (icons.find(i => i.key === `${sensor.id}:${depthLabel}`)?.label || `${depthLabel}번 수위계`) : undefined}
+          globalInitReading={globalInitReading}
+          initValue={initValue}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          baselineDate={baselineDate}
+          correctionValue={sensorCode === '80053' ? (correctionInput[depthLabel] ?? (correctionParams[depthLabel] !== undefined && correctionParams[depthLabel] !== 0 ? String(correctionParams[depthLabel]) : '')) : undefined}
+        />
       </div>
 
       {/* 모달 */}
