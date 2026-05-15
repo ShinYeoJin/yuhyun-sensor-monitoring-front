@@ -191,7 +191,10 @@ export function SensorTrendChart({ sensor, readings, hideXAxis = false, initValu
               dataKey="value"
               stroke="#1D9E75"
               strokeWidth={1.5}
-              dot={(props: any) => <MinMaxDot {...props} minIdx={minIdx} maxIdx={maxIdx} showRegularDot={data.length <= 200} fill="#1D9E75" />}
+              dot={(props: any) => {
+                const { key, ...rest } = props
+                return <MinMaxDot key={key} {...rest} minIdx={minIdx} maxIdx={maxIdx} showRegularDot={data.length <= 200} fill="#1D9E75" />
+              }}
               activeDot={{ r: 4 }}
               isAnimationActive={false}
               connectNulls={false}

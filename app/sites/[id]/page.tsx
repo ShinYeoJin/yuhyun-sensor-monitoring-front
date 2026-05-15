@@ -121,6 +121,7 @@ export default function SiteDetailPage() {
     selectedHour: 12, calcMode: 'linear' as 'linear' | 'poly', depthLabel: '1' as '1'|'2'|'3'
   })
   const [summaryPos, setSummaryPos] = useState({ x: 40, y: 40 })
+  const [summaryMinimized, setSummaryMinimized] = useState(false)
   const [baselineDate, setBaselineDate] = useState<string>('')
 
   const saveIconPositions = useCallback(async (nextIcons: typeof icons) => {
@@ -687,27 +688,34 @@ export default function SiteDetailPage() {
                   return (
                     <div style={{position:'absolute',left:summaryPos.x,top:summaryPos.y,zIndex:10,cursor:'grab',userSelect:'none'}}
                       onMouseDown={handleSummaryMouseDown}
-                      className="rounded-xl border border-line bg-surface-card/90 backdrop-blur-sm px-3 py-2 shadow-lg min-w-[155px]">
-                      <p className="font-mono text-[9px] text-ink-muted font-semibold mb-1.5 text-center border-b border-line/50 pb-1">📊 실시간 요약</p>
-                      {[{label:'현재값',value:curVal},{label:'최댓값',value:maxV},{label:'최솟값',value:minV},{label:'기준값',value:globalInitReading!==null?initValue:null}].map(({label,value})=>(
-                        <div key={label} className="flex justify-between items-center gap-3 py-0.5">
-                          <span className="font-mono text-[9px] text-ink-muted">{label}</span>
-                          <span className="font-mono text-[10px] font-medium text-ink">{value!=null?`${Number(value).toFixed(4)} ${sensor?.unit}`:'—'}</span>
-                        </div>
-                      ))}
-                      {diff!=null&&(
-                        <div className={`mt-2 rounded-lg px-2 py-1.5 border ${diff>0?'bg-red-50 border-red-200':diff<0?'bg-blue-50 border-blue-200':'bg-surface-subtle border-line'}`}>
-                          <p className="font-mono text-[8px] text-ink-muted mb-1">기준값 대비 변화량</p>
-                          <div className="flex items-center justify-between gap-2">
-                            <span className={`font-mono text-sm font-bold ${diff>0?'text-red-500':diff<0?'text-blue-500':'text-ink'}`}>
-                              {diff>0?`↑ ${Math.abs(diff).toFixed(4)}`:diff<0?`↓ ${Math.abs(diff).toFixed(4)}`:'0.0000'}{sensor?.unit}
-                            </span>
-                            <span className={`text-[8px] font-mono font-semibold px-1.5 py-0.5 rounded-full ${diff>0?'bg-red-100 text-red-600':diff<0?'bg-blue-100 text-blue-600':'bg-surface-subtle text-ink-muted'}`}>
-                              {sensorCode==='80053'?(diff>0?'수위 상승':diff<0?'수위 하강':'변화 없음'):(diff>0?'상승':diff<0?'하강':'변화 없음')}
-                            </span>
+                      className={`rounded-xl border border-line bg-surface-card/90 backdrop-blur-sm px-3 py-2 shadow-lg ${summaryMinimized?'':'min-w-[200px]'}`}>
+                      <div className={`relative ${summaryMinimized?'':'mb-2.5 border-b border-line/50 pt-2.5 pb-3'}`}>
+                        <p className="font-mono text-[11px] text-ink-muted font-semibold text-center pr-7">📊 실시간 요약</p>
+                        <button onMouseDown={(e)=>e.stopPropagation()} onClick={()=>setSummaryMinimized(v=>!v)}
+                          className="absolute right-0 top-1/2 -translate-y-1/2 font-mono text-[13px] font-bold text-ink leading-none w-6 h-6 flex items-center justify-center cursor-pointer rounded-md border border-line bg-white shadow-sm hover:bg-ink hover:text-white hover:border-ink transition-colors"
+                          title={summaryMinimized?'펼치기':'최소화'}>{summaryMinimized?'+':'−'}</button>
+                      </div>
+                      {!summaryMinimized&&(<>
+                        {[{label:'현재값',value:curVal},{label:'최댓값',value:maxV},{label:'최솟값',value:minV},{label:'기준값',value:globalInitReading!==null?initValue:null}].map(({label,value})=>(
+                          <div key={label} className="flex justify-between items-center gap-3 py-0.5">
+                            <span className="font-mono text-[11px] text-ink-muted">{label}</span>
+                            <span className="font-mono text-[12px] font-medium text-ink">{value!=null?`${Number(value).toFixed(4)} ${sensor?.unit}`:'—'}</span>
                           </div>
-                        </div>
-                      )}
+                        ))}
+                        {diff!=null&&(
+                          <div className={`mt-2 rounded-lg px-2 py-1.5 border ${diff>0?'bg-red-50 border-red-200':diff<0?'bg-blue-50 border-blue-200':'bg-surface-subtle border-line'}`}>
+                            <p className="font-mono text-[10px] text-ink-muted mb-1">기준값 대비 변화량</p>
+                            <div className="flex items-center justify-between gap-2">
+                              <span className={`font-mono text-lg font-bold ${diff>0?'text-red-500':diff<0?'text-blue-500':'text-ink'}`}>
+                                {diff>0?`↑ ${Math.abs(diff).toFixed(4)}`:diff<0?`↓ ${Math.abs(diff).toFixed(4)}`:'0.0000'}{sensor?.unit}
+                              </span>
+                              <span className={`text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded-full ${diff>0?'bg-red-100 text-red-600':diff<0?'bg-blue-100 text-blue-600':'bg-surface-subtle text-ink-muted'}`}>
+                                {sensorCode==='80053'?(diff>0?'수위 상승':diff<0?'수위 하강':'변화 없음'):(diff>0?'상승':diff<0?'하강':'변화 없음')}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </>)}
                     </div>
                   )
                 })()}
