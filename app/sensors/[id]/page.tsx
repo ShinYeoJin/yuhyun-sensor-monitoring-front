@@ -419,39 +419,41 @@ export default function SensorDetailPage() {
   }, [activeMeasurements, sensor?.unit, dateFrom, dateTo])
 
   const dailyReadings = useMemo(() => {
+    const localDateKey = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+
     if (chartMode !== 'daily') {
-      // 시간별 모드: 날짜별 대표값 (기존 방식)
+      // 시간별 모드: 날짜별 대표값
       const map = new Map<string, any>()
       const sorted = [...measurements].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-      sorted.forEach(m => {
-        const date = new Date(m.timestamp).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
-        map.set(date, m)
-      })
+      sorted.forEach(m => { map.set(localDateKey(new Date(m.timestamp)), m) })
       return Array.from(map.values())
     }
-    // 일별 모드: 선택한 시간(selectedHour)에 해당하는 데이터만
-    const targetHour = selectedHour
+
+    // 일별 모드: selectedHour 시각의 데이터만 날짜별 1행으로
     const dataMap = new Map<string, any>()
     activeMeasurements.forEach(m => {
       const t = new Date(m.timestamp)
-      if (t.getHours() === queryCondition.selectedHour) {
-        const dateKey = t.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
-        if (!dataMap.has(dateKey)) dataMap.set(dateKey, m)
-      }
+      if (t.getHours() !== queryCondition.selectedHour) return
+      const key = localDateKey(t)
+      if (!dataMap.has(key)) dataMap.set(key, m)
     })
-    // 선택 날짜 범위 전체를 슬롯으로 생성 (없는 날짜는 미수신)
-    const slots: any[] = []
-    const from = new Date(queryCondition.dateFrom + 'T00:00:00')
+
+    // 선택 범위를 로컬 날짜 기준으로 1일씩 순회
+    const [fy, fm, fd] = queryCondition.dateFrom.split('-').map(Number)
+    const [ty, tm, td] = queryCondition.dateTo.split('-').map(Number)
+    const startCur = new Date(fy, fm-1, fd, 0, 0, 0, 0)
+    const endLimit = new Date(ty, tm-1, td, 23, 59, 59, 999)
     const now2 = new Date()
-    const toEnd = new Date(queryCondition.dateTo + 'T23:59:59')
-    const to = toEnd > now2 ? now2 : toEnd
-    let cur = new Date(from)
-    while (cur <= to) {
-      const dateKey = cur.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
-      if (dataMap.has(dateKey)) {
-        slots.push(dataMap.get(dateKey))
+    const endActual = endLimit > now2 ? now2 : endLimit
+
+    const slots: any[] = []
+    const cur = new Date(startCur)
+    while (cur <= endActual) {
+      const key = localDateKey(cur)
+      if (dataMap.has(key)) {
+        slots.push(dataMap.get(key))
       } else {
-        // 해당 날짜 selectedHour 시각으로 미수신 슬롯 생성
         const gapTime = new Date(cur)
         gapTime.setHours(queryCondition.selectedHour, 0, 0, 0)
         slots.push({ timestamp: gapTime.toISOString(), value: null, unit: sensor?.unit || '', status: 'gap' })
@@ -459,7 +461,7 @@ export default function SensorDetailPage() {
       cur.setDate(cur.getDate() + 1)
     }
     return slots
-  }, [activeMeasurements, queryCondition, sensor?.unit])
+  }, [chartMode, measurements, activeMeasurements, queryCondition, sensor?.unit])
 
   // ─── 1차 상하한 ───────────────────────────────────────────────────────────
   const { level1Upper, level1Lower } = useMemo(() => {
@@ -1221,6 +1223,7 @@ export default function SensorDetailPage() {
           dateTo={dateTo}
           baselineDate={baselineDate}
           correctionValue={sensorCode === '80053' ? (correctionInput[depthLabel] ?? (correctionParams[depthLabel] !== undefined && correctionParams[depthLabel] !== 0 ? String(correctionParams[depthLabel]) : '')) : undefined}
+          selectedHour={queryCondition.selectedHour}
         />
       </div>
 

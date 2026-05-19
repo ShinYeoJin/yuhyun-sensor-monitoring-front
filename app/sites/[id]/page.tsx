@@ -277,11 +277,37 @@ export default function SiteDetailPage() {
 
   const dailyReadings = useMemo(() => {
     if (queryCondition.chartMode !== 'daily') return []
+    const localDateKey = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+
     const dataMap = new Map<string, any>()
-    activeMeasurements.forEach(m => { const t = new Date(m.timestamp); if (t.getHours() === queryCondition.selectedHour) { const key = t.toISOString().slice(0, 10); if (!dataMap.has(key)) dataMap.set(key, m) } })
-    const from = new Date(queryCondition.dateFrom), to = new Date(queryCondition.dateTo), now = new Date()
+    activeMeasurements.forEach(m => {
+      const t = new Date(m.timestamp)
+      if (t.getHours() !== queryCondition.selectedHour) return
+      const key = localDateKey(t)
+      if (!dataMap.has(key)) dataMap.set(key, m)
+    })
+
+    const [fy, fm, fd] = queryCondition.dateFrom.split('-').map(Number)
+    const [ty, tm, td] = queryCondition.dateTo.split('-').map(Number)
+    const startCur = new Date(fy, fm-1, fd, 0, 0, 0, 0)
+    const endLimit = new Date(ty, tm-1, td, 23, 59, 59, 999)
+    const now = new Date()
+    const endActual = endLimit > now ? now : endLimit
+
     const slots: any[] = []
-    for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) { if (d > now) break; const key = d.toISOString().slice(0, 10); slots.push(dataMap.get(key) ?? { timestamp: `${key}T${String(queryCondition.selectedHour).padStart(2,'0')}:00:00.000Z`, value: null, unit: sensor?.unit || '', status: 'gap' }) }
+    const cur = new Date(startCur)
+    while (cur <= endActual) {
+      const key = localDateKey(cur)
+      if (dataMap.has(key)) {
+        slots.push(dataMap.get(key))
+      } else {
+        const gapTime = new Date(cur)
+        gapTime.setHours(queryCondition.selectedHour, 0, 0, 0)
+        slots.push({ timestamp: gapTime.toISOString(), value: null, unit: sensor?.unit || '', status: 'gap' })
+      }
+      cur.setDate(cur.getDate() + 1)
+    }
     return slots
   }, [activeMeasurements, queryCondition, sensor?.unit])
 
@@ -780,6 +806,7 @@ export default function SiteDetailPage() {
                   dateTo={dateTo}
                   baselineDate={baselineDate}
                   correctionValue={sensorCode === '80053' ? (correctionInput[depthLabel] ?? (correctionParams[depthLabel] !== undefined && correctionParams[depthLabel] !== 0 ? String(correctionParams[depthLabel]) : '')) : undefined}
+                  selectedHour={queryCondition.selectedHour}
                 />
               </div>
             </>

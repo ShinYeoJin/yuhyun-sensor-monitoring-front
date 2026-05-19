@@ -94,7 +94,7 @@ export function QRTrendSection({ sensor }: { sensor: UnifiedSensor }) {
               return (
                 <tr key={i} className={`${rowCls}`}>
                   <td className="px-3 py-1.5 font-mono text-[10px] text-ink-muted">
-                    {dt.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                    {dt.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })}
                   </td>
                   <td className={`px-3 py-1.5 font-mono text-xs font-medium ${
                     r.status === 'danger'  ? 'text-sensor-danger'  :

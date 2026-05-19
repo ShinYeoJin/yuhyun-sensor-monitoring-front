@@ -17,6 +17,14 @@ export interface MeasurementLogTableProps {
   dateTo: string
   baselineDate?: string
   correctionValue?: string
+  selectedHour?: number
+}
+
+const fmtTime = (hour: number, minute: number = 0) => {
+  const period = hour < 12 ? '오전' : '오후'
+  const h = String(hour).padStart(2, '0')
+  const m = String(minute).padStart(2, '0')
+  return `${period} ${h}:${m}`
 }
 
 const PAGE_SIZE_OPTIONS = [10, 15, 30] as const
@@ -50,6 +58,7 @@ export function MeasurementLogTable(props: MeasurementLogTableProps) {
     tableData, tableDataAsc, chartMode, unit, logLabel,
     globalInitReading, initValue,
     dateFrom, dateTo, baselineDate, correctionValue,
+    selectedHour,
   } = props
 
   const [pageSize, setPageSize] = useState<number>(15)
@@ -170,9 +179,7 @@ export function MeasurementLogTable(props: MeasurementLogTableProps) {
         <thead className="bg-surface-subtle/60 border-b border-line">
           <tr>
             <th className="px-5 py-2 text-left font-mono text-[10px] uppercase tracking-wider text-ink-muted font-semibold">날짜</th>
-            <th className="px-3 py-2 text-left font-mono text-[10px] uppercase tracking-wider text-ink-muted font-semibold">
-              {chartMode === 'daily' ? '시각(일평균)' : '시각'}
-            </th>
+            <th className="px-3 py-2 text-left font-mono text-[10px] uppercase tracking-wider text-ink-muted font-semibold">시각</th>
             <th className="px-3 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-ink-muted font-semibold">
               측정값 <span className="normal-case text-ink-muted/70">({unit})</span>
             </th>
@@ -204,10 +211,9 @@ export function MeasurementLogTable(props: MeasurementLogTableProps) {
 
             const dateStr = d.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })
             const weekdayStr = d.toLocaleDateString('ko-KR', { weekday: 'long' })
-            const timeStr = chartMode === 'daily'
-              ? '오후 12:00'
-              : d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
-            const isSameDateAsPrev = i > 0 && new Date(pagedTable[i - 1].timestamp).toDateString() === d.toDateString()
+            const timeStr = chartMode === 'daily' && typeof selectedHour === 'number'
+              ? fmtTime(selectedHour)
+              : fmtTime(d.getHours(), d.getMinutes())
             const isLatest = !isGap && row.timestamp === latestNonGapTs
 
             const pill = statusPill(row.status, isGap)
@@ -215,14 +221,8 @@ export function MeasurementLogTable(props: MeasurementLogTableProps) {
             return (
               <tr key={i} className={`group border-b border-line/50 transition-colors ${isLatest ? 'bg-brand/[0.03] hover:bg-brand/[0.06]' : 'hover:bg-surface-subtle/40'}`}>
                 <td className="px-5 py-2.5">
-                  {isSameDateAsPrev ? (
-                    <span className="font-mono text-[10px] text-ink-muted/50">″</span>
-                  ) : (
-                    <>
-                      <div className="font-mono font-medium text-ink text-[11px]">{dateStr}</div>
-                      <div className="font-mono text-[9px] text-ink-muted leading-tight">{weekdayStr}</div>
-                    </>
-                  )}
+                  <div className="font-mono font-medium text-ink text-[11px]">{dateStr}</div>
+                  <div className="font-mono text-[9px] text-ink-muted leading-tight">{weekdayStr}</div>
                 </td>
                 <td className="px-3 py-2.5">
                   {isLatest ? (
