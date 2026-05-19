@@ -204,7 +204,9 @@ export function MeasurementLogTable(props: MeasurementLogTableProps) {
 
             const dateStr = d.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })
             const weekdayStr = d.toLocaleDateString('ko-KR', { weekday: 'long' })
-            const timeStr = d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+            const timeStr = chartMode === 'daily'
+              ? '오후 12:00'
+              : d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
             const isSameDateAsPrev = i > 0 && new Date(pagedTable[i - 1].timestamp).toDateString() === d.toDateString()
             const isLatest = !isGap && row.timestamp === latestNonGapTs
 
