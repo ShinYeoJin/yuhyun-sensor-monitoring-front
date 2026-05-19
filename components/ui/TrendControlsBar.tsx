@@ -58,7 +58,7 @@ const toISO = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
 const hourLabel = (h: number) =>
-  h < 12 ? `오전 ${h === 0 ? 12 : h}시` : `오후 ${h === 12 ? 12 : h - 12}시`
+  h < 12 ? `오전 ${h}시` : `오후 ${h === 12 ? 12 : h - 12}시`
 
 export function TrendControlsBar(props: TrendControlsBarProps) {
   const {
