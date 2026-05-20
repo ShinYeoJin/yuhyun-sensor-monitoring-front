@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(npm install *)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\USER\\\\OneDrive\\\\Desktop\\\\유현건설\\\\yuhyun-sensor-monitoring-front\" -Recurse -Directory)"
     ]
   }
 }

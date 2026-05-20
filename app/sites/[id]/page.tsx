@@ -120,7 +120,7 @@ export default function SiteDetailPage() {
   })
   const [summaryPos, setSummaryPos] = useState({ x: 40, y: 40 })
   const [summaryMinimized, setSummaryMinimized] = useState(false)
-  const [baselineMode, setBaselineMode] = useState<'range' | 'allTime'>('range')
+  const [baselineMode, setBaselineMode] = useState<'range' | 'allTime'>('allTime')
   const [allTimeOldest, setAllTimeOldest] = useState<{ value: number; timestamp: string } | null>(null)
 
   const saveIconPositions = useCallback(async (nextIcons: typeof icons) => {
