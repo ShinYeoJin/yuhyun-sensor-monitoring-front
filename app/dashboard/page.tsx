@@ -117,8 +117,9 @@ export default function DashboardPage() {
         if (!mapRef.current) return
         mapInitialized.current = true
         mapInstanceRef.current = new window.kakao.maps.Map(mapRef.current, {
-          center: new window.kakao.maps.LatLng(37.6138, 126.7161),
-          level: 6,
+          // 마커 로드 전/현장 없음 상태의 폴백 — 서울·경기권이 보이는 넓은 줌
+          center: new window.kakao.maps.LatLng(37.5172, 127.0473),
+          level: 10,
         })
       })
     }
@@ -129,11 +130,16 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!mapInstanceRef.current || !window.kakao) return
     const map = mapInstanceRef.current
+    const bounds = new window.kakao.maps.LatLngBounds()
+    let validCount = 0
     sites.forEach((site: any) => {
       if (!site.latitude || !site.longitude) return
+      const position = new window.kakao.maps.LatLng(site.latitude, site.longitude)
+      bounds.extend(position)
+      validCount++
       const marker = new window.kakao.maps.Marker({
         map,
-        position: new window.kakao.maps.LatLng(site.latitude, site.longitude),
+        position,
         title: site.name,
       })
       const infowindow = new window.kakao.maps.InfoWindow({
@@ -143,6 +149,15 @@ export default function DashboardPage() {
       window.kakao.maps.event.addListener(marker, 'mouseout', () => infowindow.close())
       window.kakao.maps.event.addListener(marker, 'click', () => router.push(`/sites/${site.id}`))
     })
+
+    // 모든 현장 마커가 화면에 들어오도록 지도 범위 자동 조정
+    if (validCount > 1) {
+      map.setBounds(bounds)
+    } else if (validCount === 1) {
+      // 마커가 하나면 setBounds가 과도하게 확대되므로 중심만 이동
+      map.setCenter(bounds.getCenter())
+      map.setLevel(6)
+    }
   }, [sites])
 
   const normalCount  = sensors.filter(s => s.status === 'normal').length
