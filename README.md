@@ -299,10 +299,15 @@ NEXT_PUBLIC_KAKAO_REST_KEY=<카카오 REST API 키>
 - 이 경우 UI에서 복구가 불가능하며 별도 복구 작업이 필요합니다.
 - **최소 1개 이상의 관리자 계정을 항상 유지하는 것을 권장합니다.**
 
-## 👤 테스트 계정 (MultiMonitor)
+## 👤 테스트 계정
 
-- **이메일**: qwer4321@qwer4321.com
-- **비밀번호**: qwer4321
+| 권한 | 이메일 | 비밀번호 |
+|---|---|---|
+| Administrator | test@geomonitor.com | Test1234! |
+| MultiMonitor | qwer4321@qwer4321.com | qwer4321 |
+
+> 로그인 페이지 접속 시 Administrator 계정 정보가 자동으로 입력되어 있어,
+> 로그인 버튼만 누르면 바로 확인하실 수 있습니다.
 
 ## 📌 버전
 
