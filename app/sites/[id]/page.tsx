@@ -16,6 +16,8 @@ import autoTable from 'jspdf-autotable'
 import { SensorIcon } from '@/components/ui/SensorIcon'
 import { AddSensorModal } from '@/components/features/sites/AddSensorModal'
 import { RemoveSensorModal } from '@/components/features/sites/RemoveSensorModal'
+import { MeasurementSummaryCards } from '@/components/features/sensors/MeasurementSummaryCards'
+import { SummaryCard } from '@/components/features/sensors/SummaryCard'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://yuhyun-sensor-monitoring-back.onrender.com'
 
@@ -266,6 +268,9 @@ export default function SiteDetailPage() {
   const level1Upper = useMemo(() => { if (!sensor) return null; const raw = sensor.sensor_code === '80053' ? sensor.criteria?.depthCriteria?.[depthLabel]?.upper : sensor.criteria?.level1Upper; if (raw == null || raw === '' || isNaN(Number(raw))) return null; return Number(raw) }, [sensor, depthLabel])
   const level1Lower = useMemo(() => { if (!sensor) return null; const raw = sensor.sensor_code === '80053' ? sensor.criteria?.depthCriteria?.[depthLabel]?.lower : sensor.criteria?.level1Lower; if (raw == null || raw === '' || isNaN(Number(raw))) return null; return Number(raw) }, [sensor, depthLabel])
   const latestMeasurement = useMemo(() => { if (activeMeasurements.length === 0) return null; return [...activeMeasurements].filter(m => m.value !== null).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0] }, [activeMeasurements])
+  const validMeasurementValues = useMemo(() => activeMeasurements.filter(m => m.value !== null).map(m => m.value), [activeMeasurements])
+  const minValue = useMemo(() => validMeasurementValues.length > 0 ? Math.min(...validMeasurementValues) : null, [validMeasurementValues])
+  const maxValue = useMemo(() => validMeasurementValues.length > 0 ? Math.max(...validMeasurementValues) : null, [validMeasurementValues])
 
   const tableDataAsc = useMemo(() =>
     [...(queryCondition.chartMode === 'hourly' ? measurementsWithGaps : dailyReadings)]
@@ -669,22 +674,16 @@ export default function SiteDetailPage() {
               </div>
 
               {/* 측정값 카드 */}
-              <div className="shrink-0 grid grid-cols-4 gap-1.5 px-3 py-2 border-b border-line bg-surface-card">
-                {[{ label: '기간 내 최신값', value: latestMeasurement?.value, showChange: true }, { label: '초기측정값', value: initValue }, { label: '최솟값', value: activeMeasurements.filter(m => m.value !== null).length > 0 ? Math.min(...activeMeasurements.filter(m => m.value !== null).map(m => m.value)) : null }, { label: '최댓값', value: activeMeasurements.filter(m => m.value !== null).length > 0 ? Math.max(...activeMeasurements.filter(m => m.value !== null).map(m => m.value)) : null }].map(({ label, value, showChange }: { label: string, value: any, showChange?: boolean }) => {
-                  const numVal = value !== null && value !== undefined ? Number(value) : null
-                  const changeVal = showChange && numVal !== null && globalInitReading !== null ? parseFloat((numVal - initValue).toFixed(2)) : null
-                  return (
-                  <div key={label} className="relative rounded-lg border border-line bg-surface-subtle px-2 py-1.5 text-center">
-                    <p className="font-mono text-[9px] text-ink-muted">{label}</p>
-                    <p className="font-mono text-sm font-semibold mt-0.5 text-sensor-normal">{numVal !== null ? numVal.toFixed(2) : '—'}<span className="text-[10px] text-ink-muted ml-0.5">{sensor.unit}</span></p>
-                    {changeVal !== null && (
-                      <span className={`absolute top-1 right-1 text-[8px] font-mono font-semibold px-1.5 py-0.5 rounded-full leading-none ${changeVal > 0 ? 'bg-red-100 text-red-600' : changeVal < 0 ? 'bg-blue-100 text-blue-600' : 'bg-surface-subtle text-ink-muted'}`}>
-                        {changeVal > 0 ? `↑${changeVal.toFixed(2)}` : changeVal < 0 ? `↓${Math.abs(changeVal).toFixed(2)}` : '0.00'}
-                      </span>
-                    )}
-                  </div>
-                  )
-                })}
+              <div className="bg-surface-card">
+                <MeasurementSummaryCards
+                  latestValue={latestMeasurement?.value}
+                  initValue={initValue}
+                  minValue={minValue}
+                  maxValue={maxValue}
+                  sensorStatus={sensor?.status || 'normal'}
+                  sensorUnit={sensor.unit}
+                  globalInitReading={globalInitReading}
+                />
               </div>
 
               {/* 정상 구간 게이지 */}
@@ -701,46 +700,19 @@ export default function SiteDetailPage() {
               <div ref={chartRef} className="overflow-hidden shrink-0 relative" style={{ height: '380px' }}>
                 <SensorTrendChart sensor={sensor} readings={chartMode === 'hourly' ? measurementsWithGaps : dailyReadings} initValue={sensorCode === '80053' ? initValue : undefined} level1Upper={level1Upper} level1Lower={level1Lower} />
                 {/* 실시간 요약 카드 */}
-                {(() => {
-                  const vals = activeMeasurements.filter((m:any)=>m.value!==null).map((m:any)=>parseFloat(String(m.value)))
-                  const curVal = latestMeasurement?.value!=null ? parseFloat(String(latestMeasurement.value)) : null
-                  const maxV = vals.length>0 ? Math.max(...vals) : null
-                  const minV = vals.length>0 ? Math.min(...vals) : null
-                  const diff = (curVal!=null && globalInitReading!==null) ? parseFloat((curVal-initValue).toFixed(4)) : null
-                  return (
-                    <div style={{position:'absolute',left:summaryPos.x,top:summaryPos.y,zIndex:10,cursor:'grab',userSelect:'none'}}
-                      onMouseDown={handleSummaryMouseDown}
-                      className={`rounded-xl border border-line bg-surface-card/90 backdrop-blur-sm px-3 py-2 shadow-lg ${summaryMinimized?'':'min-w-[200px]'}`}>
-                      <div className={`relative ${summaryMinimized?'':'mb-2.5 border-b border-line/50 pt-2.5 pb-3'}`}>
-                        <p className="font-mono text-[11px] text-ink-muted font-semibold text-center pr-7">📊 실시간 요약</p>
-                        <button onMouseDown={(e)=>e.stopPropagation()} onClick={()=>setSummaryMinimized(v=>!v)}
-                          className="absolute right-0 top-1/2 -translate-y-1/2 font-mono text-[13px] font-bold text-ink leading-none w-6 h-6 flex items-center justify-center cursor-pointer rounded-md border border-line bg-white shadow-sm hover:bg-ink hover:text-white hover:border-ink transition-colors"
-                          title={summaryMinimized?'펼치기':'최소화'}>{summaryMinimized?'+':'−'}</button>
-                      </div>
-                      {!summaryMinimized&&(<>
-                        {[{label:'현재값',value:curVal},{label:'최댓값',value:maxV},{label:'최솟값',value:minV},{label:'기준값',value:globalInitReading!==null?initValue:null}].map(({label,value})=>(
-                          <div key={label} className="flex justify-between items-center gap-3 py-0.5">
-                            <span className="font-mono text-[11px] text-ink-muted">{label}</span>
-                            <span className="font-mono text-[12px] font-medium text-ink">{value!=null?`${Number(value).toFixed(4)} ${sensor?.unit}`:'—'}</span>
-                          </div>
-                        ))}
-                        {diff!=null&&(
-                          <div className={`mt-2 rounded-lg px-2 py-1.5 border ${diff>0?'bg-red-50 border-red-200':diff<0?'bg-blue-50 border-blue-200':'bg-surface-subtle border-line'}`}>
-                            <p className="font-mono text-[10px] text-ink-muted mb-1">기준값 대비 변화량</p>
-                            <div className="flex items-center justify-between gap-2">
-                              <span className={`font-mono text-lg font-bold ${diff>0?'text-red-500':diff<0?'text-blue-500':'text-ink'}`}>
-                                {diff>0?`↑ ${Math.abs(diff).toFixed(4)}`:diff<0?`↓ ${Math.abs(diff).toFixed(4)}`:'0.0000'}{sensor?.unit}
-                              </span>
-                              <span className={`text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded-full ${diff>0?'bg-red-100 text-red-600':diff<0?'bg-blue-100 text-blue-600':'bg-surface-subtle text-ink-muted'}`}>
-                                {sensorCode==='80053'?(diff>0?'수위 상승':diff<0?'수위 하강':'변화 없음'):(diff>0?'상승':diff<0?'하강':'변화 없음')}
-                              </span>
-                            </div>
-                          </div>
-                        )}
-                      </>)}
-                    </div>
-                  )
-                })()}
+                <SummaryCard
+                  pos={summaryPos}
+                  minimized={summaryMinimized}
+                  onMouseDown={handleSummaryMouseDown}
+                  onToggleMinimize={() => setSummaryMinimized(v => !v)}
+                  curVal={latestMeasurement?.value != null ? parseFloat(String(latestMeasurement.value)) : null}
+                  maxVal={maxValue}
+                  minVal={minValue}
+                  initValue={initValue}
+                  globalInitReading={globalInitReading}
+                  sensorUnit={sensor?.unit || ''}
+                  sensorCode={sensorCode}
+                />
               </div>
 
               {/* 로그 */}
