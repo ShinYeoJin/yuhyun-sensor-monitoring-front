@@ -5,9 +5,12 @@ import Link from 'next/link'
 import type { Site } from '@/types'
 import { sensorApi, userApi, siteApi } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
-import { useRouter } from 'next/navigation'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
+import { SiteStatusBar } from '@/components/features/sites/SiteStatusBar'
+import { UserInfoModal } from '@/components/features/sites/UserInfoModal'
+import { SensorListModal } from '@/components/features/sites/SensorListModal'
+import { DeleteSiteModal } from '@/components/features/sites/DeleteSiteModal'
 
 type SiteStatus = 'danger' | 'warning' | 'normal'
 type ViewFilter = 'all' | 'danger' | 'warning' | 'normal'
@@ -37,16 +40,6 @@ const statusStyle: Record<SiteStatus, { badge: string; tab: string; label: strin
   normal:  { badge: 'bg-sensor-normalbg  border-sensor-normalborder  text-sensor-normaltext',  tab: 'border-sensor-normalborder  bg-sensor-normalbg  text-sensor-normaltext',  label: '정상' },
 }
 
-function SiteStatusBar({ normal, warning, danger, total }: { normal: number; warning: number; danger: number; total: number }) {
-  if (total === 0) return <div className="mt-2 h-1.5 rounded-full bg-surface-muted" />
-  return (
-    <div className="mt-2 flex h-1.5 overflow-hidden rounded-full bg-surface-muted">
-      <div className="bg-sensor-normal  transition-all" style={{ width: `${(normal  / total) * 100}%` }} />
-      <div className="bg-sensor-warning transition-all" style={{ width: `${(warning / total) * 100}%` }} />
-      <div className="bg-sensor-danger  transition-all" style={{ width: `${(danger  / total) * 100}%` }} />
-    </div>
-  )
-}
 
 function SiteModal({ mode, form, onChange, onSubmit, onClose, users, sensors, siteCode, siteId }: {
   mode: 'add' | 'edit'; form: SiteForm
@@ -315,109 +308,7 @@ function SiteModal({ mode, form, onChange, onSubmit, onClose, users, sensors, si
   )
 }
 
-function UserInfoModal({ user, onClose }: { user: any; onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 backdrop-blur-sm" onClick={onClose}>
-      <div className="geo-card w-full max-w-sm animate-fade-in-up p-6" onClick={e => e.stopPropagation()}>
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-ink">담당자 정보</h2>
-          <button onClick={onClose} className="rounded-md p-1 text-ink-muted hover:bg-surface-subtle hover:text-ink">✕</button>
-        </div>
-        <div className="mb-4 flex items-center gap-3">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-brand/30 bg-brand/10 font-mono text-lg font-semibold text-brand">
-            {user.username?.[0]?.toUpperCase()}
-          </div>
-          <div>
-            <p className="font-semibold text-ink">{user.username}</p>
-            <p className="font-mono text-xs text-ink-muted">{user.role}</p>
-          </div>
-        </div>
-        <dl className="space-y-2.5 text-sm">
-          <div className="flex gap-3">
-            <dt className="w-24 shrink-0 font-mono text-[10px] text-ink-muted">이메일</dt>
-            <dd className="font-medium text-ink">{user.email || '—'}</dd>
-          </div>
-          <div className="flex gap-3">
-            <dt className="w-24 shrink-0 font-mono text-[10px] text-ink-muted">핸드폰</dt>
-            <dd className="font-medium text-ink">
-              {user.phone
-                ? <a href={`tel:${user.phone}`} className="text-brand hover:underline">{user.phone}</a>
-                : '—'}
-            </dd>
-          </div>
-          <div className="flex gap-3">
-            <dt className="w-24 shrink-0 font-mono text-[10px] text-ink-muted">계정 상태</dt>
-            <dd className="font-medium text-ink">{user.is_active ? '활성' : '비활성화'}</dd>
-          </div>
-        </dl>
-        <div className="mt-5 flex gap-2">
-          <button onClick={onClose} className="flex-1 rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-sub hover:bg-surface-subtle">닫기</button>
-          <a href="/users" className="flex-1 rounded-lg bg-brand px-4 py-2 text-center text-sm font-medium text-white hover:bg-brand-hover">사용자 관리 →</a>
-        </div>
-      </div>
-    </div>
-  )
-}
 
-function SensorListModal({ site, sensors, onClose }: { site: any; sensors: any[]; onClose: () => void }) {
-  const siteSensors = sensors.filter((s: any) => s.site_code === site.site_code)
-  const router = useRouter()
-
-  const statusStyle: Record<string, { bg: string; text: string; label: string }> = {
-    normal:  { bg: 'bg-sensor-normalbg border-sensor-normalborder',   text: 'text-sensor-normaltext',  label: '정상' },
-    warning: { bg: 'bg-sensor-warningbg border-sensor-warningborder', text: 'text-sensor-warningtext', label: '주의' },
-    danger:  { bg: 'bg-sensor-dangerbg border-sensor-dangerborder',   text: 'text-sensor-dangertext',  label: '위험' },
-    offline: { bg: 'bg-sensor-offlinebg border-sensor-offlineborder', text: 'text-sensor-offlinetext', label: '오프라인' },
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 backdrop-blur-sm p-4" onClick={onClose}>
-      <div className="geo-card flex w-full max-w-md animate-fade-in-up flex-col" style={{ maxHeight: '80vh' }}
-        onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between border-b border-line px-6 py-4">
-          <div>
-            <h2 className="text-sm font-semibold text-ink">{site.name} 센서 목록</h2>
-            <p className="font-mono text-xs text-ink-muted">총 {siteSensors.length}개</p>
-          </div>
-          <button onClick={onClose} className="rounded-md p-1 text-ink-muted hover:bg-surface-subtle hover:text-ink">✕</button>
-        </div>
-        <div className="flex-1 overflow-y-auto">
-          {siteSensors.length === 0 ? (
-            <div className="py-10 text-center font-mono text-sm text-ink-muted">등록된 센서가 없습니다.</div>
-          ) : (
-            <div className="divide-y divide-line">
-              {siteSensors.map((sensor: any) => {
-                const st = statusStyle[sensor.status] || statusStyle['offline']
-                return (
-                  <button key={sensor.id} type="button"
-                    onClick={() => { onClose(); router.push(`/sensors/${sensor.id}`) }}
-                    className="flex w-full items-center gap-4 px-6 py-3.5 text-left transition-colors hover:bg-surface-subtle">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-mono text-sm font-semibold text-brand">{sensor.name || sensor.id}</p>
-                      <p className="text-xs text-ink-muted truncate">{sensor.name}</p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="font-mono text-sm font-medium text-ink">
-                        {sensor.status === 'offline' ? '—' : `${parseFloat(sensor.current_value || 0).toFixed(1)} ${sensor.unit || ''}`}
-                      </p>
-                    </div>
-                    <span className={`shrink-0 rounded-full border px-2.5 py-0.5 font-mono text-[11px] font-medium ${st.bg} ${st.text}`}>
-                      {st.label}
-                    </span>
-                    <span className="text-ink-muted text-xs">→</span>
-                  </button>
-                )
-              })}
-            </div>
-          )}
-        </div>
-        <div className="border-t border-line px-6 py-4">
-          <button onClick={onClose} className="w-full rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-sub hover:border-line-strong hover:text-ink">닫기</button>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 function SitesPageInner() {
   const { user:me } = useAuth()
@@ -678,17 +569,11 @@ function SitesPageInner() {
       {addOpen && <SiteModal mode="add" form={form} onChange={setForm} onSubmit={handleAdd} onClose={() => setAddOpen(false)} users={dbUsers} sensors={sensors} siteCode="" siteId={undefined} />}
       {editTarget && <SiteModal mode="edit" form={form} onChange={setForm} onSubmit={handleEdit} onClose={() => setEditTarget(null)} users={dbUsers} sensors={sensors} siteCode={editTarget.site_code} siteId={editTarget.dbId} />}
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 backdrop-blur-sm" onClick={() => setDeleteTarget(null)}>
-          <div className="geo-card w-full max-w-sm animate-fade-in-up p-6 text-center" onClick={e => e.stopPropagation()}>
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-sensor-dangerbg text-xl text-sensor-danger">⚠</div>
-            <h3 className="text-sm font-semibold text-ink">{deleteTarget.name}을(를) 삭제하시겠습니까?</h3>
-            <p className="mt-1.5 text-xs text-ink-muted">삭제된 현장 정보는 복구할 수 없습니다.</p>
-            <div className="mt-5 flex gap-2">
-              <button onClick={() => setDeleteTarget(null)} className="flex-1 rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-sub hover:bg-surface-subtle">취소</button>
-              <button onClick={handleDelete} className="flex-1 rounded-lg bg-sensor-danger px-4 py-2 text-sm font-medium text-white hover:opacity-90">삭제</button>
-            </div>
-          </div>
-        </div>
+        <DeleteSiteModal
+          deleteTarget={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onDelete={handleDelete}
+        />
       )}
     </div>
   )
