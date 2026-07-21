@@ -13,59 +13,11 @@ import { MeasurementLogTable } from '@/components/ui/MeasurementLogTable'
 import ThresholdGauge from '@/components/ui/ThresholdGauge'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import { SensorIcon } from '@/components/ui/SensorIcon'
+import { AddSensorModal } from '@/components/features/sites/AddSensorModal'
+import { RemoveSensorModal } from '@/components/features/sites/RemoveSensorModal'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://yuhyun-sensor-monitoring-back.onrender.com'
-
-function SensorIcon({ icon, isSelected, status, onMouseDown, onClick }: {
-  icon: { key: string; label: string; x: number; y: number }
-  isSelected: boolean; status: string
-  onMouseDown: (e: React.MouseEvent) => void; onClick: () => void
-}) {
-  const color = status === 'danger' ? '#ef4444' : status === 'warning' ? '#f97316' : '#22c55e'
-  return (
-    <div onMouseDown={onMouseDown} onClick={onClick}
-      style={{ position: 'absolute', left: `${icon.x * 100}%`, top: `${icon.y * 100}%`, transform: 'translate(-50%, -50%)', zIndex: isSelected ? 20 : 10, cursor: 'grab', userSelect: 'none' }}>
-      <div style={{ background: color, border: isSelected ? '2px solid #fff' : '1.5px solid rgba(255,255,255,0.7)', borderRadius: 6, padding: '3px 8px', boxShadow: '0 2px 8px rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', gap: 5, minWidth: 70 }}>
-        <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'rgba(255,255,255,0.8)', display: 'inline-block' }} />
-        <span style={{ color: '#fff', fontSize: 11, fontWeight: 600, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{icon.label}</span>
-      </div>
-    </div>
-  )
-}
-
-function AddSensorModal({ siteCode, allSensors, onClose, onSave }: { siteCode: string; allSensors: any[]; onClose: () => void; onSave: (ids: number[]) => void }) {
-  const [selected, setSelected] = useState<number[]>([])
-  const currentIds = allSensors.filter(s => s.site_code === siteCode).map(s => s.id)
-  const available = allSensors.filter(s => !s.site_code || s.site_code === siteCode)
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl bg-surface-card p-6 shadow-2xl">
-        <div className="flex items-center justify-between mb-4"><h2 className="text-sm font-semibold text-ink">센서 추가</h2><button onClick={onClose} className="text-ink-muted hover:text-ink text-lg">×</button></div>
-        <div className="max-h-64 overflow-y-auto space-y-1 border border-line rounded-lg p-2">
-          {available.length === 0 ? <p className="px-3 py-4 text-center font-mono text-[11px] text-ink-muted">추가 가능한 센서가 없습니다.</p>
-            : available.map((s: any) => { const isAlready = currentIds.includes(s.id); return (<label key={s.id} className={['flex items-center gap-3 rounded-lg px-3 py-2 cursor-pointer transition-colors', isAlready ? 'opacity-50 cursor-default' : 'hover:bg-surface-subtle'].join(' ')}><input type="checkbox" checked={selected.includes(s.id) || isAlready} disabled={isAlready} onChange={() => !isAlready && setSelected(prev => prev.includes(s.id) ? prev.filter(i => i !== s.id) : [...prev, s.id])} className="rounded border-line" /><div><p className="text-sm font-medium text-ink">{s.name}</p><p className="font-mono text-[10px] text-ink-muted">{s.sensor_type || '—'} {isAlready ? '(이미 등록됨)' : ''}</p></div></label>) })}
-        </div>
-        <div className="flex gap-2 mt-4"><button onClick={onClose} className="flex-1 rounded-lg border border-line py-2 font-mono text-sm text-ink-muted hover:bg-surface-subtle">취소</button><button onClick={() => onSave(selected)} disabled={selected.length === 0} className="flex-1 rounded-lg bg-brand py-2 font-mono text-sm text-white disabled:opacity-40 hover:bg-brand/90">추가</button></div>
-      </div>
-    </div>
-  )
-}
-
-function RemoveSensorModal({ siteSensors, onClose, onRemove }: { siteSensors: any[]; onClose: () => void; onRemove: (id: number) => void }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl bg-surface-card p-6 shadow-2xl">
-        <div className="flex items-center justify-between mb-4"><h2 className="text-sm font-semibold text-ink">센서 삭제</h2><button onClick={onClose} className="text-ink-muted hover:text-ink text-lg">×</button></div>
-        <p className="font-mono text-[11px] text-ink-muted mb-3">이 현장에서 제거할 센서를 선택하세요.</p>
-        <div className="max-h-64 overflow-y-auto space-y-1 border border-line rounded-lg p-2">
-          {siteSensors.length === 0 ? <p className="px-3 py-4 text-center font-mono text-[11px] text-ink-muted">등록된 센서가 없습니다.</p>
-            : siteSensors.map((s: any) => (<div key={s.id} className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-surface-subtle"><div><p className="text-sm font-medium text-ink">{s.name}</p><p className="font-mono text-[10px] text-ink-muted">{s.sensor_type || '—'}</p></div><button onClick={() => onRemove(s.id)} className="rounded-md border border-red-200 px-2.5 py-1 font-mono text-[10px] text-red-400 hover:bg-red-50">제거</button></div>))}
-        </div>
-        <button onClick={onClose} className="mt-4 w-full rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-sub hover:bg-surface-subtle">닫기</button>
-      </div>
-    </div>
-  )
-}
 
 export default function SiteDetailPage() {
   const { id } = useParams()
