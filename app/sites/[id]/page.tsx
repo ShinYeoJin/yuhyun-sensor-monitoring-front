@@ -13,8 +13,7 @@ import { MeasurementLogTable } from '@/components/ui/MeasurementLogTable'
 import ThresholdGauge from '@/components/ui/ThresholdGauge'
 import { SensorIcon } from '@/components/ui/SensorIcon'
 import { useSensorExport } from '@/hooks/useSensorExport'
-import { AddSensorModal } from '@/components/features/sites/AddSensorModal'
-import { RemoveSensorModal } from '@/components/features/sites/RemoveSensorModal'
+import { SiteDetailModals } from '@/components/features/sites/SiteDetailModals'
 import { MeasurementSummaryCards } from '@/components/features/sensors/MeasurementSummaryCards'
 import { SummaryCard } from '@/components/features/sensors/SummaryCard'
 
@@ -361,43 +360,35 @@ export default function SiteDetailPage() {
   })
 
   // 공통 모달
-  const CommonModals = () => (
-    <>
-      {showAddSensor && <AddSensorModal siteCode={site.site_code} allSensors={allSensors} onClose={() => setShowAddSensor(false)} onSave={handleAddSensors} />}
-      {showRemoveSensor && <RemoveSensorModal siteSensors={siteSensors} onClose={() => setShowRemoveSensor(false)} onRemove={handleRemoveSensor} />}
-      {showDeleteIconModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 backdrop-blur-sm p-4" onClick={() => setShowDeleteIconModal(false)}>
-          <div className="w-full max-w-sm rounded-2xl bg-surface-card p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-3"><h3 className="text-sm font-semibold text-ink">아이콘 삭제</h3><button onClick={() => setShowDeleteIconModal(false)} className="text-ink-muted hover:text-ink">✕</button></div>
-            <div className="space-y-1 max-h-48 overflow-y-auto">{icons.map(icon => (<div key={icon.key} className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-surface-subtle"><span className="font-mono text-sm text-ink">{icon.label}</span><button onClick={() => { handleDeleteIcon(icon.key); setShowDeleteIconModal(false) }} className="rounded-md border border-red-200 px-2.5 py-1 font-mono text-[10px] text-red-400 hover:bg-red-50">삭제</button></div>))}</div>
-            <button onClick={() => setShowDeleteIconModal(false)} className="mt-4 w-full rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-sub hover:bg-surface-subtle">닫기</button>
-          </div>
-        </div>
-      )}
-      {editingIcon && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 backdrop-blur-sm p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-surface-card p-5 shadow-2xl">
-            <h3 className="mb-3 text-sm font-semibold text-ink">아이콘 이름 수정</h3>
-            <input type="text" value={editingLabel} onChange={e => setEditingLabel(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleEditIcon(editingIcon.key, editingLabel) }} className="w-full rounded-lg border border-line bg-surface-subtle px-3 py-2 text-sm text-ink outline-none focus:border-brand/50 focus:ring-2 focus:ring-brand/10" placeholder="새 이름 입력" autoFocus />
-            <div className="mt-3 flex gap-2"><button onClick={() => setEditingIcon(null)} className="flex-1 rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-sub hover:bg-surface-subtle">취소</button><button onClick={() => handleEditIcon(editingIcon.key, editingLabel)} disabled={!editingLabel.trim()} className="flex-1 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-50">저장</button></div>
-          </div>
-        </div>
-      )}
-      {showAddIcon && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 backdrop-blur-sm p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-surface-card p-5 shadow-2xl">
-            <h3 className="mb-3 text-sm font-semibold text-ink">센서 아이콘 추가</h3>
-            <div className="space-y-3">
-              <div><label className="mb-1.5 block font-mono text-[10px] font-semibold uppercase tracking-wider text-ink-muted">센서 선택</label><select value={addIconSensor} onChange={e => setAddIconSensor(e.target.value)} className="w-full rounded-lg border border-line bg-surface-subtle px-3 py-2 text-sm text-ink outline-none focus:border-brand/50"><option value="">센서를 선택하세요</option>{siteSensors.map((s: any) => (<option key={s.id} value={String(s.id)}>{s.name}</option>))}</select></div>
-              {allSensors.find((s: any) => String(s.id) === addIconSensor)?.sensor_code === '80053' && (<div><label className="mb-1.5 block font-mono text-[10px] font-semibold uppercase tracking-wider text-ink-muted">Depth 선택</label><div className="flex gap-2">{(['1', '2', '3'] as const).map(d => (<button key={d} onClick={() => setAddIconDepth(d)} className={['flex-1 rounded-lg border py-2 font-mono text-sm', addIconDepth === d ? 'border-brand/30 bg-brand/10 text-brand' : 'border-line text-ink-muted hover:bg-surface-subtle'].join(' ')}>{d}번</button>))}</div></div>)}
-            </div>
-            <div className="mt-4 flex gap-2"><button onClick={() => setShowAddIcon(false)} className="flex-1 rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-sub hover:bg-surface-subtle">취소</button><button onClick={handleAddIcon} disabled={!addIconSensor} className="flex-1 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-50">추가</button></div>
-          </div>
-        </div>
-      )}
-      {qrSensor && <QRModal sensorId={qrSensor.id} sensorName={qrSensor.name} onClose={() => setQrSensor(null)} />}
-    </>
-  )
+  const commonModalsProps = {
+    site,
+    allSensors,
+    siteSensors,
+    icons,
+    addIconSensor,
+    addIconDepth,
+    editingIcon,
+    editingLabel,
+    qrSensor,
+    showAddSensor,
+    showRemoveSensor,
+    showDeleteIconModal,
+    showAddIcon,
+    onAddSensorClose: () => setShowAddSensor(false),
+    onAddSensorSave: handleAddSensors,
+    onRemoveSensorClose: () => setShowRemoveSensor(false),
+    onRemoveSensor: handleRemoveSensor,
+    onDeleteIconClose: () => setShowDeleteIconModal(false),
+    onDeleteIcon: handleDeleteIcon,
+    onEditIconClose: () => setEditingIcon(null),
+    onEditIconLabelChange: setEditingLabel,
+    onEditIconSave: handleEditIcon,
+    onAddIconClose: () => setShowAddIcon(false),
+    onAddIconSensorChange: setAddIconSensor,
+    onAddIconDepthChange: (v: string) => setAddIconDepth(v as '1' | '2' | '3'),
+    onAddIcon: handleAddIcon,
+    onQrClose: () => setQrSensor(null),
+  }
 
   if (loading) return <div className="flex h-full items-center justify-center"><p className="font-mono text-sm text-ink-muted">불러오는 중...</p></div>
   if (!site) return null
@@ -463,7 +454,7 @@ export default function SiteDetailPage() {
             )}
           </div>
         </div>
-        <CommonModals />
+        <SiteDetailModals {...commonModalsProps} />
       </div>
     )
   }
@@ -650,7 +641,7 @@ export default function SiteDetailPage() {
           )}
         </div>
       </div>
-      <CommonModals />
+      <SiteDetailModals {...commonModalsProps} />
     </div>
   )
 }
