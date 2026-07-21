@@ -202,6 +202,33 @@ export interface User {
   lastLogin:   string
 }
 
+// ─── SensorForm (추가/편집 모달용 폼 타입) ───────────────────────────────────
+export type SensorForm = Omit<UnifiedSensor, 'id' | 'status' | 'currentValue' | 'batteryLevel' | 'lastUpdated' | 'readings'>
+
+export const emptyForm: SensorForm = {
+  manageNo: '', field: '공통', measureMethod: '해당없음', formula: '(A*X+B)',
+  group: '',
+  name: '', nameEn: '', nameAbbr: '', unit: '', unitName: '',
+  description: '', combination: '', decimalPoint: '', pointerInfo: '', remark: '',
+  threshold: { normalMax: '', warningMax: '', dangerMin: '' },
+  operation: { measureCycle: '01:00', actionAfterMeasure: '저장송신', actionBeforeMeasure: '자동' },
+  formulaParams: { coeffA: '', coeffB: '', coeffC: '', coeffD: '', coeffE: '', coeffG: '', initVal: '', currentTemp: '', tempCoeff: '', initTemp: '', extRef: '' },
+  formulaId: null,
+  selectedExpression: '',
+  useDepthParams: false,
+  initValMode: 'auto',
+  depthParams: {
+    '1': { A: '', B: '', C: '', G: '', K: '' },
+    '2': { A: '', B: '', C: '', G: '', K: '' },
+    '3': { A: '', B: '', C: '', G: '', K: '' },
+  },
+  previewRaw: '',
+  previewResult: null,
+  criteria: { level1Upper: '', level1Lower: '', level2Upper: '', level2Lower: '', criteriaUnit: '', criteriaUnitName: '', noAlarm: false, noSms: false },
+  siteId: '', siteName: '', installDate: '', location: { lat: 0, lng: 0, description: '' },
+  customExpression: '',
+}
+
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 export interface DashboardStats {
   totalSensors:  number

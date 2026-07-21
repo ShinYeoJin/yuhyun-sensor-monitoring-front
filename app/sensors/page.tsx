@@ -7,8 +7,8 @@ import { StatusBadge } from '@/components/ui/StatusBadge'
 import { sensorStore, useSensorStore, evaluateStatus } from '@/lib/sensor-store'
 import { sensorApi, siteApi, formulaApi, recollectApi, agentApi } from '@/lib/api'
 import type {
-  SensorStatus, UnifiedSensor, SensorField, MeasureMethod, Formula,
-  ThresholdRange, SensorGroup, ActionAfterMeasure, ActionBeforeMeasure,
+  SensorStatus, UnifiedSensor, Formula,
+  ThresholdRange, ActionBeforeMeasure,
 } from '@/types'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
@@ -17,6 +17,10 @@ import { ThresholdSection } from '@/components/ui/ThresholdSection'
 import { FormulaModal } from '@/components/ui/FormulaModal'
 import { DeleteModal } from '@/components/ui/DeleteModal'
 import { RecollectModal } from '@/components/ui/RecollectModal'
+import { ModalSection } from '@/components/ui/ModalSection'
+import { FIELDS, MEASURE_METHODS, GROUPS, ACTION_AFTER, ACTION_BEFORE } from '@/lib/constants'
+import type { SensorForm } from '@/types'
+import { emptyForm } from '@/types'
 
 
 
@@ -40,69 +44,6 @@ const rowBgClass: Record<SensorStatus, string> = {
   offline: 'opacity-60 hover:opacity-80',
 }
 
-// ─── 선택 옵션 ────────────────────────────────────────────────────────────────
-const FIELDS: SensorField[] = ['공통','터널','연약지반','흙막이','교량','항만','사면']
-const MEASURE_METHODS: MeasureMethod[] = [
-  '해당없음','전류(4~20mA)','저항(온도)',
-  '전압(0~5V)','전압(0~10V)','전압(+-5V)','전압(+-10V)',
-  '경사계 A축','경사계 B축',
-  'VW A(450~1125Hz)(22222~8888*10e-7)','VW B(800~2000Hz)(12500~5000*10e-7)',
-  'VW C(1400~3500Hz)(7143~2857*10e-7)','VW D(2300~6000Hz)(4347~1666*10e-7)',
-  'PT100','RTD',
-]
-
-const GROUPS: { value: SensorGroup; label: string }[] = [
-  { value: '', label: '없음' },
-  { value: '자동화모니터링 계측시스템-가시설 지하수위 계측(관리용)',   label: '지하수위 계측(관리용)'   },
-  { value: '자동화모니터링 계측시스템-가시설 지하수위 계측(보고서용)', label: '지하수위 계측(보고서용)' },
-]
-const ACTION_AFTER:  ActionAfterMeasure[]  = ['저장','송신','저장송신']
-const ACTION_BEFORE: ActionBeforeMeasure[] = [
-  '자동','1초 대기 후 동작','2초 대기 후 동작','3초 대기 후 동작',
-  '4초 대기 후 동작','5초 대기 후 동작','예비 1','예비 2','예비 3','예비 4',
-]
-
-// ─── 빈 폼 ────────────────────────────────────────────────────────────────────
-type SensorForm = Omit<UnifiedSensor, 'id' | 'status' | 'currentValue' | 'batteryLevel' | 'lastUpdated' | 'readings'>
-
-const emptyForm: SensorForm = {
-  manageNo: '', field: '공통', measureMethod: '해당없음', formula: '(A*X+B)',
-  group: '',
-  name: '', nameEn: '', nameAbbr: '', unit: '', unitName: '',
-  description: '', combination: '', decimalPoint: '', pointerInfo: '', remark: '',
-  threshold: { normalMax: '', warningMax: '', dangerMin: '' },
-  operation: { measureCycle: '01:00', actionAfterMeasure: '저장송신', actionBeforeMeasure: '자동' },
-  formulaParams: { coeffA: '', coeffB: '', coeffC: '', coeffD: '', coeffE: '', coeffG: '', initVal: '', currentTemp: '', tempCoeff: '', initTemp: '', extRef: '' },
-  formulaId: null as number | null,
-  selectedExpression: '',
-  useDepthParams: false,
-  initValMode: 'auto' as 'auto' | 'manual',
-  depthParams: {
-    '1': { A: '', B: '', C: '', G: '', K: '' },
-    '2': { A: '', B: '', C: '', G: '', K: '' },
-    '3': { A: '', B: '', C: '', G: '', K: '' },
-  },
-  previewRaw: '',
-  previewResult: null as number | null,
-  criteria: { level1Upper: '', level1Lower: '', level2Upper: '', level2Lower: '', criteriaUnit: '', criteriaUnitName: '', noAlarm: false, noSms: false },
-  siteId: '', siteName: '', installDate: '', location: { lat: 0, lng: 0, description: '' },
-  customExpression: '' as string,
-}
-
-// ─── 스타일 ───────────────────────────────────────────────────────────────────
-const sectionTitleCls = 'flex items-center gap-2 mb-3'
-
-function ModalSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <div className={sectionTitleCls}>
-        <span className="h-3 w-0.5 rounded-sm bg-brand" />
-        <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-ink-muted">{title}</p>
-      </div>
-      {children}
-    </div>
-  )
-}
 
 // ─── 센서 추가/편집 모달 ──────────────────────────────────────────────────────
 function SensorModal({ mode, form, onChange, onSubmit, onClose, formulas, sites, sensorPositions, sensorId }: {
