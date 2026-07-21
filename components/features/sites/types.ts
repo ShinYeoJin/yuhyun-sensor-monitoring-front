@@ -1,5 +1,9 @@
 import type { Site } from '@/types'
 
+export type SiteForm = {
+  name: string; location: string; description: string; managers: string[]; selectedSensors: number[]; has_floor_plan?: boolean; latitude?: number; longitude?: number
+}
+
 export type SiteStatus = 'danger' | 'warning' | 'normal'
 export type ViewFilter = 'all' | 'danger' | 'warning' | 'normal'
 
