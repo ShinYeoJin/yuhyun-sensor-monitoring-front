@@ -42,15 +42,47 @@ app/
 
 components/
 ├── layout/
-│   └── Sidebar.tsx # 사이드바 (현장 이름→/sites/N, 추가및편집 링크, MultiMonitor 기타 그룹 숨김)
+│   └── Sidebar.tsx              # 사이드바 네비게이션
 ├── charts/
-│   └── SensorTrendChart.tsx # 트렌드 차트 (ResizeObserver 동적 크기, 가로 스크롤, 범례)
-└── ui/
-    ├── StatusBadge.tsx
-    ├── QRCode.tsx
-    └── QRModal.tsx
+│   └── SensorTrendChart.tsx     # 센서 측정값 트렌드 차트
+├── ui/                          # 도메인 지식 없이 재사용 가능한 범용 컴포넌트
+│   ├── StatusBadge.tsx          # 상태(정상/주의/위험) 뱃지
+│   ├── QRCode.tsx               # QR 코드 생성
+│   ├── QRModal.tsx              # QR 코드 표시 모달
+│   ├── SensorIcon.tsx           # 평면도 위 드래그 가능한 센서 아이콘
+│   ├── ThresholdSection.tsx     # 임계값 입력 폼 섹션
+│   ├── FormulaModal.tsx         # 계산식 추가/편집 모달
+│   ├── DeleteModal.tsx          # 범용 삭제 확인 모달
+│   ├── RecollectModal.tsx       # 데이터 재수집 요청 모달
+│   ├── ModalSection.tsx         # 모달 내부 섹션 래퍼
+│   └── formStyles.ts            # 폼 입력창 공통 스타일 상수
+└── features/                    # 특정 도메인 로직에 의존하는 컴포넌트
+    ├── sensors/                 # 센서 관리 관련
+    │   ├── SensorModal.tsx              # 센서 추가/편집 모달
+    │   ├── IconDeleteModal.tsx          # 평면도 아이콘 삭제 모달
+    │   ├── IconEditModal.tsx            # 평면도 아이콘 이름 수정 모달
+    │   ├── IconAddModal.tsx             # 평면도 아이콘 추가 모달
+    │   ├── PrintModal.tsx               # Excel/PDF 출력 설정 모달
+    │   ├── MeasurementSummaryCards.tsx  # 최신값/초기값/최솟값/최댓값 카드
+    │   └── SummaryCard.tsx              # 드래그 가능한 실시간 요약 카드
+    └── sites/                   # 현장 관리 관련
+        ├── AddSensorModal.tsx        # 현장에 센서 추가 모달
+        ├── RemoveSensorModal.tsx     # 현장에서 센서 제거 모달
+        ├── SiteDetailModals.tsx      # 현장 상세 페이지 공용 모달 그룹
+        ├── SiteStatusBar.tsx         # 현장 카드 상태 비율 가로 바
+        ├── UserInfoModal.tsx         # 담당자 상세 정보 팝업
+        ├── SensorListModal.tsx       # 현장별 센서 목록 모달
+        ├── DeleteSiteModal.tsx       # 현장 삭제 확인 모달
+        ├── SiteCard.tsx              # 현장 목록의 카드 UI
+        ├── SiteModal.tsx             # 현장 추가/편집 모달
+        └── types.ts                  # 현장 관련 공통 타입 정의
+
+hooks/                            # 재사용 가능한 상태/로직 훅
+├── useSensorEdit.ts              # 센서 편집 상태 관리 및 API 호출 (openEdit 로직)
+└── useSensorExport.ts            # Excel/PDF 다운로드 로직
 
 lib/
+├── constants.ts     # FIELDS, MEASURE_METHODS 등 폼 선택지 공통 상수
 ├── api.ts          # API 호출 함수 (formula_id 지원)
 ├── auth-context.tsx # 인증 컨텍스트 (토큰 검증)
 └── sensor-store.ts # 센서 상태 관리
@@ -352,3 +384,14 @@ NEXT_PUBLIC_KAKAO_REST_KEY=<카카오 REST API 키>
   - **대시보드 카카오맵 실제 연동**: 현장 위치 마커 표시, 마커 클릭 → 현장 상세 이동
   - **대시보드 현장 목록 표 추가**: 총 현장 수, 현장명/위치 컬럼 표시
   - **현장 편집 모달 위도/경도 자동 검색**: 주소 입력 → `/api/geocode` 프록시 → 좌표 자동 입력
+- **v1.8.0** (2026.07.21) — 대규모 컴포넌트 리팩터링
+  - **sensors/page.tsx**: 1,578줄 → 706줄 (55% 감소)
+    - SensorModal, 소형 모달 4종을 별도 컴포넌트로 분리
+    - openEdit 로직을 useSensorEdit 커스텀 훅으로 분리
+  - **sensors/[id]/page.tsx**: 1,342줄 → 948줄
+    - 아이콘 관련 모달, Excel/PDF 다운로드 로직(useSensorExport 훅)을 분리
+  - **sites/[id]/page.tsx**: 822줄 → 647줄 (21.3% 감소)
+    - 기존 컴포넌트 재사용 위주로 진행, 위험/경고 상태 시 카드 색상이 표시되지 않던 버그 수정
+  - **sites/page.tsx**: 703줄 → 240줄 (65.9% 감소)
+    - SiteModal 등 신규 컴포넌트 다수 분리
+  - **컴포넌트 폴더 재구성**: components/ui(범용)와 components/features(도메인별)로 구조화
