@@ -14,30 +14,18 @@ import Link from 'next/link'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { useAuth } from '@/lib/auth-context'
+import { SensorIcon } from '@/components/ui/SensorIcon'
+import { IconDeleteModal } from '@/components/features/sensors/IconDeleteModal'
+import { IconEditModal } from '@/components/features/sensors/IconEditModal'
+import { IconAddModal } from '@/components/features/sensors/IconAddModal'
+import { PrintModal } from '@/components/features/sensors/PrintModal'
+import { MeasurementSummaryCards } from '@/components/features/sensors/MeasurementSummaryCards'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://yuhyun-sensor-monitoring-back.onrender.com'
 
 function dateDiffDays(from: string, to: string): number {
   const a = new Date(from + 'T00:00:00'), b = new Date(to + 'T00:00:00')
   return Math.round((b.getTime() - a.getTime()) / 86400000)
-}
-
-// ─── 센서 아이콘 ─────────────────────────────────────────────────────────────
-function SensorIcon({ icon, isSelected, status, onMouseDown, onClick }: {
-  icon: { key: string; label: string; x: number; y: number }
-  isSelected: boolean; status: string
-  onMouseDown: (e: React.MouseEvent) => void; onClick: () => void
-}) {
-  const color = status === 'danger' ? '#ef4444' : status === 'warning' ? '#f97316' : '#22c55e'
-  return (
-    <div onMouseDown={onMouseDown} onClick={onClick}
-      style={{ position: 'absolute', left: `${icon.x * 100}%`, top: `${icon.y * 100}%`, transform: 'translate(-50%, -50%)', zIndex: isSelected ? 20 : 10, cursor: 'grab', userSelect: 'none' }}>
-      <div style={{ background: color, border: isSelected ? '2px solid #fff' : '1.5px solid rgba(255,255,255,0.7)', borderRadius: 6, padding: '3px 8px', boxShadow: '0 2px 8px rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', gap: 5, minWidth: 70 }}>
-        <span style={{ width: 7, height: 7, borderRadius: '50%', background: status === 'danger' ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.8)', display: 'inline-block', animation: status === 'danger' ? 'pulse 1.2s infinite' : 'none' }} />
-        <span style={{ color: '#fff', fontSize: 11, fontWeight: 600, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{icon.label}</span>
-      </div>
-    </div>
-  )
 }
 
 export default function SensorDetailPage() {
@@ -1125,30 +1113,15 @@ export default function SensorDetailPage() {
         </div>
 
         {/* 측정값 카드 — 한 줄 */}
-        <div className="shrink-0 grid grid-cols-4 gap-1.5 px-3 py-2 border-b border-line">
-          {[
-            {label:'기간 내 최신값', value:latestMeasurement?.value, showChange:true},
-            {label:'초기측정값', value:initValue},
-            {label:'최솟값', value:activeMeasurements.length>0?Math.min(...activeMeasurements.filter((m:any)=>m.value!==null).map((m:any)=>m.value)):null},
-            {label:'최댓값', value:activeMeasurements.length>0?Math.max(...activeMeasurements.filter((m:any)=>m.value!==null).map((m:any)=>m.value)):null},
-          ].map(({label,value,showChange}:{label:string,value:any,showChange?:boolean})=>{
-            const numVal = value!==null&&value!==undefined ? Number(value) : null
-            const changeVal = showChange&&numVal!==null&&globalInitReading!==null ? parseFloat((numVal-initValue).toFixed(2)) : null
-            return (
-            <div key={label} className="relative rounded-lg border border-line bg-surface-subtle px-2 py-1.5 text-center">
-              <p className="font-mono text-[9px] text-ink-muted">{label}</p>
-              <p className={`font-mono text-sm font-semibold mt-0.5 ${sensor.status==='danger'?'text-sensor-danger':sensor.status==='warning'?'text-sensor-warning':'text-sensor-normal'}`}>
-                {numVal!==null?numVal.toFixed(2):'—'}<span className="text-[10px] text-ink-muted ml-0.5">{sensor.unit}</span>
-              </p>
-              {changeVal!==null&&(
-                <span className={`absolute top-1 right-1 text-[8px] font-mono font-semibold px-1.5 py-0.5 rounded-full leading-none ${changeVal>0?'bg-red-100 text-red-600':changeVal<0?'bg-blue-100 text-blue-600':'bg-surface-subtle text-ink-muted'}`}>
-                  {changeVal>0?`↑${changeVal.toFixed(2)}`:changeVal<0?`↓${Math.abs(changeVal).toFixed(2)}`:'0.00'}
-                </span>
-              )}
-            </div>
-            )
-          })}
-        </div>
+        <MeasurementSummaryCards
+          latestValue={latestMeasurement?.value}
+          initValue={initValue}
+          minValue={activeMeasurements.length > 0 ? Math.min(...activeMeasurements.filter((m: any) => m.value !== null).map((m: any) => m.value)) : null}
+          maxValue={activeMeasurements.length > 0 ? Math.max(...activeMeasurements.filter((m: any) => m.value !== null).map((m: any) => m.value)) : null}
+          sensorStatus={sensor.status}
+          sensorUnit={sensor.unit}
+          globalInitReading={globalInitReading}
+        />
 
         {/* 게이지 */}
         <ThresholdGauge
@@ -1228,111 +1201,51 @@ export default function SensorDetailPage() {
       </div>
 
       {/* 모달 */}
-      {printOpen&&(
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 backdrop-blur-sm p-4" onClick={()=>setPrintOpen(false)}>
-          <div className="geo-card w-full max-w-sm p-6" onClick={e=>e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4"><h2 className="text-sm font-semibold text-ink">출력 설정</h2><button onClick={()=>setPrintOpen(false)} className="text-ink-muted hover:text-ink">✕</button></div>
-            <div className="rounded-xl border border-line bg-surface-subtle p-3 text-xs text-ink-muted space-y-1 mb-4">
-              <p className="font-semibold text-ink">{sensor.siteName||'현장명 없음'}</p>
-              <p>{iconLabel || sensor.manageNo} · {sensor.name}</p>
-              <p>{dateFrom} ~ {dateTo}</p>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={()=>setPrintOpen(false)} className="flex-1 rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-sub hover:border-line-strong">취소</button>
-              <button onClick={()=>{setPrintOpen(false);handleExcelDownload()}} className="flex-1 rounded-lg bg-sensor-normal px-4 py-2 text-sm font-medium text-white hover:opacity-90">📊 Excel</button>
-              <button onClick={()=>{setPrintOpen(false);handlePdfDownload()}} className="flex-1 rounded-lg bg-sensor-warning px-4 py-2 text-sm font-medium text-white hover:opacity-90">📄 PDF</button>
-            </div>
-          </div>
-        </div>
+      {printOpen && (
+        <PrintModal
+          sensor={sensor}
+          iconLabel={iconLabel}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          onClose={() => setPrintOpen(false)}
+          onExcel={handleExcelDownload}
+          onPdf={handlePdfDownload}
+        />
       )}
       {qrOpen&&<QRModal sensorId={sensor.id} sensorName={sensor.name} onClose={()=>setQrOpen(false)} />}
       
       {/* 아이콘 삭제 모달 */}
       {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 backdrop-blur-sm p-4" onClick={() => setShowDeleteModal(false)}>
-          <div className="geo-card w-full max-w-xs p-6" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-ink">센서 아이콘 삭제</h2>
-              <button onClick={() => setShowDeleteModal(false)} className="text-ink-muted hover:text-ink">✕</button>
-            </div>
-            <p className="font-mono text-[11px] text-ink-muted mb-3">삭제할 아이콘을 선택하세요.</p>
-            <div className="space-y-1.5 max-h-60 overflow-y-auto">
-              {icons.map(icon => (
-                <div key={icon.key} className="flex items-center justify-between rounded-lg border border-line bg-surface-subtle px-3 py-2">
-                  <span className="font-mono text-[11px] text-ink">{icon.label}</span>
-                  <button
-                    onClick={() => { handleDeleteIcon(icon.key); setShowDeleteModal(false) }}
-                    className="rounded-md border border-red-400/30 bg-red-400/10 px-2.5 py-1 font-mono text-[10px] text-red-400 hover:bg-red-400/20">
-                    삭제
-                  </button>
-                </div>
-              ))}
-              {icons.length === 0 && (
-                <p className="py-4 text-center font-mono text-[11px] text-ink-muted">등록된 아이콘이 없습니다.</p>
-              )}
-            </div>
-            <button onClick={() => setShowDeleteModal(false)} className="mt-4 w-full rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-sub hover:bg-surface-subtle">닫기</button>
-          </div>
-        </div>
+        <IconDeleteModal
+          icons={icons}
+          onDelete={handleDeleteIcon}
+          onClose={() => setShowDeleteModal(false)}
+        />
       )}
 
       {/* 아이콘 수정 모달 */}
       {editingIcon && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 backdrop-blur-sm p-4" onClick={() => setEditingIcon(null)}>
-          <div className="geo-card w-full max-w-xs p-6" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-ink">아이콘 이름 수정</h2>
-              <button onClick={() => setEditingIcon(null)} className="text-ink-muted hover:text-ink">✕</button>
-            </div>
-            <div className="space-y-3">
-              <label className="mb-1.5 block font-mono text-[10px] font-semibold uppercase tracking-wider text-ink-muted">아이콘 이름</label>
-              <input
-                type="text"
-                value={editingLabel}
-                onChange={e => setEditingLabel(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') handleEditIcon(editingIcon.key, editingLabel) }}
-                className="w-full rounded-lg border border-line bg-surface-subtle px-3 py-2 text-sm text-ink outline-none focus:border-brand/50"
-                autoFocus
-              />
-            </div>
-            <div className="flex gap-2 mt-5">
-              <button onClick={() => setEditingIcon(null)} className="flex-1 rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-sub">취소</button>
-              <button onClick={() => handleEditIcon(editingIcon.key, editingLabel)} disabled={!editingLabel.trim()} className="flex-1 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-50">저장</button>
-            </div>
-          </div>
-        </div>
+        <IconEditModal
+          editingIcon={editingIcon}
+          editingLabel={editingLabel}
+          onLabelChange={setEditingLabel}
+          onSave={handleEditIcon}
+          onClose={() => setEditingIcon(null)}
+        />
       )}
 
       {/* 아이콘 추가 모달 */}
-      {showAddIcon&&(
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 backdrop-blur-sm p-4" onClick={()=>setShowAddIcon(false)}>
-          <div className="geo-card w-full max-w-sm p-6" onClick={e=>e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4"><h2 className="text-sm font-semibold text-ink">센서 아이콘 추가</h2><button onClick={()=>setShowAddIcon(false)} className="text-ink-muted hover:text-ink">✕</button></div>
-            <div className="space-y-3">
-              <div>
-                <label className="mb-1.5 block font-mono text-[10px] font-semibold uppercase tracking-wider text-ink-muted">센서 선택</label>
-                <select value={addIconSensor} onChange={e=>setAddIconSensor(e.target.value)} className="w-full rounded-lg border border-line bg-surface-subtle px-3 py-2 text-sm text-ink outline-none focus:border-brand/50">
-                  <option value="">센서를 선택하세요</option>
-                  {siteSensors.map((s:any)=>(<option key={s.id} value={String(s.id)}>{s.name || s.id}</option>))}
-                </select>
-              </div>
-              {addIconSensor&&allSensors.find((s:any)=>String(s.id)===addIconSensor)?.sensor_code==='80053'&&(
-                <div>
-                  <label className="mb-1.5 block font-mono text-[10px] font-semibold uppercase tracking-wider text-ink-muted">Depth 선택</label>
-                  <div className="flex gap-2">
-                    {(['1','2','3'] as const).map(d=>(
-                      <button key={d} onClick={()=>setAddIconDepth(d)} className={['flex-1 rounded-md border py-1.5 font-mono text-[11px]',addIconDepth===d?'border-brand/30 bg-brand/10 text-brand':'border-line text-ink-muted hover:bg-surface-subtle'].join(' ')}>{d}번</button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="flex gap-2 mt-5">
-              <button onClick={()=>setShowAddIcon(false)} className="flex-1 rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-sub">취소</button>
-              <button onClick={handleAddIcon} disabled={!addIconSensor} className="flex-1 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-50">추가</button>
-            </div>
-          </div>
-        </div>
+      {showAddIcon && (
+        <IconAddModal
+          siteSensors={siteSensors}
+          allSensors={allSensors}
+          addIconSensor={addIconSensor}
+          addIconDepth={addIconDepth}
+          onSensorChange={setAddIconSensor}
+          onDepthChange={setAddIconDepth}
+          onAdd={handleAddIcon}
+          onClose={() => setShowAddIcon(false)}
+        />
       )}
 
       <div ref={printRef} style={{display:'none'}} />
