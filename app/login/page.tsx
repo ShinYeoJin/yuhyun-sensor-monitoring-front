@@ -24,8 +24,8 @@ export default function LoginPage() {
 
   const [mode,     setMode]     = useState<Mode>('login')
   const [userId,   setUserId]   = useState('')
-  const [email,    setEmail]    = useState('')
-  const [password, setPassword] = useState('')
+  const [email,    setEmail]    = useState('test@geomonitor.com')
+  const [password, setPassword] = useState('Test1234!')
   const [name,     setName]     = useState('')
   const [confirm,  setConfirm]  = useState('')
   const [error,    setError]    = useState('')
