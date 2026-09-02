@@ -21,9 +21,11 @@ GeoMonitor는 지반 계측 센서 데이터를 실시간으로 수집·저장·
 - **Styling**: Tailwind CSS
 - **폰트**: 맑은 고딕 (Malgun Gothic) — v1.5.0 적용
 - **차트**: Recharts
-- **수식 계산**: mathjs (계산식 미리보기용 — v1.5.0)
 - **PDF 출력**: jsPDF + jspdf-autotable
 - **엑셀 출력**: ExcelJS
+- **차트 캡처**: html2canvas (^1.4.1)
+- **QR 생성**: qrcode (^1.5.4)
+- **엑셀 파싱**: xlsx (^0.18.5)
 - **배포**: Vercel
 
 ## 📁 프로젝트 구조
@@ -49,8 +51,13 @@ components/
 │   ├── StatusBadge.tsx          # 상태(정상/주의/위험) 뱃지
 │   ├── QRCode.tsx               # QR 코드 생성
 │   ├── QRModal.tsx              # QR 코드 표시 모달
+│   ├── QRCodeSection.tsx        # QR 코드 섹션 레이아웃
+│   ├── QRTrendSection.tsx       # QR 페이지 트렌드 섹션
 │   ├── SensorIcon.tsx           # 평면도 위 드래그 가능한 센서 아이콘
 │   ├── ThresholdSection.tsx     # 임계값 입력 폼 섹션
+│   ├── ThresholdGauge.tsx       # 1차 관리기준 게이지 시각화
+│   ├── TrendControlsBar.tsx     # 기간/단위/보정값 조회 컨트롤 바
+│   ├── MeasurementLogTable.tsx  # 측정 데이터 로그 테이블
 │   ├── FormulaModal.tsx         # 계산식 추가/편집 모달
 │   ├── DeleteModal.tsx          # 범용 삭제 확인 모달
 │   ├── RecollectModal.tsx       # 데이터 재수집 요청 모달
@@ -82,10 +89,12 @@ hooks/                            # 재사용 가능한 상태/로직 훅
 └── useSensorExport.ts            # Excel/PDF 다운로드 로직
 
 lib/
-├── constants.ts     # FIELDS, MEASURE_METHODS 등 폼 선택지 공통 상수
-├── api.ts          # API 호출 함수 (formula_id 지원)
-├── auth-context.tsx # 인증 컨텍스트 (토큰 검증)
-└── sensor-store.ts # 센서 상태 관리
+├── constants.ts        # FIELDS, MEASURE_METHODS 등 폼 선택지 공통 상수
+├── api.ts              # API 호출 함수 (formula_id 지원)
+├── auth-context.tsx    # 인증 컨텍스트 (토큰 검증)
+├── mock-data.ts        # getRelativeTime, getThresholds 등 유틸 함수
+├── sensor-simulator.ts # 센서 시뮬레이터 (개발용)
+└── sensor-store.ts     # 센서 상태 관리
 
 types/
 └── index.ts        # UnifiedSensor — 계산식 관련 필드 optional 추가
@@ -102,7 +111,7 @@ npm run build
 ```env
 NEXT_PUBLIC_API_URL=https://yuhyun-sensor-monitoring-back.onrender.com
 NEXT_PUBLIC_KAKAO_MAP_KEY=<카카오 JavaScript 키>
-NEXT_PUBLIC_KAKAO_REST_KEY=<카카오 REST API 키>
+# NEXT_PUBLIC_KAKAO_REST_KEY 불필요 — 지오코딩은 백엔드 /api/geocode 프록시 경유
 ```
 
 > Vercel 배포 환경에서는 프로젝트 설정 → Environment Variables에서 동일하게 등록합니다.
