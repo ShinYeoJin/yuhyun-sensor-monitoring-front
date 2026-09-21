@@ -132,11 +132,13 @@ export default function DashboardPage() {
     const map = mapInstanceRef.current
     const bounds = new window.kakao.maps.LatLngBounds()
     let validCount = 0
+    let singlePosition: any = null
     sites.forEach((site: any) => {
       if (!site.latitude || !site.longitude) return
       const position = new window.kakao.maps.LatLng(site.latitude, site.longitude)
       bounds.extend(position)
       validCount++
+      singlePosition = position
       const marker = new window.kakao.maps.Marker({
         map,
         position,
@@ -154,8 +156,9 @@ export default function DashboardPage() {
     if (validCount > 1) {
       map.setBounds(bounds)
     } else if (validCount === 1) {
-      // 마커가 하나면 setBounds가 과도하게 확대되므로 중심만 이동
-      map.setCenter(bounds.getCenter())
+      // LatLngBounds.getCenter()는 포인트가 1개일 때 undefined를 반환할 수 있으므로
+      // 직접 저장한 좌표로 setCenter 호출
+      map.setCenter(singlePosition)
       map.setLevel(6)
     }
   }, [sites])
