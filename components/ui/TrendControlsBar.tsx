@@ -271,13 +271,15 @@ function PeriodPopover({ dateFrom, dateTo, today, onApply, onCancel }: PeriodPop
   }
 
   const handleDayClick = (iso: string) => {
+    const clickedTs = new Date(iso + 'T00:00:00').getTime()
     if (pickFrom) {
       setDraftFrom(iso)
-      if (new Date(iso).getTime() > new Date(draftTo).getTime()) setDraftTo(iso)
+      if (clickedTs > new Date(draftTo + 'T00:00:00').getTime()) setDraftTo(iso)
       setPickFrom(false)
     } else {
-      if (new Date(iso).getTime() < new Date(draftFrom).getTime()) {
+      if (clickedTs < new Date(draftFrom + 'T00:00:00').getTime()) {
         setDraftFrom(iso)
+        setDraftTo(draftFrom)
       } else {
         setDraftTo(iso)
       }
