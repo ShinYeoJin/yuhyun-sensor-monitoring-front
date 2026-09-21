@@ -90,7 +90,7 @@ export function SiteModal({ mode, form, onChange, onSubmit, onClose, users, sens
             </div>
             {form.latitude && form.longitude && (
               <p className="mt-1 font-mono text-[10px] text-sensor-normaltext">
-                ✓ 좌표 설정됨 ({form.latitude.toFixed(4)}, {form.longitude.toFixed(4)})
+                ✓ 좌표 설정됨 ({Number(form.latitude).toFixed(4)}, {Number(form.longitude).toFixed(4)})
               </p>
             )}
           </div>
