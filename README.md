@@ -108,13 +108,16 @@ npm run build
 ```
 
 ## 🔐 환경변수
-```env
-NEXT_PUBLIC_API_URL=https://yuhyun-sensor-monitoring-back.onrender.com
-NEXT_PUBLIC_KAKAO_MAP_KEY=<카카오 JavaScript 키>
-# NEXT_PUBLIC_KAKAO_REST_KEY 불필요 — 지오코딩은 백엔드 /api/geocode 프록시 경유
-```
 
-> Vercel 배포 환경에서는 프로젝트 설정 → Environment Variables에서 동일하게 등록합니다.
+아래 변수들은 배포 전 Vercel 대시보드에서 직접 설정해야 합니다.
+설정 여부는 코드로 확인할 수 없으므로, 반드시 직접 확인하세요.
+
+| 변수명 | 필수 여부 | 설명 |
+|--------|----------|------|
+| `NEXT_PUBLIC_API_URL` | 필수 | 백엔드 API 서버 URL |
+| `NEXT_PUBLIC_KAKAO_MAP_KEY` | 필수 | 카카오 JavaScript 키 (지도 표시용) |
+
+> `NEXT_PUBLIC_KAKAO_REST_KEY`는 불필요합니다 — 지오코딩은 백엔드 `/api/geocode` 프록시를 경유합니다.
 
 ## 📱 주요 기능
 
@@ -293,13 +296,14 @@ NEXT_PUBLIC_KAKAO_MAP_KEY=<카카오 JavaScript 키>
 
 | 권한 | 센서 조회 | 센서 편집 | 알람 처리 | 사용자 관리 | 현장 상세 | 파일 관리 |
 |------|----------|----------|----------|------------|----------|----------|
+| admin | ✅ | ✅ | ✅ | ✅ | ✅ (편집) | ✅ |
 | Administrator | ✅ | ✅ | ✅ | ✅ | ✅ (편집) | ✅ |
 | Manager | ✅ | ✅ | ✅ | ✅ | ✅ (편집) | ✅ |
 | Operator | ✅ | ✅ | ✅ | ✅ | ✅ (편집) | ✅ |
 | Monitor | ✅ | ✅ | ✅ | ✅ | ✅ (편집) | ✅ |
 | MultiMonitor | ✅ | ❌ | ❌ | ❌ | ✅ (읽기) | ✅ |
 
-> admin role → Administrator로 DB 업데이트 완료
+> admin 역할의 Administrator 통합 여부는 실제 데이터베이스에서 확인 필요
 
 ## ⚠️ 주의사항
 
@@ -315,8 +319,8 @@ NEXT_PUBLIC_KAKAO_MAP_KEY=<카카오 JavaScript 키>
 | Administrator | test@geomonitor.com | Test1234! |
 | MultiMonitor | qwer4321@qwer4321.com | qwer4321 |
 
-> 로그인 페이지 접속 시 Administrator 계정 정보가 자동으로 입력되어 있어,
-> 로그인 버튼만 누르면 바로 확인하실 수 있습니다.
+> 로그인 페이지에 Administrator 계정 정보가 자동 입력되도록 구현되어 있습니다.
+> (실제 로그인 가능 여부는 배포된 사이트에서 직접 확인 필요)
 
 ## 📌 버전
 
@@ -398,10 +402,6 @@ NEXT_PUBLIC_KAKAO_MAP_KEY=<카카오 JavaScript 키>
   - **대시보드 카카오맵 실제 연동**: 현장 위치 마커 표시, 마커 클릭 → 현장 상세 이동
   - **대시보드 현장 목록 표 추가**: 총 현장 수, 현장명/위치 컬럼 표시
   - **현장 편집 모달 위도/경도 자동 검색**: 주소 입력 → `/api/geocode` 프록시 → 좌표 자동 입력
-- **v1.8.1** (2026.09.21) — 버그 수정
-  - **날짜 범위 선택 시 시작일 이후 날짜로 자동 스왑**: 타임존 파싱을 UTC 기준으로 통일, 로컬 시간 파싱 오류로 스왑이 잘못 발동되던 문제 수정
-  - **bounds.getCenter() 크래시 수정**: 대시보드 지도에서 유효 좌표가 1개일 때 `LatLngBounds.getCenter()`가 undefined를 반환하며 발생하는 오류를 단일 좌표 직접 사용 방식으로 수정
-  - **latitude toFixed 타입 오류 수정**: 백엔드에서 문자열로 오던 위도값을 `Number()` 변환 후 `.toFixed()` 호출하도록 방어 처리
 - **v1.8.0** (2026.07.21) — 대규모 컴포넌트 리팩터링
   - **sensors/page.tsx**: 1,578줄 → 706줄 (55% 감소)
     - SensorModal, 소형 모달 4종을 별도 컴포넌트로 분리
@@ -413,3 +413,7 @@ NEXT_PUBLIC_KAKAO_MAP_KEY=<카카오 JavaScript 키>
   - **sites/page.tsx**: 703줄 → 240줄 (65.9% 감소)
     - SiteModal 등 신규 컴포넌트 다수 분리
   - **컴포넌트 폴더 재구성**: components/ui(범용)와 components/features(도메인별)로 구조화
+- **v1.8.1** (2026.09.21) — 버그 수정
+  - **날짜 범위 선택 시 시작일 이후 날짜로 자동 스왑**: 타임존 파싱을 UTC 기준으로 통일, 로컬 시간 파싱 오류로 스왑이 잘못 발동되던 문제 수정
+  - **bounds.getCenter() 크래시 수정**: 대시보드 지도에서 유효 좌표가 1개일 때 `LatLngBounds.getCenter()`가 undefined를 반환하며 발생하는 오류를 단일 좌표 직접 사용 방식으로 수정
+  - **latitude toFixed 타입 오류 수정**: 백엔드에서 문자열로 오던 위도값을 `Number()` 변환 후 `.toFixed()` 호출하도록 방어 처리
