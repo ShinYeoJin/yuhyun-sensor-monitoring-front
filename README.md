@@ -114,7 +114,7 @@ npm run build
 
 | 변수명 | 필수 여부 | 설명 |
 |--------|----------|------|
-| `NEXT_PUBLIC_API_URL` | 필수 | 백엔드 API 서버 URL |
+| `NEXT_PUBLIC_API_URL` | 선택 (기본값 있음) | 백엔드 API 서버 URL — 없으면 코드에 적힌 기본 백엔드 주소를 사용합니다 |
 | `NEXT_PUBLIC_KAKAO_MAP_KEY` | 필수 | 카카오 JavaScript 키 (지도 표시용) |
 
 > `NEXT_PUBLIC_KAKAO_REST_KEY`는 불필요합니다 — 지오코딩은 백엔드 `/api/geocode` 프록시를 경유합니다.
