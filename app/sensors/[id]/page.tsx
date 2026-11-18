@@ -69,6 +69,7 @@ export default function SensorDetailPage() {
   const { user } = useAuth()
   const isMultiMonitor = user?.role === 'MultiMonitor'
   const today = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` })()
+  const DEFAULT_RANGE_DAYS = 7
 
   useEffect(() => {
     if (!id) return
@@ -105,6 +106,20 @@ export default function SensorDetailPage() {
       })
       setSensorCode(data.sensor_code || '')
       setCorrectionParams(data.correction_params || {})
+      if (data.last_measured) {
+        const toLocalDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+        const last = new Date(data.last_measured)
+        const lastDay = toLocalDate(last)
+        if (lastDay < today) {
+          const fromDate = new Date(last)
+          fromDate.setDate(fromDate.getDate() - (DEFAULT_RANGE_DAYS - 1))
+          const range = { from: toLocalDate(fromDate), to: lastDay }
+          setDefaultRange(range)
+          setDateFrom(range.from)
+          setDateTo(range.to)
+          setQueryCondition(prev => ({ ...prev, dateFrom: range.from, dateTo: range.to }))
+        }
+      }
     }).catch(() => setSensor(null)).finally(() => setLoading(false))
   }, [id])
 
@@ -259,6 +274,7 @@ export default function SensorDetailPage() {
     dateFrom: today, dateTo: today, chartMode: 'hourly' as 'hourly' | 'daily',
     selectedHour: 12, depthLabel: '1'
   })
+  const [defaultRange, setDefaultRange] = useState({ from: today, to: today })
   const [summaryPos, setSummaryPos] = useState({ x: 40, y: 40 })
   const [summaryMinimized, setSummaryMinimized] = useState(false)
   const [baselineMode, setBaselineMode] = useState<'range' | 'allTime'>('range')
@@ -819,7 +835,7 @@ export default function SensorDetailPage() {
             baselineValueText={globalInitReading !== null ? `${initValue.toFixed(4)} ${sensor.unit}` : undefined}
             baselineMode={baselineMode}
             onBaselineModeChange={setBaselineMode}
-            onReset={() => { setDateFrom(today); setDateTo(today); setChartMode('hourly'); setSelectedHour(12) }}
+            onReset={() => { setDateFrom(defaultRange.from); setDateTo(defaultRange.to); setChartMode('hourly'); setSelectedHour(12) }}
             onQuery={() => setQueryCondition({ dateFrom, dateTo, chartMode, selectedHour, depthLabel })}
           />
         </div>
