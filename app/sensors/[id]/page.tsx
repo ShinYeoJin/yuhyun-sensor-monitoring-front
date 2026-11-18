@@ -20,6 +20,7 @@ import { PrintModal } from '@/components/features/sensors/PrintModal'
 import { MeasurementSummaryCards } from '@/components/features/sensors/MeasurementSummaryCards'
 import { SummaryCard } from '@/components/features/sensors/SummaryCard'
 import { useSensorExport } from '@/hooks/useSensorExport'
+import { getDefaultRange } from '@/lib/default-range'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://yuhyun-sensor-monitoring-back.onrender.com'
 
@@ -69,7 +70,7 @@ export default function SensorDetailPage() {
   const { user } = useAuth()
   const isMultiMonitor = user?.role === 'MultiMonitor'
   const today = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` })()
-  const DEFAULT_RANGE_DAYS = 7
+  const defaultRange = getDefaultRange()
 
   useEffect(() => {
     if (!id) return
@@ -106,20 +107,6 @@ export default function SensorDetailPage() {
       })
       setSensorCode(data.sensor_code || '')
       setCorrectionParams(data.correction_params || {})
-      if (data.last_measured) {
-        const toLocalDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-        const last = new Date(data.last_measured)
-        const lastDay = toLocalDate(last)
-        if (lastDay < today) {
-          const fromDate = new Date(last)
-          fromDate.setDate(fromDate.getDate() - (DEFAULT_RANGE_DAYS - 1))
-          const range = { from: toLocalDate(fromDate), to: lastDay }
-          setDefaultRange(range)
-          setDateFrom(range.from)
-          setDateTo(range.to)
-          setQueryCondition(prev => ({ ...prev, dateFrom: range.from, dateTo: range.to }))
-        }
-      }
     }).catch(() => setSensor(null)).finally(() => setLoading(false))
   }, [id])
 
@@ -252,8 +239,8 @@ export default function SensorDetailPage() {
 
   // ─── 상태 ─────────────────────────────────────────────────────────────────
   const [sensorCode, setSensorCode] = useState<string>('')
-  const [dateFrom, setDateFrom] = useState(today)
-  const [dateTo,   setDateTo]   = useState(today)
+  const [dateFrom, setDateFrom] = useState(defaultRange.from)
+  const [dateTo,   setDateTo]   = useState(defaultRange.to)
   const [selectedHour, setSelectedHour] = useState<number>(12)
   const [chartMode, setChartMode] = useState<'hourly' | 'daily'>('hourly')
   const [depthLabel, setDepthLabel] = useState<'1' | '2' | '3'>('1')
@@ -271,10 +258,9 @@ export default function SensorDetailPage() {
   const [depth1Data, setDepth1Data] = useState<any[]>([])
   const [depth3Data, setDepth3Data] = useState<any[]>([])
   const [queryCondition, setQueryCondition] = useState({
-    dateFrom: today, dateTo: today, chartMode: 'hourly' as 'hourly' | 'daily',
+    dateFrom: defaultRange.from, dateTo: defaultRange.to, chartMode: 'hourly' as 'hourly' | 'daily',
     selectedHour: 12, depthLabel: '1'
   })
-  const [defaultRange, setDefaultRange] = useState({ from: today, to: today })
   const [summaryPos, setSummaryPos] = useState({ x: 40, y: 40 })
   const [summaryMinimized, setSummaryMinimized] = useState(false)
   const [baselineMode, setBaselineMode] = useState<'range' | 'allTime'>('range')
