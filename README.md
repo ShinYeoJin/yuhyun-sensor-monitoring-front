@@ -94,7 +94,8 @@ lib/
 ├── auth-context.tsx    # 인증 컨텍스트 (토큰 검증)
 ├── mock-data.ts        # getRelativeTime, getThresholds 등 유틸 함수
 ├── sensor-simulator.ts # 센서 시뮬레이터 (개발용)
-└── sensor-store.ts     # 센서 상태 관리
+├── sensor-store.ts     # 센서 상태 관리
+└── default-range.ts    # 데모 기본 조회 기간(2026-09-01~09-07)
 
 types/
 └── index.ts        # UnifiedSensor — 계산식 관련 필드 optional 추가
@@ -417,3 +418,6 @@ npm run build
   - **날짜 범위 선택 시 시작일 이후 날짜로 자동 스왑**: 타임존 파싱을 UTC 기준으로 통일, 로컬 시간 파싱 오류로 스왑이 잘못 발동되던 문제 수정
   - **bounds.getCenter() 크래시 수정**: 대시보드 지도에서 유효 좌표가 1개일 때 `LatLngBounds.getCenter()`가 undefined를 반환하며 발생하는 오류를 단일 좌표 직접 사용 방식으로 수정
   - **latitude toFixed 타입 오류 수정**: 백엔드에서 문자열로 오던 위도값을 `Number()` 변환 후 `.toFixed()` 호출하도록 방어 처리
+- **2026.11.18** — 데모 첫 화면 정비
+  - **센서 상세·현장 상세의 기본 조회 기간**: 데모 DB의 샘플 데이터(2026년 8월 1일~9월 21일)가 있는 2026-09-01~09-07로 고정했습니다(`lib/default-range.ts`). 날짜 입력, 기간 선택은 그대로 동작하며 초기화는 이 기본 기간으로 돌아갑니다.
+  - **알려진 한계**: 기간 프리셋(오늘, 어제, 이번 주, 지난 7일, 지난 30일)은 오늘 날짜 기준이라 데모에서는 비어 보입니다.
